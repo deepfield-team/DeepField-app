@@ -1,7 +1,12 @@
 from pathlib import Path
 
 import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 import numpy as np
+import pandas as pd
+import matplotlib
+from matplotlib.pyplot import get_cmap
 
 from trame.widgets import html, plotly, vtk as vtk_widgets, trame, vuetify3 as vuetify
 from trame.app import get_server
@@ -55,31 +60,66 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
-surface_filter = vtkGeometryFilter()
-surface_filter.SetInputConnection(reader.GetOutputPort())
-surface_filter.SetPassThroughPointIds(True)
 
 mapper = vtkDataSetMapper()
-mapper.SetInputConnection(surface_filter.GetOutputPort())
+mapper.SetInputConnection(reader.GetOutputPort())
 # mapper.SetScalarRange(0, 1)
 
 py_ds = dsa.WrapDataObject(dataset)
 c_data = py_ds.CellData
 
-vtk_array = dsa.numpyTovtkDataArray(c_data['PERMX'])
-dataset.GetCellData().SetScalars(vtk_array)
-mapper.SetScalarRange(dataset.GetScalarRange())
+FIELDS = list(c_data.keys())
 
 actor = vtkActor()
-actor.GetProperty().SetOpacity(0.5)
+actor.SetScale(1, 1, 10)
+
+mapper.SetScalarRange(0, 1)
 actor.SetMapper(mapper)
 
+
+@state.change("opacity")
+def update_opacity(opacity, **kwargs):
+    _ = kwargs
+    if opacity is None:
+        return
+    actor.GetProperty().SetOpacity(opacity)
+    ctrl.view_update()
+
+@state.change("activeField")
+def update_field(activeField, **kwargs):
+    _ = kwargs
+    if activeField is None:
+        return
+    vtk_array = dsa.numpyTovtkDataArray(c_data[activeField])
+    dataset.GetCellData().SetScalars(vtk_array)
+    mapper.SetScalarRange(dataset.GetScalarRange())
+    actor.SetMapper(mapper)
+    ctrl.view_update()
+
+@state.change("colormap")
+def update_cmap(colormap, **kwargs):
+    cmap = get_cmap(colormap)
+    table = actor.GetMapper().GetLookupTable()
+    colors = cmap(np.arange(0,cmap.N)) 
+    table.SetNumberOfTableValues(len(colors))
+    for i, val in enumerate(colors):
+        table.SetTableValue(i, val[0], val[1], val[2])
+    table.Build()
+    ctrl.view_update()
+
 renderer.AddActor(actor)
+
+camera = renderer.GetActiveCamera()
+x, y, z = camera.GetPosition()
+fx, fy, fz = camera.GetFocalPoint()
+dist = np.linalg.norm(np.array([x, y, z]) - np.array([fx, fy, fz]))
+camera.SetPosition(fx, fy-dist, fz)
+camera.SetViewUp(0, 0, -1)
 renderer.ResetCamera()
 
 VTK_VIEW_SETTINGS = {
     "interactive_ratio": 1,
-    "interactive_quality": 80,
+    "interactive_quality": 60,
 }
 
 # -----------------------------------------------------------------------------
@@ -89,9 +129,17 @@ VTK_VIEW_SETTINGS = {
 def render_home():
     with vuetify.VContainer(style="width: 100%;height: 80vh;display: flex;justify-content: center;align-items: center;"):
         vuetify.VFileInput(
+            v_model=("file_input", False),
             label='Input reservoir model file',
             style="width: 50%;",
+            directory=True,
             classes='rounded-xl elevation-12')
+
+@state.change("file_input")
+def load_file(file_input, **kwargs):
+    _ = kwargs
+    if not file_input:
+        return
 
 def render_info():
     with vuetify.VRow():
@@ -124,34 +172,162 @@ def render_3d():
                 )
                 ctrl.view_update = view.update
                 ctrl.view_reset_camera = view.reset_camera
+    with vuetify.VBottomNavigation(grow=True, style='left: 50%; transform: translateX(-50%); width: 40vw; bottom: 5vh; opacity: 0.75'):
+        with vuetify.VBtn(icon=True):
+            vuetify.VIcon("mdi-magnify")
+        with vuetify.VBtn(icon=True):
+            vuetify.VIcon("mdi-crop")
+        with vuetify.VBtn(icon=True):
+            vuetify.VIcon("mdi-chart-bar")
+        with vuetify.VBtn(icon=True):
+            vuetify.VIcon("mdi-magic-staff")
+        with vuetify.VBtn(icon=True):
+            vuetify.VIcon("mdi-play")
 
-def render_2d():
-    with vuetify.VCard():
-        vuetify.VImg(src=res_png)
-    with vuetify.VContainer(style='width:100vw; display: flex;position: fixed; bottom: 5vh;justify-content: center; align-items: center;'):
-        with vuetify.VBottomNavigation(style='width:30vw;opacity: 0.75'):
-            with vuetify.VBtn(icon=True):
-                    vuetify.VIcon("mdi-magnify")
-            with vuetify.VBtn(icon=True):
-                vuetify.VIcon("mdi-lightbulb-multiple-outline")
-            with vuetify.VBtn(icon=True):
-                vuetify.VIcon("mdi-dots-vertical")
+cube = np.load('data/rock.npz')
+cube_shape = cube['poro'].shape
 
-rates = {'x': np.arange(100),
-         'PROD1': np.sin(np.arange(100)),
-         'PROD2': np.cos(np.arange(100)),
-         'PROD3': np.arange(100)}
+CHART_STYLE = {
+    # "display_mode_bar": ("true",),
+    "mode_bar_buttons_to_remove": (
+        "chart_buttons",
+        [
+            "resetScale2d",
+            "zoomIn2d",
+            "zoomOut2d",
+            "toggleSpikelines",
+            "hoverClosestCartesian",
+            "hoverCompareCartesian",
+        ],
+    ),
+    "display_logo": ("false",),
+}
 
-def create_fig(well, width, height):
-    fig = px.line(
-        rates,
-        x='x',
-        y=well,
-        width=width,
-        height=height
-    )
+def matplotlib_to_plotly(cmap, pl_entries, rdigits=2):
+    scale = np.linspace(0, 1, pl_entries)
+    colors = (cmap(scale)[:, :3]*255).astype(np.uint8)
+    pl_colorscale = [[round(s, rdigits), f'rgb{tuple(color)}'] for s, color in zip(scale, colors)]
+    return pl_colorscale
+
+def create_slice(arr, width, height, colormap):
+    fig = px.imshow(arr, aspect="auto", color_continuous_scale=colormap.lower())
+    fig.update_layout(height=height,
+                      width=width,
+                      showlegend=False,
+                      margin={'t': 30, 'r': 30, 'l': 30, 'b': 0},)
     return fig
 
+@state.change("figure_xsize", "activeField", "xslice", "colormap")
+def update_xslice(figure_xsize, activeField, xslice, colormap, **kwargs):
+    _ = kwargs
+    figure_size = figure_xsize
+    if figure_size is None:
+        return
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("weight", 300)
+    arr = cube[activeField.lower()][xslice-1].T
+    ctrl.update_xslice(create_slice(arr, width, height, colormap))
+
+@state.change("figure_ysize", "activeField", "yslice", "colormap")
+def update_yslice(figure_ysize, activeField, yslice, colormap, **kwargs):
+    _ = kwargs
+    figure_size = figure_ysize
+    if figure_size is None:
+        return
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("height", 300)
+    arr = cube[activeField.lower()][:, yslice-1].T
+    ctrl.update_yslice(create_slice(arr, width, height, colormap))
+
+@state.change("figure_zsize", "activeField", "zslice", "colormap")
+def update_zslice(figure_zsize, activeField, zslice, colormap, **kwargs):
+    _ = kwargs
+    figure_size = figure_zsize
+    if figure_size is None:
+        return
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("height", 300)
+    arr = cube[activeField.lower()][:, :, zslice-1]
+    ctrl.update_zslice(create_slice(arr, width, height, colormap))
+
+def render_2d():
+    with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
+        with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
+            with vuetify.VCol(classes='pa-0'):
+                vuetify.VSlider(
+                    min=1,
+                    max=cube_shape[0],
+                    step=1,
+                    v_model=('xslice', cube_shape[0]//2),
+                    label="x", 
+                    classes="mt-5 mr-5 ml-5",
+                    hide_details=False,
+                    dense=False
+                    )
+                with trame.SizeObserver("figure_xsize"):
+                    ctrl.update_xslice = plotly.Figure(**CHART_STYLE).update
+            with vuetify.VCol(classes='pa-0'):
+                vuetify.VSlider(
+                    min=1,
+                    max=cube_shape[1],
+                    step=1,
+                    v_model=('yslice', cube_shape[1]//2),
+                    label="y", 
+                    classes="mt-5 mr-5 ml-5",
+                    hide_details=False,
+                    dense=False
+                    )
+                with trame.SizeObserver("figure_ysize"):
+                    ctrl.update_yslice = plotly.Figure(**CHART_STYLE).update
+            with vuetify.VCol(classes='pa-0'):
+                vuetify.VSlider(
+                    min=1,
+                    max=cube_shape[2],
+                    step=1,
+                    v_model=('zslice', cube_shape[2]//2),
+                    label="z", 
+                    classes="mt-5 mr-5 ml-5",
+                    hide_details=False,
+                    dense=False
+                    )
+                with trame.SizeObserver("figure_zsize"):
+                    ctrl.update_zslice = plotly.Figure(**CHART_STYLE).update
+
+rates = pd.read_csv('data/data_egg.csv')
+
+def create_fig(well, width, height):
+    df = rates.loc[rates.cat == well]
+    fig = make_subplots(rows=3,
+                        cols=1,
+                        subplot_titles=("OIL", "WATER", "BHP"),
+                        vertical_spacing = 0.15)
+
+    fig.append_trace(go.Scatter(
+        x=df.date,
+        y=df.oil,
+        line=dict(color='black', width=2)
+    ), row=1, col=1)
+
+    fig.append_trace(go.Scatter(
+        x=df.date,
+        y=df.water,
+        line=dict(color='royalblue', width=2)
+    ), row=2, col=1)
+
+    fig.append_trace(go.Scatter(
+        x=df.date,
+        y=df.bhp,
+        line=dict(color='green', width=2)
+    ), row=3, col=1)
+
+    fig.update_layout(height=height,
+                      width=width,
+                      showlegend=False,
+                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 0},)
+    return fig
 
 @state.change("figure_size", "well")
 def update_size(figure_size, well, **kwargs):
@@ -168,66 +344,82 @@ def render_1d():
         v_model=("well", 'PROD1'),
         items=("wellnames", ['PROD1', 'PROD2', 'PROD3'])
     )
-    with vuetify.VContainer(fluid=True, classes="fill-height"):
-        with vuetify.VRow(style="height: 50%;"):
-            with vuetify.VCol():
+    with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
+        with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
+            with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size"):
-                    ctrl.update_size = plotly.Figure().update
+                    ctrl.update_size = plotly.Figure(**CHART_STYLE).update
 
 # ==========================================
 ctrl.on_server_ready.add(ctrl.view_update)
 
 with VAppLayout(server) as layout:
     with layout.root:
-        with vuetify.VAppBar(app=True, clipped_left=True):
-            vuetify.VAppBarNavIcon(click='drawer =! drawer')
+        # with vuetify.VThemeProvider(theme=state.theme, with_background=True):
+            with vuetify.VAppBar(app=True, clipped_left=True):
+                vuetify.VAppBarNavIcon(click='drawer =! drawer')
 
-            vuetify.VToolbarTitle("DeepField", style='overflow: visible; margin-right: 10px')
-            with vuetify.VTabs(v_model=('activeTab', 'home')):
-                vuetify.VTab('Home', value="home")
-                vuetify.VTab('3d', value="3d")
-                vuetify.VTab('2d', value="2d")
-                vuetify.VTab('1d', value="1d")
-                vuetify.VTab('Info', value="info")
+                vuetify.VToolbarTitle("DeepField")
+                with vuetify.VTabs(v_model=('activeTab', 'home'), style='left: 50%; transform: translateX(-50%);'):
+                    vuetify.VTab('Home', value="home")
+                    vuetify.VTab('3d', value="3d")
+                    vuetify.VTab('2d', value="2d")
+                    vuetify.VTab('1d', value="1d")
+                    vuetify.VTab('Info', value="info")
 
-            with vuetify.VBtn(icon=True):
-                vuetify.VIcon("mdi-magnify")
-            with vuetify.VBtn(icon=True):
-                vuetify.VIcon("mdi-lightbulb-multiple-outline")
-            with vuetify.VBtn(icon=True):
-                vuetify.VIcon("mdi-dots-vertical")
+                with vuetify.VBtn(icon=True):
+                    vuetify.VIcon("mdi-settings")
+                with vuetify.VBtn(icon=True):
+                    vuetify.VIcon("mdi-lightbulb-multiple-outline")
+                with vuetify.VBtn(icon=True):
+                    vuetify.VIcon("mdi-dots-vertical")
 
-        with vuetify.VMain():
-            with html.Div(v_if="activeTab === 'home'"):
-                render_home()
-            with html.Div(v_if="activeTab === '3d'", classes="fill-height"):
-                render_3d()
-            with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
-                render_2d()
-            with html.Div(v_if="activeTab === '1d'", classes="fill-height"):
-                render_1d()
-            with html.Div(v_if="activeTab === 'info'"):
-                render_info()
+            with vuetify.VMain():
+                with html.Div(v_if="activeTab === 'home'"):
+                    render_home()
+                with html.Div(v_if="activeTab === '3d'", classes="fill-height"):
+                    render_3d()
+                with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
+                    render_2d()
+                with html.Div(v_if="activeTab === '1d'", classes="fill-height"):
+                    render_1d()
+                with html.Div(v_if="activeTab === 'info'"):
+                    render_info()
 
-    with vuetify.VNavigationDrawer(
-        app=True,
-        clipped=True,
-        stateless=True,
-        v_model=("drawer", False),
-        width=200):
-        vuetify.VSlider(
-            min=0,
-            max=1,
-            step=0.1,
-            label="Opacity", 
-            classes="mt-1",
-            hide_details=False,
-            dense=False
-            )
-        vuetify.VSelect(
-            label='Select color',
-            items=('color', ['Red', 'Green', 'Blue'])
-            )
+            with vuetify.VNavigationDrawer(
+                app=True,
+                clipped=True,
+                stateless=True,
+                v_model=("drawer", False),
+                width=200):
+                vuetify.VSlider(
+                    min=0,
+                    max=1,
+                    step=0.1,
+                    v_model=('opacity', 1),
+                    label="Opacity", 
+                    classes="mt-1",
+                    hide_details=False,
+                    dense=False
+                    )
+                vuetify.VSelect(
+                    label="Colormap",
+                    v_model=("colormap", 'jet'),
+                    items=("colormaps",
+                        ["autumn", "bone", "cool", "gray", "jet", "hot", "hsv", "ocean",
+                         "seismic", "Spectral", "spring", "summer", "terrain",
+                         "twilight", "viridis", "winter"],
+                    ),
+                    hide_details=True,
+                    dense=True,
+                    outlined=True,
+                    classes="pt-1",
+                )
+                vuetify.VSelect(
+                    v_model=('activeField', FIELDS[0]),
+                    label='Select field',
+                    items=('fields', FIELDS)
+                    )
 
 
 # -----------------------------------------------------------------------------
