@@ -142,23 +142,10 @@ def load_file(file_input, **kwargs):
         return
 
 def render_info():
-    with vuetify.VRow():
-        with vuetify.VCard(
-            max_width="344",
-            style="margin: 10px",
-            hover=True):
-            vuetify.VImg(src=res_png, style="margin: 10px")
-            vuetify.VCardTitle("This is home")
-            vuetify.VBtn("Home", to="/", style="margin: 10px")
-        with vuetify.VCard(max_width="344", style="margin: 10px"):
-            vuetify.VImg(src="require('res.png')",
-                         width="100")
-            vuetify.VCardTitle("This is home 2")
-            vuetify.VBtn("Home", to="/", style="margin: 10px")
-        with vuetify.VCard(max_width="344", style="margin: 10px"):
-            vuetify.VCardTitle("This is home 3")
-            vuetify.VBtn("Home", to="/", style="margin: 10px", color='primary')
-
+    with vuetify.VCard(style="margin: 10px"):
+        vuetify.VCardTitle("Description of the reservoir model")
+        vuetify.VCardText('Dimensions: {}'.format(cube_shape))
+        
 def render_3d():
     with vuetify.VContainer(fluid=True, classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(dense=True, style="height: 100%;"):
