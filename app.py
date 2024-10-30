@@ -153,12 +153,15 @@ def render_3d():
                 classes="pa-0",
                 style="border-right: 1px solid #ccc; position: relative;",
             ):
-                view = vtk_widgets.VtkRemoteView(
-                    render_window,
-                    **VTK_VIEW_SETTINGS,
-                )
-                ctrl.view_update = view.update
+                '''with vtk_widgets.VtkView() as view:
+                    ctrl.view_reset_camera = view.reset_camera
+                    with vtk_widgets.VtkGeometryRepresentation():
+                        view = vtk_widgets.VtkMesh("FIELD", dataset=dataset,)
+                        #view = vtk_widgets.VtkLocalView(render_window)
+                        ctrl.view_update = view.update'''
+                view = vtk_widgets.VtkLocalView(render_window)
                 ctrl.view_reset_camera = view.reset_camera
+                ctrl.view_update = view.update
     with vuetify.VBottomNavigation(grow=True, style='left: 50%; transform: translateX(-50%); width: 40vw; bottom: 5vh; opacity: 0.75'):
         with vuetify.VBtn(icon=True):
             vuetify.VIcon("mdi-magnify")
