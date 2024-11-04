@@ -153,13 +153,13 @@ def render_3d():
                 classes="pa-0",
                 style="border-right: 1px solid #ccc; position: relative;",
             ):
-                '''with vtk_widgets.VtkView() as view:
-                    ctrl.view_reset_camera = view.reset_camera
-                    with vtk_widgets.VtkGeometryRepresentation():
-                        view = vtk_widgets.VtkMesh("FIELD", dataset=dataset,)
-                        #view = vtk_widgets.VtkLocalView(render_window)
-                        ctrl.view_update = view.update'''
+                #with vtk_widgets.VtkView() as view:
+                    #ctrl.view_reset_camera = view.reset_camera
+                    #with vtk_widgets.VtkGeometryRepresentation():
+                    #    view = vtk_widgets.VtkMesh("FIELD", dataset=dataset,)
                 view = vtk_widgets.VtkLocalView(render_window)
+                    #    ctrl.view_update = view.update
+                #view = vtk_widgets.VtkLocalView(render_window)
                 ctrl.view_reset_camera = view.reset_camera
                 ctrl.view_update = view.update
     with vuetify.VBottomNavigation(grow=True, style='left: 50%; transform: translateX(-50%); width: 40vw; bottom: 5vh; opacity: 0.75'):
@@ -381,7 +381,7 @@ with VAppLayout(server) as layout:
                 clipped=True,
                 stateless=True,
                 v_model=("drawer", False),
-                width=200):
+                width=250):
                 vuetify.VSlider(
                     min=0,
                     max=1,
@@ -410,11 +410,38 @@ with VAppLayout(server) as layout:
                     label='Select field',
                     items=('fields', FIELDS)
                     )
-
+                vuetify.VDivider(vertical=True, classes="mx-2")
+                vuetify.VRangeSlider(
+                    v_model=("i_slice", [0, 100]),
+                    label="I",
+                    thumb_label = "always",
+                    step = 1,
+                    hide_details=False
+                )
+                vuetify.VDivider(vertical=True, classes="mx-2")
+                vuetify.VRangeSlider(
+                    v_model=("j_slice", [0, 100]),
+                    label="J",
+                    thumb_label = "always",
+                    step = 1,
+                    hide_details=False
+                )
+                vuetify.VDivider(vertical=True, classes="mx-2")
+                vuetify.VRangeSlider(
+                    v_model=("k_slice", [0, 100]),
+                    label="K",
+                    thumb_label = "always",
+                    step = 1,                    
+                    hide_details=False
+                )
+                vuetify.VDivider(vertical=True, classes="mx-2")
+                vuetify.VSpacer()
+                with vuetify.VBtn(icon=True):
+                    vuetify.VIcon("application-array-outline")
 
 # -----------------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    server.start()
+    server.start(exec_mode="desktop")
