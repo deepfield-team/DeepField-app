@@ -1,4 +1,7 @@
 from pathlib import Path
+import os
+import sys
+from glob import glob
 
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -6,6 +9,7 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 import matplotlib
+import vtk
 from matplotlib.pyplot import get_cmap
 
 from trame.widgets import html, plotly, vtk as vtk_widgets, trame, vuetify3 as vuetify
@@ -33,9 +37,9 @@ from vtkmodules.vtkInteractionStyle import (
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa
 
-# -----------------------------------------------------------------------------
-# Get a server to work with
-# -----------------------------------------------------------------------------
+sys.path.append('../deepfield-team/DeepField')
+from deepfield import Field
+
 
 server = get_server(client_type="vue3")
 state, ctrl = server.state, server.controller
@@ -43,13 +47,6 @@ state, ctrl = server.state, server.controller
 BASE = Path(__file__).parent
 local_file_manager = LocalFileManager(__file__)
 res_png = local_file_manager.url("res", BASE / "static" / "res.png")
-
-dataset_file = HttpFile("./data/norne.vtu", "", __file__)
-
-reader = vtkXMLUnstructuredGridReader()
-reader.SetFileName(dataset_file.path)
-reader.Update()
-dataset = reader.GetOutput()
 
 renderer = vtkRenderer()
 renderer.SetBackground(1, 1, 1)
@@ -60,29 +57,57 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
+FIELD = {"actor": None,
+         "dataset": None,
+         "c_data": None,
+         "model": None,
+         'dimens': [1, 1, 1]}
 
-mapper = vtkDataSetMapper()
-mapper.SetInputConnection(reader.GetOutputPort())
-# mapper.SetScalarRange(0, 1)
+state.field_attrs = []
+state.wellnames = []
+state.dir_list = []
+state.dimens = [1, 1, 1]
 
-py_ds = dsa.WrapDataObject(dataset)
-c_data = py_ds.CellData
+def make_empty_dataset():
+    dataset = vtk.vtkUnstructuredGrid()
 
-FIELDS = list(c_data.keys())
+    mapper = vtkDataSetMapper()
+    mapper.SetInputData(dataset)
+    mapper.SetScalarRange(0, 1)
 
-actor = vtkActor()
-actor.SetScale(1, 1, 10)
+    actor = vtkActor()
+    actor.SetMapper(mapper)
 
-mapper.SetScalarRange(0, 1)
-actor.SetMapper(mapper)
+    renderer.AddActor(actor)
+    renderer.ResetCamera()
 
+    FIELD['actor'] = actor
+    FIELD['dataset'] = dataset
+
+def reset_camera():
+    renderer.ResetCamera()
+    camera = renderer.GetActiveCamera()
+    x, y, z = camera.GetPosition()
+    fx, fy, fz = camera.GetFocalPoint()
+    dist = np.linalg.norm(np.array([x, y, z]) - np.array([fx, fy, fz]))
+    camera.SetPosition(fx, fy-dist, fz)
+    camera.SetViewUp(0, 0, -1)
+    renderer.ResetCamera()
+
+make_empty_dataset()
+reset_camera()
+
+VTK_VIEW_SETTINGS = {
+    "interactive_ratio": 1,
+    "interactive_quality": 90,
+}
 
 @state.change("opacity")
 def update_opacity(opacity, **kwargs):
     _ = kwargs
     if opacity is None:
         return
-    actor.GetProperty().SetOpacity(opacity)
+    FIELD['actor'].GetProperty().SetOpacity(opacity)
     ctrl.view_update()
 
 @state.change("activeField")
@@ -90,75 +115,124 @@ def update_field(activeField, **kwargs):
     _ = kwargs
     if activeField is None:
         return
-    vtk_array = dsa.numpyTovtkDataArray(c_data[activeField])
+    if FIELD['c_data'] is None:
+        return
+    vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
+    dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
+    mapper = FIELD['actor'].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
-    actor.SetMapper(mapper)
+    FIELD['actor'].SetMapper(mapper)
     ctrl.view_update()
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
     cmap = get_cmap(colormap)
-    table = actor.GetMapper().GetLookupTable()
-    colors = cmap(np.arange(0,cmap.N)) 
+    table = FIELD['actor'].GetMapper().GetLookupTable()
+    colors = cmap(np.arange(0, cmap.N)) 
     table.SetNumberOfTableValues(len(colors))
     for i, val in enumerate(colors):
         table.SetTableValue(i, val[0], val[1], val[2])
     table.Build()
     ctrl.view_update()
 
-renderer.AddActor(actor)
 
-camera = renderer.GetActiveCamera()
-x, y, z = camera.GetPosition()
-fx, fy, fz = camera.GetFocalPoint()
-dist = np.linalg.norm(np.array([x, y, z]) - np.array([fx, fy, fz]))
-camera.SetPosition(fx, fy-dist, fz)
-camera.SetViewUp(0, 0, -1)
-renderer.ResetCamera()
+@state.change("user_request")
+def get_path_variants(user_request, **kwargs):
+    state.dir_list = list(glob(user_request + "*"))
 
-VTK_VIEW_SETTINGS = {
-    "interactive_ratio": 1,
-    "interactive_quality": 60,
-}
+state.load_completed = False
 
-# -----------------------------------------------------------------------------
-# GUI
-# -----------------------------------------------------------------------------
+def load_file(*args, **kwargs):
+    state.load_completed = False
+    field = Field(state.user_request).load()
+    FIELD['model'] = field
+    state.load_completed = True
+
+    dataset = field.get_vtk_dataset()
+    FIELD['dataset'] = dataset
+
+    mapper = vtkDataSetMapper()
+    mapper.SetInputData(dataset)
+
+    py_ds = dsa.WrapDataObject(dataset)
+    c_data = py_ds.CellData
+    FIELD['c_data'] = c_data
+
+    state.field_attrs = list(c_data.keys())
+    state.wellnames = [node.name for node in field.wells]
+    state.dimens = [int(x) for x in field.grid.dimens]
+
+    actor = vtkActor()
+
+    bbox = field.grid.bounding_box
+    ds = abs(bbox[1] - bbox[0])
+    ds_max = ds.max()
+    scales = ds_max / ds
+    actor.SetScale(*scales)
+    
+    vtk_array = dsa.numpyTovtkDataArray(c_data[list(c_data.keys())[0]])
+    dataset.GetCellData().SetScalars(vtk_array)
+    
+    mapper.SetScalarRange(dataset.GetScalarRange())
+    actor.SetMapper(mapper)
+
+    renderer.RemoveActor(FIELD['actor'])
+    renderer.AddActor(actor)
+    FIELD['actor'] = actor
+
+    reset_camera()
+    ctrl.view_update()
+
+ctrl.load_file = load_file
 
 def render_home():
     with vuetify.VContainer(style="width: 100%;height: 80vh;display: flex;justify-content: center;align-items: center;"):
-        vuetify.VFileInput(
-            v_model=("file_input", False),
-            label='Input reservoir model file',
-            style="width: 50%;",
-            directory=True,
-            classes='rounded-xl elevation-12')
-
-@state.change("file_input")
-def load_file(file_input, **kwargs):
-    _ = kwargs
-    if not file_input:
-        return
+        with vuetify.VRow():
+            with vuetify.VCol(classes='pa-0'):
+                vuetify.VTextField(
+                    v_model=("user_request", ""),
+                    label="Input reservoir model path",
+                    clearable=True,
+                    name="searchInput",
+                    classes='rounded-xl elevation-12'
+                )
+        with vuetify.VRow():
+            with vuetify.VCol(classes='pa-0'):
+                with vuetify.VCard(max_width="300"):
+                    with vuetify.VList():
+                        with vuetify.VListItem(
+                            v_for='item, index in dir_list',
+                            click="user_request = item"
+                            ):
+                            vuetify.VListItemTitle('{{item}}')
+        with vuetify.VRow():
+            with vuetify.VCol(classes='pa-0'):
+                vuetify.VBtn('LOAD', click=ctrl.load_file)
+        with vuetify.VRow():
+            with html.Div(v_if="load_completed"):
+                with vuetify.VCard():
+                    vuetify.VCardTitle("Ready")
 
 def render_info():
     with vuetify.VCard(style="margin: 10px"):
         vuetify.VCardTitle("Description of the reservoir model")
-        vuetify.VCardText('Dimensions: {}'.format(cube_shape))
+        vuetify.VCardText('Dimensions: ' + '{{dimens}}')
         
 def render_3d():
     with vuetify.VContainer(fluid=True, classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(dense=True, style="height: 100%;"):
             with vuetify.VCol(
                 classes="pa-0",
-                style="border-right: 1px solid #ccc; position: relative;",
-            ):
+                style="border-right: 1px solid #ccc; position: relative;"
+                ):
                 view = vtk_widgets.VtkRemoteView(
                     render_window,
-                    **VTK_VIEW_SETTINGS,
-                )
+                    **VTK_VIEW_SETTINGS
+                    )
                 ctrl.view_update = view.update
                 ctrl.view_reset_camera = view.reset_camera
+
     with vuetify.VBottomNavigation(grow=True, style='left: 50%; transform: translateX(-50%); width: 40vw; bottom: 5vh; opacity: 0.75'):
         with vuetify.VBtn(icon=True):
             vuetify.VIcon("mdi-magnify")
@@ -170,9 +244,6 @@ def render_3d():
             vuetify.VIcon("mdi-magic-staff")
         with vuetify.VBtn(icon=True):
             vuetify.VIcon("mdi-play")
-
-cube = np.load('data/rock.npz')
-cube_shape = cube['poro'].shape
 
 CHART_STYLE = {
     # "display_mode_bar": ("true",),
@@ -190,12 +261,6 @@ CHART_STYLE = {
     "display_logo": ("false",),
 }
 
-def matplotlib_to_plotly(cmap, pl_entries, rdigits=2):
-    scale = np.linspace(0, 1, pl_entries)
-    colors = (cmap(scale)[:, :3]*255).astype(np.uint8)
-    pl_colorscale = [[round(s, rdigits), f'rgb{tuple(color)}'] for s, color in zip(scale, colors)]
-    return pl_colorscale
-
 def create_slice(arr, width, height, colormap):
     fig = px.imshow(arr, aspect="auto", color_continuous_scale=colormap.lower())
     fig.update_layout(height=height,
@@ -204,16 +269,22 @@ def create_slice(arr, width, height, colormap):
                       margin={'t': 30, 'r': 30, 'l': 30, 'b': 0},)
     return fig
 
+def get_attr_from_field(attr):
+    comp, attr = attr.split('_')
+    return FIELD['model']._components[comp.lower()][attr]
+
 @state.change("figure_xsize", "activeField", "xslice", "colormap")
 def update_xslice(figure_xsize, activeField, xslice, colormap, **kwargs):
     _ = kwargs
     figure_size = figure_xsize
     if figure_size is None:
         return
+    if activeField is None:
+        return
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("weight", 300)
-    arr = cube[activeField.lower()][xslice-1].T
+    arr = get_attr_from_field(activeField)[xslice-1].T
     ctrl.update_xslice(create_slice(arr, width, height, colormap))
 
 @state.change("figure_ysize", "activeField", "yslice", "colormap")
@@ -222,10 +293,12 @@ def update_yslice(figure_ysize, activeField, yslice, colormap, **kwargs):
     figure_size = figure_ysize
     if figure_size is None:
         return
+    if activeField is None:
+        return
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
-    arr = cube[activeField.lower()][:, yslice-1].T
+    arr = get_attr_from_field(activeField)[:, yslice-1].T
     ctrl.update_yslice(create_slice(arr, width, height, colormap))
 
 @state.change("figure_zsize", "activeField", "zslice", "colormap")
@@ -234,10 +307,12 @@ def update_zslice(figure_zsize, activeField, zslice, colormap, **kwargs):
     figure_size = figure_zsize
     if figure_size is None:
         return
+    if activeField is None:
+        return
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
-    arr = cube[activeField.lower()][:, :, zslice-1]
+    arr = get_attr_from_field(activeField)[:, :, zslice-1]
     ctrl.update_zslice(create_slice(arr, width, height, colormap))
 
 def render_2d():
@@ -246,9 +321,9 @@ def render_2d():
             with vuetify.VCol(classes='pa-0'):
                 vuetify.VSlider(
                     min=1,
-                    max=cube_shape[0],
+                    max=("dimens[0]",),
                     step=1,
-                    v_model=('xslice', cube_shape[0]//2),
+                    v_model=('xslice', 1),
                     label="x", 
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
@@ -259,9 +334,9 @@ def render_2d():
             with vuetify.VCol(classes='pa-0'):
                 vuetify.VSlider(
                     min=1,
-                    max=cube_shape[1],
+                    max=("dimens[1]",),
                     step=1,
-                    v_model=('yslice', cube_shape[1]//2),
+                    v_model=('yslice', 1),
                     label="y", 
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
@@ -272,9 +347,9 @@ def render_2d():
             with vuetify.VCol(classes='pa-0'):
                 vuetify.VSlider(
                     min=1,
-                    max=cube_shape[2],
+                    max=("dimens[2]",),
                     step=1,
-                    v_model=('zslice', cube_shape[2]//2),
+                    v_model=('zslice', 1),
                     label="z", 
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
@@ -283,37 +358,45 @@ def render_2d():
                 with trame.SizeObserver("figure_zsize"):
                     ctrl.update_zslice = plotly.Figure(**CHART_STYLE).update
 
-rates = pd.read_csv('data/data_egg.csv')
-
 def create_fig(well, width, height):
-    df = rates.loc[rates.cat == well]
     fig = make_subplots(rows=3,
                         cols=1,
                         subplot_titles=("OIL", "WATER", "BHP"),
                         vertical_spacing = 0.15)
-
-    fig.append_trace(go.Scatter(
-        x=df.date,
-        y=df.oil,
-        line=dict(color='black', width=2)
-    ), row=1, col=1)
-
-    fig.append_trace(go.Scatter(
-        x=df.date,
-        y=df.water,
-        line=dict(color='royalblue', width=2)
-    ), row=2, col=1)
-
-    fig.append_trace(go.Scatter(
-        x=df.date,
-        y=df.bhp,
-        line=dict(color='green', width=2)
-    ), row=3, col=1)
-
     fig.update_layout(height=height,
                       width=width,
                       showlegend=False,
                       margin={'t': 30, 'r': 80, 'l': 100, 'b': 0},)
+
+    if well not in state.wellnames:
+        return fig
+
+    df = FIELD['model'].wells[well].RESULTS
+
+    if 'WOPR' not in df:
+        df['WOPR'] = None
+    fig.append_trace(go.Scatter(
+        x=df.DATE.values,
+        y=df.WOPR,
+        line=dict(color='black', width=2)
+    ), row=1, col=1)
+
+    if 'WWPR' not in df:
+        df['WWPR'] = None
+    fig.append_trace(go.Scatter(
+        x=df.DATE.values,
+        y=df.WWPR,
+        line=dict(color='royalblue', width=2)
+    ), row=2, col=1)
+
+    if 'BHP' not in df:
+        df['BHP'] = None
+    fig.append_trace(go.Scatter(
+        x=df.DATE.values,
+        y=df.BHP,
+        line=dict(color='green', width=2)
+    ), row=3, col=1)
+
     return fig
 
 @state.change("figure_size", "well")
@@ -328,8 +411,8 @@ def update_size(figure_size, well, **kwargs):
 
 def render_1d():
     vuetify.VSelect(
-        v_model=("well", 'PROD1'),
-        items=("wellnames", ['PROD1', 'PROD2', 'PROD3'])
+        v_model=("well", state.wellnames[0] if state.wellnames else None),
+        items=("wellnames",)
     )
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
@@ -337,81 +420,74 @@ def render_1d():
                 with trame.SizeObserver("figure_size"):
                     ctrl.update_size = plotly.Figure(**CHART_STYLE).update
 
-# ==========================================
+
 ctrl.on_server_ready.add(ctrl.view_update)
 
 with VAppLayout(server) as layout:
     with layout.root:
-        # with vuetify.VThemeProvider(theme=state.theme, with_background=True):
-            with vuetify.VAppBar(app=True, clipped_left=True):
-                vuetify.VAppBarNavIcon(click='drawer =! drawer')
+        with vuetify.VAppBar(app=True, clipped_left=True):
+            vuetify.VAppBarNavIcon(click='drawer =! drawer')
 
-                vuetify.VToolbarTitle("DeepField")
-                with vuetify.VTabs(v_model=('activeTab', 'home'), style='left: 50%; transform: translateX(-50%);'):
-                    vuetify.VTab('Home', value="home")
-                    vuetify.VTab('3d', value="3d")
-                    vuetify.VTab('2d', value="2d")
-                    vuetify.VTab('1d', value="1d")
-                    vuetify.VTab('Info', value="info")
+            vuetify.VToolbarTitle("DeepField")
+            with vuetify.VTabs(v_model=('activeTab', 'home'), style='left: 50%; transform: translateX(-50%);'):
+                vuetify.VTab('Home', value="home")
+                vuetify.VTab('3d', value="3d")
+                vuetify.VTab('2d', value="2d")
+                vuetify.VTab('1d', value="1d")
+                vuetify.VTab('Info', value="info")
 
-                with vuetify.VBtn(icon=True):
-                    vuetify.VIcon("mdi-settings")
-                with vuetify.VBtn(icon=True):
-                    vuetify.VIcon("mdi-lightbulb-multiple-outline")
-                with vuetify.VBtn(icon=True):
-                    vuetify.VIcon("mdi-dots-vertical")
+            with vuetify.VBtn(icon=True):
+                vuetify.VIcon("mdi-settings")
+            with vuetify.VBtn(icon=True):
+                vuetify.VIcon("mdi-lightbulb-multiple-outline")
+            with vuetify.VBtn(icon=True):
+                vuetify.VIcon("mdi-dots-vertical")
 
-            with vuetify.VMain():
-                with html.Div(v_if="activeTab === 'home'"):
-                    render_home()
-                with html.Div(v_if="activeTab === '3d'", classes="fill-height"):
-                    render_3d()
-                with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
-                    render_2d()
-                with html.Div(v_if="activeTab === '1d'", classes="fill-height"):
-                    render_1d()
-                with html.Div(v_if="activeTab === 'info'"):
-                    render_info()
+        with vuetify.VMain():
+            with html.Div(v_if="activeTab === 'home'"):
+                render_home()
+            with html.Div(v_if="activeTab === '3d'", classes="fill-height"):
+                render_3d()
+            with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
+                render_2d()
+            with html.Div(v_if="activeTab === '1d'", classes="fill-height"):
+                render_1d()
+            with html.Div(v_if="activeTab === 'info'"):
+                render_info()
 
-            with vuetify.VNavigationDrawer(
-                app=True,
-                clipped=True,
-                stateless=True,
-                v_model=("drawer", False),
-                width=200):
-                vuetify.VSlider(
-                    min=0,
-                    max=1,
-                    step=0.1,
-                    v_model=('opacity', 1),
-                    label="Opacity", 
-                    classes="mt-1",
-                    hide_details=False,
-                    dense=False
-                    )
-                vuetify.VSelect(
-                    label="Colormap",
-                    v_model=("colormap", 'jet'),
-                    items=("colormaps",
-                        ["autumn", "bone", "cool", "gray", "jet", "hot", "hsv", "ocean",
-                         "seismic", "Spectral", "spring", "summer", "terrain",
-                         "twilight", "viridis", "winter"],
-                    ),
-                    hide_details=True,
-                    dense=True,
-                    outlined=True,
-                    classes="pt-1",
+        with vuetify.VNavigationDrawer(
+            app=True,
+            clipped=True,
+            stateless=True,
+            v_model=("drawer", False),
+            width=200):
+            vuetify.VSlider(
+                min=0,
+                max=1,
+                step=0.1,
+                v_model=('opacity', 1),
+                label="Opacity", 
+                classes="mt-8 mr-3",
+                hide_details=False,
+                dense=False,
+                thumb_label=True
                 )
-                vuetify.VSelect(
-                    v_model=('activeField', FIELDS[0]),
-                    label='Select field',
-                    items=('fields', FIELDS)
-                    )
-
-
-# -----------------------------------------------------------------------------
-# Main
-# -----------------------------------------------------------------------------
+            vuetify.VSelect(
+                label="Colormap",
+                v_model=("colormap", 'jet'),
+                items=("colormaps",
+                    ["gray", "jet", "hsv", "Spectral", "twilight", "viridis"],
+                ),
+                hide_details=True,
+                dense=True,
+                outlined=True,
+                classes="pt-1",
+            )
+            vuetify.VSelect(
+                v_model=('activeField', state.field_attrs[0] if state.field_attrs else None),
+                label='Select field',
+                items=('field_attrs', )
+                )
 
 if __name__ == "__main__":
     server.start()
