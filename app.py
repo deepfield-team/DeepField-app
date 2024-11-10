@@ -90,7 +90,7 @@ def reset_camera():
     x, y, z = camera.GetPosition()
     fx, fy, fz = camera.GetFocalPoint()
     dist = np.linalg.norm(np.array([x, y, z]) - np.array([fx, fy, fz]))
-    camera.SetPosition(fx, fy-dist, fz)
+    camera.SetPosition(fx-dist/np.sqrt(3), fy-dist/np.sqrt(3), fz-dist/np.sqrt(3))
     camera.SetViewUp(0, 0, -1)
     renderer.ResetCamera()
 
@@ -187,32 +187,27 @@ def load_file(*args, **kwargs):
 ctrl.load_file = load_file
 
 def render_home():
-    with vuetify.VContainer(style="width: 100%;height: 80vh;display: flex;justify-content: center;align-items: center;"):
-        with vuetify.VRow():
-            with vuetify.VCol(classes='pa-0'):
-                vuetify.VTextField(
-                    v_model=("user_request", ""),
-                    label="Input reservoir model path",
-                    clearable=True,
-                    name="searchInput",
-                    classes='rounded-xl elevation-12'
-                )
-        with vuetify.VRow():
-            with vuetify.VCol(classes='pa-0'):
-                with vuetify.VCard(max_width="300"):
-                    with vuetify.VList():
-                        with vuetify.VListItem(
-                            v_for='item, index in dir_list',
-                            click="user_request = item"
-                            ):
-                            vuetify.VListItemTitle('{{item}}')
-        with vuetify.VRow():
-            with vuetify.VCol(classes='pa-0'):
-                vuetify.VBtn('LOAD', click=ctrl.load_file)
-        with vuetify.VRow():
-            with html.Div(v_if="load_completed"):
-                with vuetify.VCard():
-                    vuetify.VCardTitle("Ready")
+    with html.Div(style='position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80vw; height: 10vh'):
+        with vuetify.VContainer():
+            with vuetify.VRow():
+                with vuetify.VCol():
+                    vuetify.VTextField(
+                                v_model=("user_request", ""),
+                                label="Input reservoir model path",
+                                clearable=True,
+                                name="searchInput"
+                            )
+                with vuetify.VCol(cols=1):
+                    vuetify.VBtn('Load', click=ctrl.load_file)
+            with vuetify.VRow(classes="pa-0 ma-0"):
+                with vuetify.VCol(classes="pa-0 ma-0"):
+                    with vuetify.VCard(classes="overflow-auto", max_width="40vw", max_height="30vh"):
+                        with vuetify.VList():
+                            with vuetify.VListItem(
+                                v_for='item, index in dir_list',
+                                click="user_request = item"
+                                ):
+                                vuetify.VListItemTitle('{{item}}')
 
 def render_info():
     with vuetify.VCard(style="margin: 10px"):
@@ -444,7 +439,7 @@ with VAppLayout(server) as layout:
                 vuetify.VIcon("mdi-dots-vertical")
 
         with vuetify.VMain():
-            with html.Div(v_if="activeTab === 'home'"):
+            with html.Div(v_if="activeTab === 'home'", classes="fill-height"):
                 render_home()
             with html.Div(v_if="activeTab === '3d'", classes="fill-height"):
                 render_3d()
