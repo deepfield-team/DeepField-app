@@ -16,7 +16,6 @@ from trame.widgets import html, plotly, vtk as vtk_widgets, trame, vuetify3 as v
 from trame.app import get_server
 from trame.assets.remote import HttpFile
 from trame.ui.vuetify3 import VAppLayout
-from trame.assets.local import LocalFileManager
 
 # VTK imports
 from vtkmodules.vtkIOXML import vtkXMLUnstructuredGridReader
@@ -43,10 +42,6 @@ from deepfield import Field
 
 server = get_server(client_type="vue3")
 state, ctrl = server.state, server.controller
-
-BASE = Path(__file__).parent
-local_file_manager = LocalFileManager(__file__)
-res_png = local_file_manager.url("res", BASE / "static" / "res.png")
 
 renderer = vtkRenderer()
 renderer.SetBackground(1, 1, 1)
@@ -353,20 +348,20 @@ def render_2d():
                 with trame.SizeObserver("figure_zsize"):
                     ctrl.update_zslice = plotly.Figure(**CHART_STYLE).update
 
-def create_fig(well, width, height):
-    fig = make_subplots(rows=3,
+def show_well_rates(well, width, height):
+    fig = make_subplots(rows=4,
                         cols=1,
-                        subplot_titles=("OIL", "WATER", "BHP"),
+                        subplot_titles=("OIL", "WATER", "GAS", "BHP"),
                         vertical_spacing = 0.15)
     fig.update_layout(height=height,
                       width=width,
                       showlegend=False,
-                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 0},)
+                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 50},)
 
     if well not in state.wellnames:
         return fig
 
-    df = FIELD['model'].wells[well].RESULTS
+    df = FIELD['model'].wells[well].RESULTS.copy()
 
     if 'WOPR' not in df:
         df['WOPR'] = None
@@ -384,36 +379,159 @@ def create_fig(well, width, height):
         line=dict(color='royalblue', width=2)
     ), row=2, col=1)
 
+    if 'WGPR' not in df:
+        df['WGPR'] = None
+    fig.append_trace(go.Scatter(
+        x=df.DATE.values,
+        y=df.WGPR,
+        line=dict(color='orange', width=2)
+    ), row=3, col=1)
+
     if 'BHP' not in df:
         df['BHP'] = None
     fig.append_trace(go.Scatter(
         x=df.DATE.values,
         y=df.BHP,
         line=dict(color='green', width=2)
+    ), row=4, col=1)
+
+    return fig
+
+def show_field_rates(width, height):
+    fig = make_subplots(rows=3,
+                        cols=1,
+                        subplot_titles=("OIL", "WATER", "GAS"),
+                        vertical_spacing = 0.15)
+    fig.update_layout(height=height,
+                      width=width,
+                      showlegend=False,
+                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 30},)
+
+    if FIELD['model'] is None:
+        return fig
+
+    df = FIELD['model'].wells.total_rates
+
+    fig.append_trace(go.Scatter(
+        x=df.DATE.values,
+        y=df.WOPR,
+        line=dict(color='black', width=2)
+    ), row=1, col=1)
+
+    fig.append_trace(go.Scatter(
+        x=df.DATE.values,
+        y=df.WWPR,
+        line=dict(color='royalblue', width=2)
+    ), row=2, col=1)
+
+    fig.append_trace(go.Scatter(
+        x=df.DATE.values,
+        y=df.WGPR,
+        line=dict(color='orange', width=2)
     ), row=3, col=1)
 
     return fig
 
-@state.change("figure_size", "well")
-def update_size(figure_size, well, **kwargs):
+def show_field_dynamics(width, height):
+    fig = make_subplots(rows=3,
+                        cols=1,
+                        subplot_titles=(
+                            "PRESSURE",
+                            "OIL SATURATION",
+                            "WATER SATURATION"
+                            ),
+                        vertical_spacing = 0.15)
+    fig.update_layout(height=height,
+                      width=width,
+                      showlegend=False,
+                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 80},)
+
+    if FIELD['model'] is None:
+        return fig
+
+    pres = FIELD['model'].states.pressure.mean(axis=(1, 2, 3))
+    soil = FIELD['model'].states.soil.mean(axis=(1, 2, 3))
+    swat = FIELD['model'].states.swat.mean(axis=(1, 2, 3))
+    dates = np.arange(len(pres))
+
+    fig.append_trace(go.Scatter(
+        x=dates,
+        y=pres,
+        line=dict(color='green', width=2)
+    ), row=1, col=1)
+
+    fig.append_trace(go.Scatter(
+        x=dates,
+        y=soil,
+        line=dict(color='black', width=2)
+    ), row=2, col=1)
+
+    fig.append_trace(go.Scatter(
+        x=dates,
+        y=swat,
+        line=dict(color='royalblue', width=2)
+    ), row=3, col=1)
+
+    return fig
+
+@state.change("figure_size1")
+def update_field_dynamics(figure_size1, **kwargs):
     _ = kwargs
+    figure_size = figure_size1
     if figure_size is None:
         return
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
-    ctrl.update_size(create_fig(well, width, height))
+    ctrl.update_field_dynamics(show_field_dynamics(width, height))
+
+@state.change("figure_size3")
+def update_field_rates(figure_size3, **kwargs):
+    _ = kwargs
+    figure_size = figure_size3
+    if figure_size is None:
+        return
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("height", 100)
+    ctrl.update_field_rates(show_field_rates(width, height))
+
+@state.change("figure_size2", "well")
+def update_well_rates(figure_size2, well, **kwargs):
+    _ = kwargs
+    figure_size = figure_size2
+    if figure_size is None:
+        return
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("height", 100)
+    ctrl.update_well_rates(show_well_rates(well, width, height))
 
 def render_1d():
-    vuetify.VSelect(
-        v_model=("well", state.wellnames[0] if state.wellnames else None),
-        items=("wellnames",)
-    )
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
+        with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
-                with trame.SizeObserver("figure_size"):
-                    ctrl.update_size = plotly.Figure(**CHART_STYLE).update
+                with vuetify.VCard():
+                    vuetify.VCardTitle("Averaged field dynamics")
+                with trame.SizeObserver("figure_size1"):
+                    ctrl.update_field_dynamics = plotly.Figure(**CHART_STYLE).update
+        with vuetify.VRow(style="width:90vw; height: 80vh; margin 0;", classes='pa-0'):
+            with vuetify.VCol(classes='pa-0'):
+                with vuetify.VCard():
+                    vuetify.VCardTitle("Well rates")
+                vuetify.VSelect(
+                    v_model=("well", state.wellnames[0] if state.wellnames else None),
+                    items=("wellnames",),
+                    label="Choose well",
+                    )
+                with trame.SizeObserver("figure_size2"):
+                    ctrl.update_well_rates = plotly.Figure(**CHART_STYLE).update
+        with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
+            with vuetify.VCol(classes='pa-0'):
+                with vuetify.VCard():
+                    vuetify.VCardTitle("Total field rates")
+                with trame.SizeObserver("figure_size3"):
+                    ctrl.update_field_rates = plotly.Figure(**CHART_STYLE).update
 
 
 ctrl.on_server_ready.add(ctrl.view_update)
