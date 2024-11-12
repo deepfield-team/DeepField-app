@@ -62,6 +62,8 @@ state.field_attrs = []
 state.wellnames = []
 state.dir_list = []
 state.dimens = [1, 1, 1]
+state.max_timestep = 0
+state.need_time_slider = False
 
 def make_empty_dataset():
     dataset = vtk.vtkUnstructuredGrid()
@@ -105,14 +107,19 @@ def update_opacity(opacity, **kwargs):
     FIELD['actor'].GetProperty().SetOpacity(opacity)
     ctrl.view_update()
 
-@state.change("activeField")
-def update_field(activeField, **kwargs):
+@state.change("activeField", "activeStep")
+def update_field(activeField, activeStep, **kwargs):
     _ = kwargs
     if activeField is None:
         return
     if FIELD['c_data'] is None:
         return
-    vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
+    if activeField.split("_")[0].lower() == 'states':
+        state.need_time_slider = True
+        vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField][:, activeStep])
+    else:
+        state.need_time_slider = False
+        vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
     mapper = FIELD['actor'].GetMapper()
@@ -154,9 +161,13 @@ def load_file(*args, **kwargs):
     c_data = py_ds.CellData
     FIELD['c_data'] = c_data
 
-    state.field_attrs = list(c_data.keys())
+    state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K']]
     state.wellnames = [node.name for node in field.wells]
     state.dimens = [int(x) for x in field.grid.dimens]
+    if 'states' in field.components:
+        attrs = field.states.attributes
+        if attrs:
+            state.max_timestep = field.states[attrs[0]].shape[0] - 1
 
     actor = vtkActor()
 
@@ -216,6 +227,17 @@ def render_3d():
                 classes="pa-0",
                 style="border-right: 1px solid #ccc; position: relative;"
                 ):
+                vuetify.VSlider(
+                    v_if='need_time_slider',
+                    min=0,
+                    max=("max_timestep",),
+                    step=1,
+                    v_model=('activeStep', 0),
+                    label="Timestep", 
+                    classes="mt-5 mr-5 ml-5",
+                    hide_details=False,
+                    dense=False
+                    )
                 view = vtk_widgets.VtkRemoteView(
                     render_window,
                     **VTK_VIEW_SETTINGS
@@ -263,8 +285,8 @@ def get_attr_from_field(attr):
     comp, attr = attr.split('_')
     return FIELD['model']._components[comp.lower()][attr]
 
-@state.change("figure_xsize", "activeField", "xslice", "colormap")
-def update_xslice(figure_xsize, activeField, xslice, colormap, **kwargs):
+@state.change("figure_xsize", "activeField", "activeStep", "xslice", "colormap")
+def update_xslice(figure_xsize, activeField, activeStep, xslice, colormap, **kwargs):
     _ = kwargs
     figure_size = figure_xsize
     if figure_size is None:
@@ -274,11 +296,15 @@ def update_xslice(figure_xsize, activeField, xslice, colormap, **kwargs):
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("weight", 300)
-    arr = get_attr_from_field(activeField)[xslice-1].T
+    data = get_attr_from_field(activeField)
+    if activeField.split('_')[0].lower() == 'states':
+        arr = data[activeStep, xslice-1].T
+    else:
+        arr = data[xslice-1].T
     ctrl.update_xslice(create_slice(arr, width, height, colormap))
 
-@state.change("figure_ysize", "activeField", "yslice", "colormap")
-def update_yslice(figure_ysize, activeField, yslice, colormap, **kwargs):
+@state.change("figure_ysize", "activeField", "activeStep", "yslice", "colormap")
+def update_yslice(figure_ysize, activeField, activeStep, yslice, colormap, **kwargs):
     _ = kwargs
     figure_size = figure_ysize
     if figure_size is None:
@@ -288,11 +314,15 @@ def update_yslice(figure_ysize, activeField, yslice, colormap, **kwargs):
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
-    arr = get_attr_from_field(activeField)[:, yslice-1].T
+    data = get_attr_from_field(activeField)
+    if activeField.split('_')[0].lower() == 'states':
+        arr = data[activeStep, :, yslice-1].T
+    else:
+        arr = data[:, yslice-1].T
     ctrl.update_yslice(create_slice(arr, width, height, colormap))
 
-@state.change("figure_zsize", "activeField", "zslice", "colormap")
-def update_zslice(figure_zsize, activeField, zslice, colormap, **kwargs):
+@state.change("figure_zsize", "activeField", "activeStep", "zslice", "colormap")
+def update_zslice(figure_zsize, activeField, activeStep, zslice, colormap, **kwargs):
     _ = kwargs
     figure_size = figure_zsize
     if figure_size is None:
@@ -302,10 +332,25 @@ def update_zslice(figure_zsize, activeField, zslice, colormap, **kwargs):
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
-    arr = get_attr_from_field(activeField)[:, :, zslice-1]
+    data = get_attr_from_field(activeField)
+    if activeField.split('_')[0].lower() == 'states':
+        arr = data[activeStep, :, :, zslice-1].T
+    else:
+        arr = data[:, :, zslice-1].T
     ctrl.update_zslice(create_slice(arr, width, height, colormap))
 
 def render_2d():
+    vuetify.VSlider(
+        v_if='need_time_slider',
+        min=0,
+        max=("max_timestep",),
+        step=1,
+        v_model=('activeStep', 0),
+        label="Timestep", 
+        classes="mt-5 mr-5 ml-5",
+        hide_details=False,
+        dense=False
+        )
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
