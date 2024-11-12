@@ -55,15 +55,15 @@ rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 FIELD = {"actor": None,
          "dataset": None,
          "c_data": None,
-         "model": None,
-         'dimens': [1, 1, 1]}
+         "model": None}
 
 state.field_attrs = []
 state.wellnames = []
 state.dir_list = []
-state.dimens = [1, 1, 1]
+state.dimens = [0, 0, 0]
 state.max_timestep = 0
 state.need_time_slider = False
+state.cumulativeRates = False
 
 def make_empty_dataset():
     dataset = vtk.vtkUnstructuredGrid()
@@ -412,7 +412,7 @@ def show_well_rates(well, width, height):
         df['WOPR'] = None
     fig.append_trace(go.Scatter(
         x=df.DATE.values,
-        y=df.WOPR,
+        y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
         line=dict(color='black', width=2)
     ), row=1, col=1)
 
@@ -420,7 +420,7 @@ def show_well_rates(well, width, height):
         df['WWPR'] = None
     fig.append_trace(go.Scatter(
         x=df.DATE.values,
-        y=df.WWPR,
+        y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
         line=dict(color='royalblue', width=2)
     ), row=2, col=1)
 
@@ -428,7 +428,7 @@ def show_well_rates(well, width, height):
         df['WGPR'] = None
     fig.append_trace(go.Scatter(
         x=df.DATE.values,
-        y=df.WGPR,
+        y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
         line=dict(color='orange', width=2)
     ), row=3, col=1)
 
@@ -459,19 +459,19 @@ def show_field_rates(width, height):
 
     fig.append_trace(go.Scatter(
         x=df.DATE.values,
-        y=df.WOPR,
+        y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
         line=dict(color='black', width=2)
     ), row=1, col=1)
 
     fig.append_trace(go.Scatter(
         x=df.DATE.values,
-        y=df.WWPR,
+        y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
         line=dict(color='royalblue', width=2)
     ), row=2, col=1)
 
     fig.append_trace(go.Scatter(
         x=df.DATE.values,
-        y=df.WGPR,
+        y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
         line=dict(color='orange', width=2)
     ), row=3, col=1)
 
@@ -519,7 +519,7 @@ def show_field_dynamics(width, height):
 
     return fig
 
-@state.change("figure_size1")
+@state.change("figure_size1", "wellnames")
 def update_field_dynamics(figure_size1, **kwargs):
     _ = kwargs
     figure_size = figure_size1
@@ -530,18 +530,7 @@ def update_field_dynamics(figure_size1, **kwargs):
     height = bounds.get("height", 100)
     ctrl.update_field_dynamics(show_field_dynamics(width, height))
 
-@state.change("figure_size3")
-def update_field_rates(figure_size3, **kwargs):
-    _ = kwargs
-    figure_size = figure_size3
-    if figure_size is None:
-        return
-    bounds = figure_size.get("size", {})
-    width = bounds.get("width", 300)
-    height = bounds.get("height", 100)
-    ctrl.update_field_rates(show_field_rates(width, height))
-
-@state.change("figure_size2", "well")
+@state.change("figure_size2", "well", "cumulativeRates", "wellnames")
 def update_well_rates(figure_size2, well, **kwargs):
     _ = kwargs
     figure_size = figure_size2
@@ -551,6 +540,17 @@ def update_well_rates(figure_size2, well, **kwargs):
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
     ctrl.update_well_rates(show_well_rates(well, width, height))
+
+@state.change("figure_size3", "cumulativeRates", "wellnames")
+def update_field_rates(figure_size3, **kwargs):
+    _ = kwargs
+    figure_size = figure_size3
+    if figure_size is None:
+        return
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("height", 100)
+    ctrl.update_field_rates(show_field_rates(width, height))
 
 def render_1d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
@@ -564,6 +564,11 @@ def render_1d():
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VCard():
                     vuetify.VCardTitle("Well rates")
+                vuetify.VSwitch(
+                    v_model=("cumulativeRates", False),
+                    color="primary",
+                    label="Cumulative rates",
+                    hide_details=True)
                 vuetify.VSelect(
                     v_model=("well", state.wellnames[0] if state.wellnames else None),
                     items=("wellnames",),
@@ -575,6 +580,11 @@ def render_1d():
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VCard():
                     vuetify.VCardTitle("Total field rates")
+                vuetify.VSwitch(
+                    v_model=("cumulativeRates", False),
+                    color="primary",
+                    label="Cumulative rates",
+                    hide_details=True)
                 with trame.SizeObserver("figure_size3"):
                     ctrl.update_field_rates = plotly.Figure(**CHART_STYLE).update
 
