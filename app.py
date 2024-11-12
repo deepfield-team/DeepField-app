@@ -400,45 +400,66 @@ def show_well_rates(well, width, height):
                         vertical_spacing = 0.15)
     fig.update_layout(height=height,
                       width=width,
-                      showlegend=False,
                       margin={'t': 30, 'r': 80, 'l': 100, 'b': 50},)
 
-    if well not in state.wellnames:
+    if not well:
         return fig
 
-    df = FIELD['model'].wells[well].RESULTS.copy()
+    well = np.atleast_1d(well)
+    nwells = len(well)
+    colors = px.colors.qualitative.Plotly
 
-    if 'WOPR' not in df:
-        df['WOPR'] = None
-    fig.append_trace(go.Scatter(
-        x=df.DATE.values,
-        y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
-        line=dict(color='black', width=2)
-    ), row=1, col=1)
+    for i, wname in enumerate(well):
+        if wname not in state.wellnames:
+            continue
+        if 'RESULTS' not in FIELD['model'].wells[wname]:
+            continue
 
-    if 'WWPR' not in df:
-        df['WWPR'] = None
-    fig.append_trace(go.Scatter(
-        x=df.DATE.values,
-        y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
-        line=dict(color='royalblue', width=2)
-    ), row=2, col=1)
+        df = FIELD['model'].wells[wname].RESULTS.copy()
 
-    if 'WGPR' not in df:
-        df['WGPR'] = None
-    fig.append_trace(go.Scatter(
-        x=df.DATE.values,
-        y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
-        line=dict(color='orange', width=2)
-    ), row=3, col=1)
+        if 'WOPR' not in df:
+            df['WOPR'] = None
+        fig.append_trace(go.Scatter(
+            x=df.DATE.values,
+            y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
+            line=dict(color=colors[i % len(colors)] if nwells > 1 else 'black', width=2),
+            name=wname if nwells > 1 else None,
+            legendgroup = '1'
+        ), row=1, col=1)
 
-    if 'BHP' not in df:
-        df['BHP'] = None
-    fig.append_trace(go.Scatter(
-        x=df.DATE.values,
-        y=df.BHP,
-        line=dict(color='green', width=2)
-    ), row=4, col=1)
+        if 'WWPR' not in df:
+            df['WWPR'] = None
+        fig.append_trace(go.Scatter(
+            x=df.DATE.values,
+            y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
+            line=dict(color=colors[i % len(colors)] if nwells > 1 else 'royalblue', width=2),
+            name=wname if nwells > 1 else None,
+            legendgroup = '2'
+        ), row=2, col=1)
+
+        if 'WGPR' not in df:
+            df['WGPR'] = None
+        fig.append_trace(go.Scatter(
+            x=df.DATE.values,
+            y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
+            line=dict(color=colors[i % len(colors)] if nwells > 1 else 'orange', width=2),
+            name=wname if nwells > 1 else None,
+            legendgroup = '3'
+        ), row=3, col=1)
+
+        if 'BHP' not in df:
+            df['BHP'] = None
+        fig.append_trace(go.Scatter(
+            x=df.DATE.values,
+            y=df.BHP,
+            line=dict(color='green', width=2),
+            name=wname if nwells > 1 else None
+        ), row=4, col=1)
+
+    fig.update_layout(
+        showlegend=nwells > 1,
+        legend_tracegroupgap=height/5
+        )
 
     return fig
 
@@ -492,6 +513,11 @@ def show_field_dynamics(width, height):
                       margin={'t': 30, 'r': 80, 'l': 100, 'b': 80},)
 
     if FIELD['model'] is None:
+        return fig
+
+    if (('PRESSURE' not in FIELD['model'].states) or
+        ('SOIL' not in FIELD['model'].states) or
+        ('SWAT' not in FIELD['model'].states)):
         return fig
 
     pres = FIELD['model'].states.pressure.mean(axis=(1, 2, 3))
@@ -560,7 +586,7 @@ def render_1d():
                     vuetify.VCardTitle("Averaged field dynamics")
                 with trame.SizeObserver("figure_size1"):
                     ctrl.update_field_dynamics = plotly.Figure(**CHART_STYLE).update
-        with vuetify.VRow(style="width:90vw; height: 80vh; margin 0;", classes='pa-0'):
+        with vuetify.VRow(style="width:90vw; height: 130vh; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VCard():
                     vuetify.VCardTitle("Well rates")
@@ -569,10 +595,26 @@ def render_1d():
                     color="primary",
                     label="Cumulative rates",
                     hide_details=True)
+                vuetify.VSwitch(
+                    v_model=("compareMode", False),
+                    color="primary",
+                    label="Compare wells",
+                    hide_details=True)
                 vuetify.VSelect(
+                    v_if='!compareMode',
                     v_model=("well", state.wellnames[0] if state.wellnames else None),
                     items=("wellnames",),
                     label="Choose well",
+                    clearable=True
+                    )
+                vuetify.VSelect(
+                    v_if='compareMode',
+                    chips=True,
+                    clearable=True,
+                    multiple=True,
+                    v_model=("well", state.wellnames[0] if state.wellnames else None),
+                    items=("wellnames",),
+                    label="Choose wells to compare",
                     )
                 with trame.SizeObserver("figure_size2"):
                     ctrl.update_well_rates = plotly.Figure(**CHART_STYLE).update
