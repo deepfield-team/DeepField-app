@@ -420,7 +420,7 @@ def show_well_rates(well, width, height):
         if 'WOPR' not in df:
             df['WOPR'] = None
         fig.append_trace(go.Scatter(
-            x=df.DATE.values,
+            x=df.DATE.dt.strftime("%Y-%m-%d"),
             y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
             line=dict(color=colors[i % len(colors)] if nwells > 1 else 'black', width=2),
             name=wname if nwells > 1 else None,
@@ -430,7 +430,7 @@ def show_well_rates(well, width, height):
         if 'WWPR' not in df:
             df['WWPR'] = None
         fig.append_trace(go.Scatter(
-            x=df.DATE.values,
+            x=df.DATE.dt.strftime("%Y-%m-%d"),
             y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
             line=dict(color=colors[i % len(colors)] if nwells > 1 else 'royalblue', width=2),
             name=wname if nwells > 1 else None,
@@ -440,7 +440,7 @@ def show_well_rates(well, width, height):
         if 'WGPR' not in df:
             df['WGPR'] = None
         fig.append_trace(go.Scatter(
-            x=df.DATE.values,
+            x=df.DATE.dt.strftime("%Y-%m-%d"),
             y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
             line=dict(color=colors[i % len(colors)] if nwells > 1 else 'orange', width=2),
             name=wname if nwells > 1 else None,
@@ -450,7 +450,7 @@ def show_well_rates(well, width, height):
         if 'BHP' not in df:
             df['BHP'] = None
         fig.append_trace(go.Scatter(
-            x=df.DATE.values,
+            x=df.DATE.dt.strftime("%Y-%m-%d"),
             y=df.BHP,
             line=dict(color='green', width=2),
             name=wname if nwells > 1 else None
@@ -479,19 +479,19 @@ def show_field_rates(width, height):
     df = FIELD['model'].wells.total_rates
 
     fig.append_trace(go.Scatter(
-        x=df.DATE.values,
+        x=df.DATE.dt.strftime("%Y-%m-%d"),
         y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
         line=dict(color='black', width=2)
     ), row=1, col=1)
 
     fig.append_trace(go.Scatter(
-        x=df.DATE.values,
+        x=df.DATE.dt.strftime("%Y-%m-%d"),
         y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
         line=dict(color='royalblue', width=2)
     ), row=2, col=1)
 
     fig.append_trace(go.Scatter(
-        x=df.DATE.values,
+        x=df.DATE.dt.strftime("%Y-%m-%d"),
         y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
         line=dict(color='orange', width=2)
     ), row=3, col=1)
@@ -523,7 +523,7 @@ def show_field_dynamics(width, height):
     pres = FIELD['model'].states.pressure.mean(axis=(1, 2, 3))
     soil = FIELD['model'].states.soil.mean(axis=(1, 2, 3))
     swat = FIELD['model'].states.swat.mean(axis=(1, 2, 3))
-    dates = np.arange(len(pres))
+    dates = FIELD['model'].result_dates.strftime("%Y-%m-%d")
 
     fig.append_trace(go.Scatter(
         x=dates,
