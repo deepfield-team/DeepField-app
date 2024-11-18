@@ -55,7 +55,10 @@ rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 FIELD = {"actor": None,
          "dataset": None,
          "c_data": None,
+         "data1d": {'states': [], 'wells': [], 'tables': []},
          "model": None}
+
+PLOTS = {"plot1d": None}
 
 state.field_attrs = []
 state.wellnames = []
@@ -64,6 +67,11 @@ state.dimens = [0, 0, 0]
 state.max_timestep = 0
 state.need_time_slider = False
 state.cumulativeRates = False
+state.data1d = []
+state.i_cells = []
+state.j_cells = []
+state.k_cells = []
+
 
 def make_empty_dataset():
     dataset = vtk.vtkUnstructuredGrid()
@@ -162,12 +170,25 @@ def load_file(*args, **kwargs):
     FIELD['c_data'] = c_data
 
     state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K']]
-    state.wellnames = [node.name for node in field.wells]
+    res = []
+    for well in field.wells:
+        if 'RESULTS' in well:
+            res.extend([k for k in well.RESULTS.columns if k != 'DATE'])
+    res = sorted(list(set(res)))
+    FIELD['data1d']['wells'] = res
+    
     state.dimens = [int(x) for x in field.grid.dimens]
+    state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
+    state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
+    state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
+    
     if 'states' in field.components:
         attrs = field.states.attributes
         if attrs:
             state.max_timestep = field.states[attrs[0]].shape[0] - 1
+        FIELD['data1d']['states'] = attrs
+
+    state.data1d = list(np.concatenate([v for _, v in FIELD['data1d'].items()]))
 
     actor = vtkActor()
 
@@ -394,291 +415,150 @@ def render_2d():
                     ctrl.update_zslice = plotly.Figure(**CHART_STYLE).update
 
 
-def show_single_well_rates(well, width, height):
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.update_layout(height=height,
-                      width=width,
-                      showlegend=True,
-                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 50},)
+state.gridData = True
+state.wellData = True
 
-    if not well:
-        return fig
-
-    if well not in state.wellnames:
-        return fig
-    
-    if 'RESULTS' not in FIELD['model'].wells[well]:
-        return fig
-
-    df = FIELD['model'].wells[well].RESULTS.copy()
-
-    if 'WOPR' not in df:
-        df['WOPR'] = None
-    fig.add_trace(go.Scatter(
-        x=df.DATE.dt.strftime("%Y-%m-%d"),
-        y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
-        line=dict(color='black', width=2),
-        name='OIL'
-    ), secondary_y=False)
-
-    if 'WWPR' not in df:
-        df['WWPR'] = None
-    fig.add_trace(go.Scatter(
-        x=df.DATE.dt.strftime("%Y-%m-%d"),
-        y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
-        line=dict(color='royalblue', width=2),
-        name='WATER'
-    ), secondary_y=False)
-
-    if 'WGPR' not in df:
-        df['WGPR'] = None
-    fig.add_trace(go.Scatter(
-        x=df.DATE.dt.strftime("%Y-%m-%d"),
-        y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
-        line=dict(color='orange', width=2),
-        name='GAS'
-    ), secondary_y=False)
-
-    if 'BHP' not in df:
-        df['BHP'] = None
-    fig.add_trace(go.Scatter(
-        x=df.DATE.dt.strftime("%Y-%m-%d"),
-        y=df.BHP,
-        line=dict(color='green', width=2),
-        name='BHP'
-    ), secondary_y=True)
-
-    fig.update_xaxes(title_text="Date")
-    fig.update_yaxes(title_text="Production rate", secondary_y=False)
-    fig.update_yaxes(title_text="Pressure", secondary_y=True)
-
-    return fig
-
-def show_multiple_well_rates(well, wellRate, width, height):
-    fig = make_subplots()
-    fig.update_layout(height=height,
-                      width=width,
-                      showlegend=True,
-                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 50},)
-
-    if not well:
-        return fig
-
-    well = np.atleast_1d(well)
-    nwells = len(well)
-    colors = px.colors.qualitative.Plotly
-
-    props = {'OIL': 'WOPR',
-             'WATER': 'WWPG',
-             'GAS': 'WGPR',
-             'BHP': 'WBHP'}
-    prop = props[wellRate]
-
-
-    for i, wname in enumerate(well):
-        if wname not in state.wellnames:
-            continue
-        if 'RESULTS' not in FIELD['model'].wells[wname]:
-            continue
-
-        df = FIELD['model'].wells[wname].RESULTS.copy()
-
-        if prop not in df:
-            df[prop] = None
-        vals = df[prop]
-        fig.add_trace(go.Scatter(
-            x=df.DATE.dt.strftime("%Y-%m-%d"),
-            y=np.cumsum(vals) if state.cumulativeRates else vals,
-            line=dict(color=colors[i % len(colors)], width=2),
-            name=wname,
-        ))
-
-    fig.update_layout(title_text=wellRate)
-    fig.update_xaxes(title_text="Date")
-    fig.update_yaxes(title_text="Production rate" if wellRate!='BHP' else "Pressure")
-
-    return fig
-
-def show_field_rates(width, height):
-    fig = make_subplots()
-    fig.update_layout(height=height,
-                      width=width,
-                      showlegend=True,
-                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 30},)
-
-    if FIELD['model'] is None:
-        return fig
-
-    df = FIELD['model'].wells.total_rates
-
-    fig.add_trace(go.Scatter(
-        x=df.DATE.dt.strftime("%Y-%m-%d"),
-        y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
-        name='OIL',
-        line=dict(color='black', width=2)
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=df.DATE.dt.strftime("%Y-%m-%d"),
-        y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
-        name='WATER',
-        line=dict(color='royalblue', width=2)
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=df.DATE.dt.strftime("%Y-%m-%d"),
-        y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
-        name='GAS',
-        line=dict(color='orange', width=2)
-    ))
-
-    fig.update_xaxes(title_text="Date")
-    fig.update_yaxes(title_text="Production rate")
-
-    return fig
-
-def show_field_dynamics(width, height):
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.update_layout(height=height,
-                      width=width,
-                      showlegend=True,
-                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 80},)
-
-    if FIELD['model'] is None:
-        return fig
-
-    if (('PRESSURE' not in FIELD['model'].states) or
-        ('SOIL' not in FIELD['model'].states) or
-        ('SWAT' not in FIELD['model'].states)):
-        return fig
-
-    pres = FIELD['model'].states.pressure.mean(axis=(1, 2, 3))
-    soil = FIELD['model'].states.soil.mean(axis=(1, 2, 3))
-    swat = FIELD['model'].states.swat.mean(axis=(1, 2, 3))
-    dates = FIELD['model'].result_dates.strftime("%Y-%m-%d")
-
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=pres,
-        name='PRESSURE',
-        line=dict(color='green', width=2)
-    ), secondary_y=False)
-
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=soil,
-        name='SOIL',
-        line=dict(color='black', width=2),
-    ), secondary_y=True)
-
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=swat,
-        name='SWAT',
-        line=dict(color='royalblue', width=2)
-    ), secondary_y=True)
-
-    fig.update_xaxes(title_text="Date")
-    fig.update_yaxes(title_text="Pressure", secondary_y=False)
-    fig.update_yaxes(title_text="Saturation", secondary_y=True)
-
-    return fig
-
-@state.change("figure_size1", "wellnames")
-def update_field_dynamics(figure_size1, **kwargs):
+@state.change("data1dToShow")
+def update1dWidgets(data1dToShow, **kwargs):
     _ = kwargs
-    figure_size = figure_size1
+    if data1dToShow is None:
+        return
+    state.gridData = data1dToShow in FIELD['data1d']['states']
+    state.wellData = data1dToShow in FIELD['data1d']['wells']
+    if state.wellData:
+        state.gridItemToShow = None
+        wellnames = []
+        for well in FIELD['model'].wells:
+            if 'RESULTS' in well:
+                if data1dToShow in well.RESULTS:
+                    wellnames.append(well.name)
+        state.wellnames = wellnames
+    if state.gridData:
+        state.wellNameToShow = None
+
+def add_line_to_plot():
+    fig = PLOTS['plot1d']
+    if fig is None:
+        return
+
+    if state.data1dToShow is None:
+        return
+
+    if state.gridData:
+        data = FIELD['model'].states[state.data1dToShow]
+        cells = np.array([state.i_cell, state.j_cell, state.k_cell])
+        avr = cells == 'Average'
+        if np.any(avr):
+            ids = np.where(avr)[0]
+            data = data.mean(axis=tuple(ids+1))
+        cells = cells[~avr].astype(int)
+        if len(cells) > 0:
+            data = data[:, *cells]
+        dates = FIELD['model'].result_dates.strftime("%Y-%m-%d")
+        name = state.data1dToShow
+
+    if state.wellData:
+        df = FIELD['model'].wells[state.wellNameToShow].RESULTS
+        data = df[state.data1dToShow]
+        dates = df.DATE.dt.strftime("%Y-%m-%d")
+        name = state.wellNameToShow + '/' + state.data1dToShow
+
+    fig.add_trace(go.Scatter(
+        x=dates,
+        y=data,
+        name=name,
+        line=dict(width=2)
+    ), secondary_y=state.secondAxis)
+
+    fig.update_xaxes(title_text="Date")
+    ctrl.update_plot(fig)
+
+ctrl.add_line_to_plot = add_line_to_plot
+
+def clean_plot():
+    PLOTS['plot1d'].data = []
+    ctrl.update_plot(PLOTS['plot1d'])
+
+ctrl.clean_plot = clean_plot
+
+def remove_last_line():
+    if not PLOTS['plot1d'].data:
+        return
+    PLOTS['plot1d'].data = PLOTS['plot1d'].data[:-1]
+    ctrl.update_plot(PLOTS['plot1d'])
+
+ctrl.remove_last_line = remove_last_line
+
+@state.change("figure_size")
+def update_plot_size(figure_size, **kwargs):
+    _ = kwargs
     if figure_size is None:
         return
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
-    ctrl.update_field_dynamics(show_field_dynamics(width, height))
-
-@state.change("figure_size2", "well", "compareMode", 
-    "wellRate", "cumulativeRates", "wellnames")
-def update_well_rates(figure_size2, well, compareMode, wellRate, **kwargs):
-    _ = kwargs
-    figure_size = figure_size2
-    if figure_size is None:
-        return
-    bounds = figure_size.get("size", {})
-    width = bounds.get("width", 300)
-    height = bounds.get("height", 100)
-    if not compareMode:
-        ctrl.update_well_rates(show_single_well_rates(well, width, height))
-    else:
-        ctrl.update_well_rates(show_multiple_well_rates(well, wellRate, width, height))
-
-@state.change("figure_size3", "cumulativeRates", "wellnames")
-def update_field_rates(figure_size3, **kwargs):
-    _ = kwargs
-    figure_size = figure_size3
-    if figure_size is None:
-        return
-    bounds = figure_size.get("size", {})
-    width = bounds.get("width", 300)
-    height = bounds.get("height", 100)
-    ctrl.update_field_rates(show_field_rates(width, height))
+    if PLOTS['plot1d'] is None:
+        PLOTS['plot1d'] = make_subplots(specs=[[{"secondary_y": True}]])
+        PLOTS['plot1d'].update_layout(
+            showlegend=True,
+            margin={'t': 30, 'r': 80, 'l': 100, 'b': 80}
+            )
+    PLOTS['plot1d'].update_layout(height=height, width=width)
+    ctrl.update_plot(PLOTS['plot1d'])
 
 def render_1d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
+        with vuetify.VRow():
+            with vuetify.VCol():
+                vuetify.VSelect(
+                    v_model=("data1dToShow", None),
+                    items=("data1d", ),
+                    label="Select data"
+                    )
+            with vuetify.VCol():
+                vuetify.VSelect(
+                    disabled=("wellData",),
+                    v_model=("i_cell", 'Average'),
+                    items=("i_cells", ),
+                    label="I index"
+                    )
+            with vuetify.VCol():
+                vuetify.VSelect(
+                    disabled=("wellData",),
+                    v_model=("j_cell", 'Average'),
+                    items=("j_cells", ),
+                    label="J index"
+                    )
+            with vuetify.VCol():
+                vuetify.VSelect(
+                    disabled=("wellData",),
+                    v_model=("k_cell", 'Average'),
+                    items=("k_cells", ),
+                    label="K index"
+                    )
+            with vuetify.VCol():
+                vuetify.VSelect(
+                    disabled=("gridData",),
+                    v_model=("wellNameToShow", None),
+                    items=("wellnames", ),
+                    label="Select well"
+                    )
+            with vuetify.VCol():
+                vuetify.VSwitch(
+                    v_model=("secondAxis", False),
+                    color="primary",
+                    label="Second Axis",
+                    hide_details=True)
+            with vuetify.VCol():
+                vuetify.VBtn('Add line', click=ctrl.add_line_to_plot)
+            with vuetify.VCol():
+                vuetify.VBtn('Undo', click=ctrl.remove_last_line)
+            with vuetify.VCol():
+                vuetify.VBtn('Clean', click=ctrl.clean_plot)
         with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
-                with vuetify.VCard():
-                    vuetify.VCardTitle("Averaged field dynamics")
-                with trame.SizeObserver("figure_size1"):
-                    ctrl.update_field_dynamics = plotly.Figure(**CHART_STYLE).update
-        with vuetify.VRow(style="width:90vw; height: 100vh; margin 0;", classes='pa-0'):
-            with vuetify.VCol(classes='pa-0'):
-                with vuetify.VCard():
-                    vuetify.VCardTitle("Well rates")
-                vuetify.VSwitch(
-                    v_model=("cumulativeRates", False),
-                    color="primary",
-                    label="Cumulative rates",
-                    hide_details=True)
-                vuetify.VSwitch(
-                    v_model=("compareMode", False),
-                    color="primary",
-                    label="Compare wells",
-                    hide_details=True)
-                vuetify.VSelect(
-                    v_if='!compareMode',
-                    v_model=("well", state.wellnames[0] if state.wellnames else None),
-                    items=("wellnames",),
-                    label="Choose well",
-                    clearable=True
-                    )
-                vuetify.VSelect(
-                    v_if='compareMode',
-                    chips=True,
-                    clearable=True,
-                    multiple=True,
-                    v_model=("well", state.wellnames[0] if state.wellnames else None),
-                    items=("wellnames",),
-                    label="Choose wells to compare",
-                    )
-                vuetify.VSelect(
-                    v_if='compareMode',
-                    v_model=("wellRate", 'OIL'),
-                    items=("rates", ['OIL', 'WATER', 'GAS', 'BHP']),
-                    label="Choose data to show",
-                    )
-                with trame.SizeObserver("figure_size2"):
-                    ctrl.update_well_rates = plotly.Figure(**CHART_STYLE).update
-        with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
-            with vuetify.VCol(classes='pa-0'):
-                with vuetify.VCard():
-                    vuetify.VCardTitle("Total field rates")
-                vuetify.VSwitch(
-                    v_model=("cumulativeRates", False),
-                    color="primary",
-                    label="Cumulative rates",
-                    hide_details=True)
-                with trame.SizeObserver("figure_size3"):
-                    ctrl.update_field_rates = plotly.Figure(**CHART_STYLE).update
-
+                with trame.SizeObserver("figure_size"):
+                    ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
 
 ctrl.on_server_ready.add(ctrl.view_update)
 
