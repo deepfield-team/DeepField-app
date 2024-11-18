@@ -393,13 +393,72 @@ def render_2d():
                 with trame.SizeObserver("figure_zsize"):
                     ctrl.update_zslice = plotly.Figure(**CHART_STYLE).update
 
-def show_well_rates(well, width, height):
-    fig = make_subplots(rows=4,
-                        cols=1,
-                        subplot_titles=("OIL", "WATER", "GAS", "BHP"),
-                        vertical_spacing = 0.15)
+
+def show_single_well_rates(well, width, height):
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.update_layout(height=height,
                       width=width,
+                      showlegend=True,
+                      margin={'t': 30, 'r': 80, 'l': 100, 'b': 50},)
+
+    if not well:
+        return fig
+
+    if well not in state.wellnames:
+        return fig
+    
+    if 'RESULTS' not in FIELD['model'].wells[well]:
+        return fig
+
+    df = FIELD['model'].wells[well].RESULTS.copy()
+
+    if 'WOPR' not in df:
+        df['WOPR'] = None
+    fig.add_trace(go.Scatter(
+        x=df.DATE.dt.strftime("%Y-%m-%d"),
+        y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
+        line=dict(color='black', width=2),
+        name='OIL'
+    ), secondary_y=False)
+
+    if 'WWPR' not in df:
+        df['WWPR'] = None
+    fig.add_trace(go.Scatter(
+        x=df.DATE.dt.strftime("%Y-%m-%d"),
+        y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
+        line=dict(color='royalblue', width=2),
+        name='WATER'
+    ), secondary_y=False)
+
+    if 'WGPR' not in df:
+        df['WGPR'] = None
+    fig.add_trace(go.Scatter(
+        x=df.DATE.dt.strftime("%Y-%m-%d"),
+        y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
+        line=dict(color='orange', width=2),
+        name='GAS'
+    ), secondary_y=False)
+
+    if 'BHP' not in df:
+        df['BHP'] = None
+    fig.add_trace(go.Scatter(
+        x=df.DATE.dt.strftime("%Y-%m-%d"),
+        y=df.BHP,
+        line=dict(color='green', width=2),
+        name='BHP'
+    ), secondary_y=True)
+
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Production rate", secondary_y=False)
+    fig.update_yaxes(title_text="Pressure", secondary_y=True)
+
+    return fig
+
+def show_multiple_well_rates(well, wellRate, width, height):
+    fig = make_subplots()
+    fig.update_layout(height=height,
+                      width=width,
+                      showlegend=True,
                       margin={'t': 30, 'r': 80, 'l': 100, 'b': 50},)
 
     if not well:
@@ -409,6 +468,13 @@ def show_well_rates(well, width, height):
     nwells = len(well)
     colors = px.colors.qualitative.Plotly
 
+    props = {'OIL': 'WOPR',
+             'WATER': 'WWPG',
+             'GAS': 'WGPR',
+             'BHP': 'WBHP'}
+    prop = props[wellRate]
+
+
     for i, wname in enumerate(well):
         if wname not in state.wellnames:
             continue
@@ -417,60 +483,27 @@ def show_well_rates(well, width, height):
 
         df = FIELD['model'].wells[wname].RESULTS.copy()
 
-        if 'WOPR' not in df:
-            df['WOPR'] = None
-        fig.append_trace(go.Scatter(
+        if prop not in df:
+            df[prop] = None
+        vals = df[prop]
+        fig.add_trace(go.Scatter(
             x=df.DATE.dt.strftime("%Y-%m-%d"),
-            y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
-            line=dict(color=colors[i % len(colors)] if nwells > 1 else 'black', width=2),
-            name=wname if nwells > 1 else None,
-            legendgroup = '1'
-        ), row=1, col=1)
+            y=np.cumsum(vals) if state.cumulativeRates else vals,
+            line=dict(color=colors[i % len(colors)], width=2),
+            name=wname,
+        ))
 
-        if 'WWPR' not in df:
-            df['WWPR'] = None
-        fig.append_trace(go.Scatter(
-            x=df.DATE.dt.strftime("%Y-%m-%d"),
-            y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
-            line=dict(color=colors[i % len(colors)] if nwells > 1 else 'royalblue', width=2),
-            name=wname if nwells > 1 else None,
-            legendgroup = '2'
-        ), row=2, col=1)
-
-        if 'WGPR' not in df:
-            df['WGPR'] = None
-        fig.append_trace(go.Scatter(
-            x=df.DATE.dt.strftime("%Y-%m-%d"),
-            y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
-            line=dict(color=colors[i % len(colors)] if nwells > 1 else 'orange', width=2),
-            name=wname if nwells > 1 else None,
-            legendgroup = '3'
-        ), row=3, col=1)
-
-        if 'BHP' not in df:
-            df['BHP'] = None
-        fig.append_trace(go.Scatter(
-            x=df.DATE.dt.strftime("%Y-%m-%d"),
-            y=df.BHP,
-            line=dict(color='green', width=2),
-            name=wname if nwells > 1 else None
-        ), row=4, col=1)
-
-    fig.update_layout(
-        showlegend=nwells > 1,
-        legend_tracegroupgap=height/5
-        )
+    fig.update_layout(title_text=wellRate)
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Production rate" if wellRate!='BHP' else "Pressure")
 
     return fig
 
 def show_field_rates(width, height):
-    fig = make_subplots(rows=3,
-                        cols=1,
-                        subplot_titles=("OIL", "WATER", "GAS"),
-                        vertical_spacing = 0.15)
+    fig = make_subplots()
     fig.update_layout(height=height,
                       width=width,
-                      showlegend=False,
+                      showlegend=True,
                       margin={'t': 30, 'r': 80, 'l': 100, 'b': 30},)
 
     if FIELD['model'] is None:
@@ -478,38 +511,37 @@ def show_field_rates(width, height):
 
     df = FIELD['model'].wells.total_rates
 
-    fig.append_trace(go.Scatter(
+    fig.add_trace(go.Scatter(
         x=df.DATE.dt.strftime("%Y-%m-%d"),
         y=np.cumsum(df.WOPR) if state.cumulativeRates else df.WOPR,
+        name='OIL',
         line=dict(color='black', width=2)
-    ), row=1, col=1)
+    ))
 
-    fig.append_trace(go.Scatter(
+    fig.add_trace(go.Scatter(
         x=df.DATE.dt.strftime("%Y-%m-%d"),
         y=np.cumsum(df.WWPR) if state.cumulativeRates else df.WWPR,
+        name='WATER',
         line=dict(color='royalblue', width=2)
-    ), row=2, col=1)
+    ))
 
-    fig.append_trace(go.Scatter(
+    fig.add_trace(go.Scatter(
         x=df.DATE.dt.strftime("%Y-%m-%d"),
         y=np.cumsum(df.WGPR) if state.cumulativeRates else df.WGPR,
+        name='GAS',
         line=dict(color='orange', width=2)
-    ), row=3, col=1)
+    ))
+
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Production rate")
 
     return fig
 
 def show_field_dynamics(width, height):
-    fig = make_subplots(rows=3,
-                        cols=1,
-                        subplot_titles=(
-                            "PRESSURE",
-                            "OIL SATURATION",
-                            "WATER SATURATION"
-                            ),
-                        vertical_spacing = 0.15)
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.update_layout(height=height,
                       width=width,
-                      showlegend=False,
+                      showlegend=True,
                       margin={'t': 30, 'r': 80, 'l': 100, 'b': 80},)
 
     if FIELD['model'] is None:
@@ -525,23 +557,30 @@ def show_field_dynamics(width, height):
     swat = FIELD['model'].states.swat.mean(axis=(1, 2, 3))
     dates = FIELD['model'].result_dates.strftime("%Y-%m-%d")
 
-    fig.append_trace(go.Scatter(
+    fig.add_trace(go.Scatter(
         x=dates,
         y=pres,
+        name='PRESSURE',
         line=dict(color='green', width=2)
-    ), row=1, col=1)
+    ), secondary_y=False)
 
-    fig.append_trace(go.Scatter(
+    fig.add_trace(go.Scatter(
         x=dates,
         y=soil,
-        line=dict(color='black', width=2)
-    ), row=2, col=1)
+        name='SOIL',
+        line=dict(color='black', width=2),
+    ), secondary_y=True)
 
-    fig.append_trace(go.Scatter(
+    fig.add_trace(go.Scatter(
         x=dates,
         y=swat,
+        name='SWAT',
         line=dict(color='royalblue', width=2)
-    ), row=3, col=1)
+    ), secondary_y=True)
+
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Pressure", secondary_y=False)
+    fig.update_yaxes(title_text="Saturation", secondary_y=True)
 
     return fig
 
@@ -556,8 +595,9 @@ def update_field_dynamics(figure_size1, **kwargs):
     height = bounds.get("height", 100)
     ctrl.update_field_dynamics(show_field_dynamics(width, height))
 
-@state.change("figure_size2", "well", "cumulativeRates", "wellnames")
-def update_well_rates(figure_size2, well, **kwargs):
+@state.change("figure_size2", "well", "compareMode", 
+    "wellRate", "cumulativeRates", "wellnames")
+def update_well_rates(figure_size2, well, compareMode, wellRate, **kwargs):
     _ = kwargs
     figure_size = figure_size2
     if figure_size is None:
@@ -565,7 +605,10 @@ def update_well_rates(figure_size2, well, **kwargs):
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
-    ctrl.update_well_rates(show_well_rates(well, width, height))
+    if not compareMode:
+        ctrl.update_well_rates(show_single_well_rates(well, width, height))
+    else:
+        ctrl.update_well_rates(show_multiple_well_rates(well, wellRate, width, height))
 
 @state.change("figure_size3", "cumulativeRates", "wellnames")
 def update_field_rates(figure_size3, **kwargs):
@@ -586,7 +629,7 @@ def render_1d():
                     vuetify.VCardTitle("Averaged field dynamics")
                 with trame.SizeObserver("figure_size1"):
                     ctrl.update_field_dynamics = plotly.Figure(**CHART_STYLE).update
-        with vuetify.VRow(style="width:90vw; height: 130vh; margin 0;", classes='pa-0'):
+        with vuetify.VRow(style="width:90vw; height: 100vh; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VCard():
                     vuetify.VCardTitle("Well rates")
@@ -615,6 +658,12 @@ def render_1d():
                     v_model=("well", state.wellnames[0] if state.wellnames else None),
                     items=("wellnames",),
                     label="Choose wells to compare",
+                    )
+                vuetify.VSelect(
+                    v_if='compareMode',
+                    v_model=("wellRate", 'OIL'),
+                    items=("rates", ['OIL', 'WATER', 'GAS', 'BHP']),
+                    label="Choose data to show",
                     )
                 with trame.SizeObserver("figure_size2"):
                     ctrl.update_well_rates = plotly.Figure(**CHART_STYLE).update
