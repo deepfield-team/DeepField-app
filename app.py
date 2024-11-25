@@ -101,9 +101,9 @@ def reset_camera():
 
 @state.change("i_slice", "j_slice", "k_slice")
 def update_slices_ijk(i_slice, j_slice, k_slice, **kwargs):
+    _ = kwargs
     dataset = FIELD['dataset']
     
-    # slicing I
     if FIELD['c_data']:
         vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
         vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])
@@ -136,8 +136,9 @@ def update_slices_ijk(i_slice, j_slice, k_slice, **kwargs):
         mapper.SetInputConnection(threshold_k.GetOutputPort())
 
         FIELD['actor'].SetMapper(mapper)
-        ctrl.view_update()
-    return #print(i_slice, j_slice, k_slice)
+        update_field(state.activeField, state.activeStep, view_update=False)
+        update_cmap(state.colormap)
+    return
 
 make_empty_dataset()
 reset_camera()
@@ -156,7 +157,7 @@ def update_opacity(opacity, **kwargs):
     ctrl.view_update()
 
 @state.change("activeField", "activeStep")
-def update_field(activeField, activeStep, **kwargs):
+def update_field(activeField, activeStep, view_update=True, **kwargs):
     _ = kwargs
     if activeField is None:
         return
@@ -173,7 +174,8 @@ def update_field(activeField, activeStep, **kwargs):
     mapper = FIELD['actor'].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
-    ctrl.view_update()
+    if view_update:
+        ctrl.view_update()
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
