@@ -8,11 +8,13 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
-import matplotlib
+import matplotlib.pyplot as plt
 import vtk
 from matplotlib.pyplot import get_cmap
+from matplotlib.colors import Normalize
+from matplotlib.cm import ScalarMappable
 
-from trame.widgets import html, plotly, vtk as vtk_widgets, trame, vuetify3 as vuetify
+from trame.widgets import html, plotly, vtk as vtk_widgets, trame, vuetify3 as vuetify, matplotlib
 from trame.app import get_server
 from trame.assets.remote import HttpFile
 from trame.ui.vuetify3 import VAppLayout
@@ -32,13 +34,27 @@ from vtkmodules.vtkRenderingCore import (
 from vtkmodules.vtkInteractionStyle import (
     vtkInteractorStyleRubberBandPick,
     vtkInteractorStyleSwitch,
-) 
+)
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa
 
 sys.path.append('../deepfield-team/DeepField')
 from deepfield import Field
+import deepfield
 
+def get_figure_size(f_size):
+    if f_size is None:
+        return {}
+
+    dpi = f_size.get("dpi")
+    rect = f_size.get("size")
+    w_inch = rect.get("width") / dpi
+    h_inch = rect.get("height") / dpi
+
+    return {
+        "figsize": (w_inch, h_inch),
+        "dpi": dpi,
+    }
 
 server = get_server(client_type="vue3")
 state, ctrl = server.state, server.controller
@@ -139,7 +155,7 @@ def update_field(activeField, activeStep, **kwargs):
 def update_cmap(colormap, **kwargs):
     cmap = get_cmap(colormap)
     table = FIELD['actor'].GetMapper().GetLookupTable()
-    colors = cmap(np.arange(0, cmap.N)) 
+    colors = cmap(np.arange(0, cmap.N))
     table.SetNumberOfTableValues(len(colors))
     for i, val in enumerate(colors):
         table.SetTableValue(i, val[0], val[1], val[2])
@@ -176,12 +192,12 @@ def load_file(*args, **kwargs):
             res.extend([k for k in well.RESULTS.columns if k != 'DATE'])
     res = sorted(list(set(res)))
     FIELD['data1d']['wells'] = res
-    
+
     state.dimens = [int(x) for x in field.grid.dimens]
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
     state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
-    
+
     if 'states' in field.components:
         attrs = field.states.attributes
         if attrs:
@@ -197,10 +213,10 @@ def load_file(*args, **kwargs):
     ds_max = ds.max()
     scales = ds_max / ds
     actor.SetScale(*scales)
-    
+
     vtk_array = dsa.numpyTovtkDataArray(c_data[list(c_data.keys())[0]])
     dataset.GetCellData().SetScalars(vtk_array)
-    
+
     mapper.SetScalarRange(dataset.GetScalarRange())
     actor.SetMapper(mapper)
 
@@ -240,7 +256,7 @@ def render_info():
     with vuetify.VCard(style="margin: 10px"):
         vuetify.VCardTitle("Description of the reservoir model")
         vuetify.VCardText('Dimensions: ' + '{{dimens}}')
-        
+
 def render_3d():
     with vuetify.VContainer(fluid=True, classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(dense=True, style="height: 100%;"):
@@ -254,7 +270,7 @@ def render_3d():
                     max=("max_timestep",),
                     step=1,
                     v_model=('activeStep', 0),
-                    label="Timestep", 
+                    label="Timestep",
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
@@ -294,12 +310,24 @@ CHART_STYLE = {
     "display_logo": ("false",),
 }
 
-def create_slice(arr, width, height, colormap):
-    fig = px.imshow(arr, aspect="auto", color_continuous_scale=colormap.lower())
-    fig.update_layout(height=height,
-                      width=width,
-                      showlegend=False,
-                      margin={'t': 30, 'r': 30, 'l': 30, 'b': 0},)
+def get_data_limits(component, attr, activeStep):
+    data = getattr(component, attr)
+    if isinstance(component, deepfield.field.States):
+        data=data[activeStep]
+    data = data[FIELD['model'].grid.actnum]
+    vmax = data.max()
+    vmin = data.min()
+    if vmax == vmin:
+        vmax = 1.01 * vmax
+        vmin = 0.99 * vmin
+    return vmin, vmax
+
+def create_slice(component, att, i, j, k, t, colormap, figure_size):
+    plt.close("all")
+    fig, ax = plt.subplots(**figure_size)
+    vmin, vmax = get_data_limits(component, att, t)
+    component.show_slice(attr=att, i=i, j=j, k=k, t=t, ax=ax, cmap=colormap, vmax=vmax, vmin=vmin)
+    plt.tight_layout()
     return fig
 
 def get_attr_from_field(attr):
@@ -309,56 +337,71 @@ def get_attr_from_field(attr):
 @state.change("figure_xsize", "activeField", "activeStep", "xslice", "colormap")
 def update_xslice(figure_xsize, activeField, activeStep, xslice, colormap, **kwargs):
     _ = kwargs
-    figure_size = figure_xsize
-    if figure_size is None:
-        return
     if activeField is None:
         return
-    bounds = figure_size.get("size", {})
-    width = bounds.get("width", 300)
-    height = bounds.get("weight", 300)
-    data = get_attr_from_field(activeField)
-    if activeField.split('_')[0].lower() == 'states':
-        arr = data[activeStep, xslice-1].T
-    else:
-        arr = data[xslice-1].T
-    ctrl.update_xslice(create_slice(arr, width, height, colormap))
+    comp_name, attr = activeField.split('_')
+    comp_name = comp_name.lower()
+    component = getattr(FIELD['model'], comp_name)
+    if isinstance(component, deepfield.field.Rock):
+        activeStep = None
+
+    ctrl.update_xslice(create_slice(component, attr,
+                                    i=xslice,
+                                    j=None,
+                                    k=None, t=activeStep, colormap=colormap,
+                                    figure_size=get_figure_size(figure_xsize)))
 
 @state.change("figure_ysize", "activeField", "activeStep", "yslice", "colormap")
 def update_yslice(figure_ysize, activeField, activeStep, yslice, colormap, **kwargs):
     _ = kwargs
-    figure_size = figure_ysize
-    if figure_size is None:
-        return
     if activeField is None:
         return
-    bounds = figure_size.get("size", {})
-    width = bounds.get("width", 300)
-    height = bounds.get("height", 300)
-    data = get_attr_from_field(activeField)
-    if activeField.split('_')[0].lower() == 'states':
-        arr = data[activeStep, :, yslice-1].T
-    else:
-        arr = data[:, yslice-1].T
-    ctrl.update_yslice(create_slice(arr, width, height, colormap))
+
+    comp_name, attr = activeField.split('_')
+    comp_name = comp_name.lower()
+    component = getattr(FIELD['model'], comp_name)
+    if isinstance(component, deepfield.field.Rock):
+        activeStep = None
+    ctrl.update_yslice(create_slice(component, attr,
+                                    i=None,
+                                    j=yslice,
+                                    k=None, t=activeStep, colormap=colormap,
+                                    figure_size=get_figure_size(figure_ysize)))
 
 @state.change("figure_zsize", "activeField", "activeStep", "zslice", "colormap")
 def update_zslice(figure_zsize, activeField, activeStep, zslice, colormap, **kwargs):
     _ = kwargs
-    figure_size = figure_zsize
-    if figure_size is None:
-        return
     if activeField is None:
         return
-    bounds = figure_size.get("size", {})
-    width = bounds.get("width", 300)
-    height = bounds.get("height", 300)
-    data = get_attr_from_field(activeField)
-    if activeField.split('_')[0].lower() == 'states':
-        arr = data[activeStep, :, :, zslice-1].T
-    else:
-        arr = data[:, :, zslice-1].T
-    ctrl.update_zslice(create_slice(arr, width, height, colormap))
+    comp_name, attr = activeField.split('_')
+    comp_name = comp_name.lower()
+    component = getattr(FIELD['model'], comp_name)
+    if isinstance(component, deepfield.field.Rock):
+        activeStep = None
+    ctrl.update_zslice(create_slice(component, attr,
+                                    i=None,
+                                    j=None,
+                                    k=zslice, t=activeStep, colormap=colormap,
+                                    figure_size=get_figure_size(figure_zsize)))
+
+
+@state.change("figure_cbar_size", "activeField", "activeStep", "colormap")
+def update_colorbar(figure_cbar_size, activeField, activeStep, zslice, colormap, **kwargs):
+    _ = kwargs
+    if activeField is None:
+        return
+    comp_name, attr = activeField.split('_')
+    comp_name = comp_name.lower()
+    component = getattr(FIELD['model'], comp_name)
+    if isinstance(component, deepfield.field.Rock):
+        activeStep = None
+    figure, ax = plt.subplots(**get_figure_size(figure_cbar_size))
+    vmin, vmax = get_data_limits(component, attr, activeStep)
+    figure.colorbar(ScalarMappable(norm=Normalize(vmin=vmin, vmax=vmax), cmap=colormap), cax=ax, orientation='horizontal')
+    plt.tight_layout()
+    ctrl.update_colorbar(figure)
+
+
 
 def render_2d():
     vuetify.VSlider(
@@ -367,52 +410,64 @@ def render_2d():
         max=("max_timestep",),
         step=1,
         v_model=('activeStep', 0),
-        label="Timestep", 
+        label="Timestep",
         classes="mt-5 mr-5 ml-5",
         hide_details=False,
         dense=False
         )
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
-            with vuetify.VCol(classes='pa-0'):
+        with vuetify.VRow(style="width:90%; height: 70%; margin 0;", classes='pa-0'):
+            with vuetify.VCol(classes='pa-0 fill-height'):
                 vuetify.VSlider(
                     min=1,
                     max=("dimens[0]",),
                     step=1,
                     v_model=('xslice', 1),
-                    label="x", 
+                    label="x",
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
                     )
                 with trame.SizeObserver("figure_xsize"):
-                    ctrl.update_xslice = plotly.Figure(**CHART_STYLE).update
+                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_xsize'])),
+                        style="position: absolute")
+                    ctrl.update_xslice = figure.update
             with vuetify.VCol(classes='pa-0'):
                 vuetify.VSlider(
                     min=1,
                     max=("dimens[1]",),
                     step=1,
                     v_model=('yslice', 1),
-                    label="y", 
+                    label="y",
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
                     )
                 with trame.SizeObserver("figure_ysize"):
-                    ctrl.update_yslice = plotly.Figure(**CHART_STYLE).update
+                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_ysize'])),
+                        style="position: absolute")
+                    ctrl.update_yslice = figure.update
             with vuetify.VCol(classes='pa-0'):
                 vuetify.VSlider(
                     min=1,
                     max=("dimens[2]",),
                     step=1,
                     v_model=('zslice', 1),
-                    label="z", 
+                    label="z",
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
                     )
                 with trame.SizeObserver("figure_zsize"):
-                    ctrl.update_zslice = plotly.Figure(**CHART_STYLE).update
+                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_xsize'])),
+                        style="position: absolute")
+                    ctrl.update_zslice = figure.update
+        with vuetify.VRow(style="width:70%; height: 10%; margin 0;", classes='pa-0'):
+            with vuetify.VCol(classes='pa-0'):
+                with trame.SizeObserver("figure_cbar_size"):
+                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_csize'])),
+                        style="position: absolute")
+                ctrl.update_colorbar = figure.update
 
 
 state.gridData = True
@@ -605,7 +660,7 @@ with VAppLayout(server) as layout:
                 max=1,
                 step=0.1,
                 v_model=('opacity', 1),
-                label="Opacity", 
+                label="Opacity",
                 classes="mt-8 mr-3",
                 hide_details=False,
                 dense=False,
