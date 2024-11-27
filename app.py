@@ -68,9 +68,9 @@ state.max_timestep = 0
 state.need_time_slider = False
 state.cumulativeRates = False
 state.data1d = []
-state.i_cells = []
-state.j_cells = []
-state.k_cells = []
+state.i_cells = [0, 0]
+state.j_cells = [0, 0]
+state.k_cells = [0, 0]
 
 
 def make_empty_dataset():
@@ -100,11 +100,11 @@ def reset_camera():
     renderer.ResetCamera()
 
 @state.change("i_slice", "j_slice", "k_slice")
-def update_slices_ijk(i_slice, j_slice, k_slice, **kwargs):
+def update_threshold_slices(i_slice, j_slice, k_slice, **kwargs):
     _ = kwargs
-    dataset = FIELD['dataset']
-    
+   
     if FIELD['c_data']:
+        dataset = FIELD['dataset']
         vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
         vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])
         vtk_array_k = dsa.numpyTovtkDataArray(FIELD['c_data']["K"])
@@ -674,32 +674,39 @@ with VAppLayout(server) as layout:
                 )
             vuetify.VDivider(vertical=True, classes="mx-2")
             vuetify.VRangeSlider(
-                v_model=("i_slice", state.i_slice if state.i_slice else None),
+                min=1,
+                max=("dimens[0]",),
+                step=1,                
+                v_model=("i_slice", 1),
                 label="I",
                 thumb_label = True,
-                step = 1,
                 hide_details=False,
                 classes="mt-8 mr-3",
                 )
             vuetify.VDivider(vertical=True, classes="mx-2")
             vuetify.VRangeSlider(
-                v_model=("j_slice", state.j_slice if state.j_slice else None),
+                min=1,
+                max=("dimens[1]",),
+                step=1,                
+                v_model=("j_slice", 1),
                 label="J",
                 thumb_label = True,
-                step = 1,
                 hide_details=False,
                 classes="mt-8 mr-3",
                 )
             vuetify.VDivider(vertical=True, classes="mx-2")
             vuetify.VRangeSlider(
-                v_model=("k_slice", state.k_slice if state.k_slice else None),
+                min=1,
+                max=("dimens[2]",),
+                step=1,                
+                v_model=("k_slice", 1),
                 label="K",
                 thumb_label = True,
-                step = 1,                    
                 hide_details=False,
                 classes="mt-8 mr-3",
                 )
             vuetify.VDivider(vertical=True, classes="mx-2")
             vuetify.VSpacer()
+
 if __name__ == "__main__":
     server.start()
