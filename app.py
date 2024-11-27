@@ -240,14 +240,15 @@ def render_home():
         with vuetify.VContainer():
             with vuetify.VRow():
                 with vuetify.VCol():
-                    vuetify.VTextField(
+                    with vuetify.VTextField(
                                 v_model=("user_request", ""),
                                 label="Input reservoir model path",
                                 clearable=True,
                                 name="searchInput"
-                            )
-                with vuetify.VCol(cols=1):
-                    vuetify.VBtn('Load', click=ctrl.load_file)
+                            ):
+                            with vuetify.Template(v_slot_append=True,
+                                properties=[("v_slot_append", "v-slot:append")],):
+                                vuetify.VBtn('Load', click=ctrl.load_file)
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
                     with vuetify.VCard(classes="overflow-auto", max_width="40vw", max_height="30vh"):
@@ -296,18 +297,6 @@ def render_3d():
                     )
                 ctrl.view_update = view.update
                 ctrl.view_reset_camera = view.reset_camera
-
-    with vuetify.VBottomNavigation(grow=True, style='left: 50%; transform: translateX(-50%); width: 40vw; bottom: 5vh; opacity: 0.75'):
-        with vuetify.VBtn(icon=True):
-            vuetify.VIcon("mdi-magnify")
-        with vuetify.VBtn(icon=True):
-            vuetify.VIcon("mdi-crop")
-        with vuetify.VBtn(icon=True):
-            vuetify.VIcon("mdi-chart-bar")
-        with vuetify.VBtn(icon=True):
-            vuetify.VIcon("mdi-magic-staff")
-        with vuetify.VBtn(icon=True):
-            vuetify.VIcon("mdi-play")
 
 CHART_STYLE = {
     # "display_mode_bar": ("true",),
@@ -798,6 +787,22 @@ with VAppLayout(server) as layout:
                 label='Select data',
                 items=('field_attrs', ),
                 v_if="(activeTab === '3d') | (activeTab === '2d')"
+                )
+            vuetify.VCheckbox(
+                label='Threshold selector',
+                v_if="activeTab === '3d'"
+                )
+            vuetify.VCheckbox(
+                label='Slice range selector',
+                v_if="activeTab === '3d'"
+                )
+            vuetify.VCheckbox(
+                label='Show wells',
+                v_if="activeTab === '3d'"
+                )
+            vuetify.VCheckbox(
+                label='Show faults',
+                v_if="activeTab === '3d'"
                 )
             vuetify.VSelect(
                 label="Colormap",
