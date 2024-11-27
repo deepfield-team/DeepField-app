@@ -322,11 +322,14 @@ def get_data_limits(component, attr, activeStep):
         vmin = 0.99 * vmin
     return vmin, vmax
 
-def create_slice(component, att, i, j, k, t, colormap, figure_size):
+def create_slice(component, att, i, j, k, t,
+                 i_line, j_line, k_line,
+                 colormap, figure_size):
     plt.close("all")
     fig, ax = plt.subplots(**figure_size)
     vmin, vmax = get_data_limits(component, att, t)
-    component.show_slice(attr=att, i=i, j=j, k=k, t=t, ax=ax, cmap=colormap, vmax=vmax, vmin=vmin)
+    component.show_slice(attr=att, i=i, j=j, k=k, t=t,
+                         i_line=i_line, j_line=j_line, k_line=k_line ,ax=ax, cmap=colormap, vmax=vmax, vmin=vmin)
     plt.tight_layout()
     return fig
 
@@ -334,8 +337,9 @@ def get_attr_from_field(attr):
     comp, attr = attr.split('_')
     return FIELD['model']._components[comp.lower()][attr]
 
-@state.change("figure_xsize", "activeField", "activeStep", "xslice", "colormap")
-def update_xslice(figure_xsize, activeField, activeStep, xslice, colormap, **kwargs):
+@state.change("figure_xsize", "activeField", "activeStep", "xslice",
+              "yslice", "zslice", "colormap")
+def update_xslice(figure_xsize, activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
     _ = kwargs
     if activeField is None:
         return
@@ -348,11 +352,15 @@ def update_xslice(figure_xsize, activeField, activeStep, xslice, colormap, **kwa
     ctrl.update_xslice(create_slice(component, attr,
                                     i=xslice,
                                     j=None,
-                                    k=None, t=activeStep, colormap=colormap,
+                                    k=None, t=activeStep,
+                                    j_line=yslice,
+                                    i_line=None,
+                                    k_line=zslice,
+                                    colormap=colormap,
                                     figure_size=get_figure_size(figure_xsize)))
 
-@state.change("figure_ysize", "activeField", "activeStep", "yslice", "colormap")
-def update_yslice(figure_ysize, activeField, activeStep, yslice, colormap, **kwargs):
+@state.change("figure_ysize", "activeField", "activeStep", "xslice", "yslice", "zslice", "colormap")
+def update_yslice(figure_ysize, activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
     _ = kwargs
     if activeField is None:
         return
@@ -365,11 +373,15 @@ def update_yslice(figure_ysize, activeField, activeStep, yslice, colormap, **kwa
     ctrl.update_yslice(create_slice(component, attr,
                                     i=None,
                                     j=yslice,
-                                    k=None, t=activeStep, colormap=colormap,
+                                    k=None,
+                                    i_line=xslice,
+                                    j_line=None,
+                                    k_line=zslice,
+                                    t=activeStep, colormap=colormap,
                                     figure_size=get_figure_size(figure_ysize)))
 
-@state.change("figure_zsize", "activeField", "activeStep", "zslice", "colormap")
-def update_zslice(figure_zsize, activeField, activeStep, zslice, colormap, **kwargs):
+@state.change("figure_zsize", "activeField", "activeStep", "xslice", "yslice", "zslice", "colormap")
+def update_zslice(figure_zsize, activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
     _ = kwargs
     if activeField is None:
         return
@@ -381,7 +393,11 @@ def update_zslice(figure_zsize, activeField, activeStep, zslice, colormap, **kwa
     ctrl.update_zslice(create_slice(component, attr,
                                     i=None,
                                     j=None,
-                                    k=zslice, t=activeStep, colormap=colormap,
+                                    k=zslice,
+                                    i_line=xslice,
+                                    j_line=yslice,
+                                    k_line=None,
+                                    t=activeStep, colormap=colormap,
                                     figure_size=get_figure_size(figure_zsize)))
 
 
