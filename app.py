@@ -68,6 +68,13 @@ state.max_timestep = 0
 state.need_time_slider = False
 state.cumulativeRates = False
 state.data1d = []
+state.tables = []
+state.domains = []
+state.domainMin = 0
+state.domainMax = 0
+state.domainStep = None
+state.needDomain = False
+state.recentFiles = []
 state.i_cells = []
 state.j_cells = []
 state.k_cells = []
@@ -122,6 +129,7 @@ def update_field(activeField, activeStep, **kwargs):
         return
     if FIELD['c_data'] is None:
         return
+    activeStep = int(activeStep)
     if activeField.split("_")[0].lower() == 'states':
         state.need_time_slider = True
         vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField][:, activeStep])
@@ -146,18 +154,25 @@ def update_cmap(colormap, **kwargs):
     table.Build()
     ctrl.view_update()
 
+def filter_path(path):
+    "True if path is a directory or has .data or .hdf5 extension."
+    if os.path.isdir(path):
+        return True
+    _, ext = os.path.splitext(path)
+    return ext.lower() in ['.data', '.hdf5']
 
 @state.change("user_request")
 def get_path_variants(user_request, **kwargs):
-    state.dir_list = list(glob(user_request + "*"))
-
-state.load_completed = False
+    paths = list(glob(user_request + "*"))
+    state.dir_list = [p for p in paths if filter_path(p)]
 
 def load_file(*args, **kwargs):
-    state.load_completed = False
     field = Field(state.user_request).load()
+    
+    if state.user_request not in state.recentFiles:
+        state.recentFiles = state.recentFiles + [state.user_request, ]
+
     FIELD['model'] = field
-    state.load_completed = True
 
     dataset = field.get_vtk_dataset()
     FIELD['dataset'] = dataset
@@ -170,6 +185,8 @@ def load_file(*args, **kwargs):
     FIELD['c_data'] = c_data
 
     state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K']]
+    state.activeField = state.field_attrs[0]
+
     res = []
     for well in field.wells:
         if 'RESULTS' in well:
@@ -188,6 +205,11 @@ def load_file(*args, **kwargs):
             state.max_timestep = field.states[attrs[0]].shape[0] - 1
         FIELD['data1d']['states'] = attrs
 
+    if 'tables' in field.components:
+        attrs = field.tables.attributes
+        if attrs:
+            state.tables = [t for t in attrs if field.tables[t].domain]
+
     state.data1d = list(np.concatenate([v for _, v in FIELD['data1d'].items()]))
 
     actor = vtkActor()
@@ -198,7 +220,7 @@ def load_file(*args, **kwargs):
     scales = ds_max / ds
     actor.SetScale(*scales)
     
-    vtk_array = dsa.numpyTovtkDataArray(c_data[list(c_data.keys())[0]])
+    vtk_array = dsa.numpyTovtkDataArray(c_data[state.activeField])
     dataset.GetCellData().SetScalars(vtk_array)
     
     mapper.SetScalarRange(dataset.GetScalarRange())
@@ -248,7 +270,7 @@ def render_3d():
                 classes="pa-0",
                 style="border-right: 1px solid #ccc; position: relative;"
                 ):
-                vuetify.VSlider(
+                with vuetify.VSlider(
                     v_if='need_time_slider',
                     min=0,
                     max=("max_timestep",),
@@ -258,7 +280,16 @@ def render_3d():
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
-                    )
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="activeStep",
+                            density="compact",
+                            style="width: 80px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
                 view = vtk_widgets.VtkRemoteView(
                     render_window,
                     **VTK_VIEW_SETTINGS
@@ -314,6 +345,8 @@ def update_xslice(figure_xsize, activeField, activeStep, xslice, colormap, **kwa
         return
     if activeField is None:
         return
+    activeStep = int(activeStep)
+    xslice = int(xslice)
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("weight", 300)
@@ -332,6 +365,8 @@ def update_yslice(figure_ysize, activeField, activeStep, yslice, colormap, **kwa
         return
     if activeField is None:
         return
+    activeStep = int(activeStep)
+    yslice = int(yslice)
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
@@ -350,6 +385,8 @@ def update_zslice(figure_zsize, activeField, activeStep, zslice, colormap, **kwa
         return
     if activeField is None:
         return
+    activeStep = int(activeStep)
+    zslice = int(zslice)
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
@@ -361,7 +398,7 @@ def update_zslice(figure_zsize, activeField, activeStep, zslice, colormap, **kwa
     ctrl.update_zslice(create_slice(arr, width, height, colormap))
 
 def render_2d():
-    vuetify.VSlider(
+    with vuetify.VSlider(
         v_if='need_time_slider',
         min=0,
         max=("max_timestep",),
@@ -371,11 +408,20 @@ def render_2d():
         classes="mt-5 mr-5 ml-5",
         hide_details=False,
         dense=False
-        )
+        ):
+        with vuetify.Template(v_slot_append=True,
+            properties=[("v_slot_append", "v-slot:append")],):
+            vuetify.VTextField(
+                v_model="activeStep",
+                density="compact",
+                style="width: 80px",
+                type="number",
+                variant="outlined",
+                hide_details=True)
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
-                vuetify.VSlider(
+                with vuetify.VSlider(
                     min=1,
                     max=("dimens[0]",),
                     step=1,
@@ -384,11 +430,20 @@ def render_2d():
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
-                    )
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                            properties=[("v_slot_append", "v-slot:append")],):
+                            vuetify.VTextField(
+                                v_model="xslice",
+                                density="compact",
+                                style="width: 80px",
+                                type="number",
+                                variant="outlined",
+                                hide_details=True)
                 with trame.SizeObserver("figure_xsize"):
                     ctrl.update_xslice = plotly.Figure(**CHART_STYLE).update
             with vuetify.VCol(classes='pa-0'):
-                vuetify.VSlider(
+                with vuetify.VSlider(
                     min=1,
                     max=("dimens[1]",),
                     step=1,
@@ -397,11 +452,20 @@ def render_2d():
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
-                    )
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="yslice",
+                            density="compact",
+                            style="width: 80px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
                 with trame.SizeObserver("figure_ysize"):
                     ctrl.update_yslice = plotly.Figure(**CHART_STYLE).update
             with vuetify.VCol(classes='pa-0'):
-                vuetify.VSlider(
+                with vuetify.VSlider(
                     min=1,
                     max=("dimens[2]",),
                     step=1,
@@ -410,7 +474,16 @@ def render_2d():
                     classes="mt-5 mr-5 ml-5",
                     hide_details=False,
                     dense=False
-                    )
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="zslice",
+                            density="compact",
+                            style="width: 80px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
                 with trame.SizeObserver("figure_zsize"):
                     ctrl.update_zslice = plotly.Figure(**CHART_STYLE).update
 
@@ -451,13 +524,17 @@ def add_line_to_plot():
         if np.any(avr):
             ids = np.where(avr)[0]
             data = data.mean(axis=tuple(ids+1))
-        cells = cells[~avr].astype(int)
-        if len(cells) > 0:
-            data = data[:, *cells]
+        icells = cells[~avr].astype(int)
+        if len(icells) > 0:
+            data = data[:, *icells]
         dates = FIELD['model'].result_dates.strftime("%Y-%m-%d")
-        name = state.data1dToShow
+        if np.any(avr):
+            cells[avr] = ":"
+        name = '{} ({}, {}, {})'.format(state.data1dToShow, *cells)
 
     if state.wellData:
+        if state.wellNameToShow is None:
+            return
         df = FIELD['model'].wells[state.wellNameToShow].RESULTS
         data = df[state.data1dToShow]
         dates = df.DATE.dt.strftime("%Y-%m-%d")
@@ -506,8 +583,90 @@ def update_plot_size(figure_size, **kwargs):
     PLOTS['plot1d'].update_layout(height=height, width=width)
     ctrl.update_plot(PLOTS['plot1d'])
 
+@state.change("tableToShow")
+def updateTableWidgets(tableToShow, **kwargs):
+    if tableToShow is None:
+        return
+    table = FIELD['model'].tables[tableToShow]
+    if len(table.domain) == 1:
+        # state.domains = []
+        state.needDomain = False
+    else:
+        state.domainMin = table.index.get_level_values(0).min()
+        state.domainMax = table.index.get_level_values(0).max()
+        state.domainStep = (state.domainMax - state.domainMin) / 100
+        # state.domains = list(sorted(set(table.index.get_level_values(0))))
+        state.needDomain = True
+
+def plot_1d_table(fig, table):
+    colors = px.colors.qualitative.Plotly
+    x = table.index.values
+    layout = {}
+
+    for i, col in enumerate(table.columns):
+        c = colors[i%len(colors)]
+        fig.add_trace(go.Scatter(
+            x=x,
+            y=table[col].values,
+            yaxis=None if i==0 else 'y'+str(i+1),
+            name=col,
+            line=dict(width=2, color=c)
+            ))
+        key = 'yaxis' if i==0 else 'yaxis' + str(i+1)
+        layout[key] = dict(
+            title=dict(text=col, font=dict(color=c)),
+            side="right" if i > 0 else None,
+            anchor="free" if i > 0 else None,
+            overlaying="y" if i > 0 else None,
+            autoshift=True if i > 0 else None,
+            tickfont=dict(color=c)
+            )
+
+    fig.update_layout(
+        xaxis=dict(domain=[0, 1.1-0.1*len(table.columns)]),
+        **layout)
+    fig.update_xaxes(title_text=table.domain[0])
+    return fig
+
+def plot_table(tableToShow, domainToShow, height, width):
+    fig = go.Figure()
+    fig.update_layout(
+        height=height,
+        width=width,
+        showlegend=False,
+        margin={'t': 30, 'r': 80, 'l': 100, 'b': 80}
+        )
+
+    if tableToShow is None:
+        return fig
+
+    table = FIELD['model'].tables[tableToShow]
+    domain = list(table.domain)
+
+    if len(domain) == 1:
+        fig = plot_1d_table(fig, table)
+    elif len(domain) == 2:
+        if domainToShow is None:
+            return fig
+        cropped_table = table.loc[table.index.get_level_values(0) == domainToShow]
+        cropped_table = cropped_table.droplevel(0)
+        cropped_table.domain = [domain[1]]
+        fig = plot_1d_table(fig, cropped_table)
+
+    return fig
+
+@state.change("figure_size", "tableToShow", "domainToShow")
+def update_tplot_size(figure_size, tableToShow, domainToShow, **kwargs):
+    _ = kwargs
+    if figure_size is None:
+        return
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("height", 100)
+    ctrl.update_tplot(plot_table(tableToShow, domainToShow, height, width))
+
 def render_1d():
-    with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
+    with vuetify.VContainer(fluid=True, style='align-items: center', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow():
             with vuetify.VCol():
                 vuetify.VSelect(
@@ -555,10 +714,33 @@ def render_1d():
                 vuetify.VBtn('Undo', click=ctrl.remove_last_line)
             with vuetify.VCol():
                 vuetify.VBtn('Clean', click=ctrl.clean_plot)
+        
         with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size"):
                     ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
+
+        with vuetify.VRow(style="width:90vw;"):
+            with vuetify.VCol():
+                vuetify.VSelect(
+                    v_model=("tableToShow", None),
+                    items=("tables", ),
+                    label="Select data"
+                    )
+            with vuetify.VCol():
+                vuetify.VSlider(
+                    disabled=("!needDomain",),
+                    v_model=("domainToShow", None),
+                    min=("domainMin",),
+                    max=("domainMax",),
+                    step=("domainStep",),
+                    hide_details=False,
+                    dense=False
+                    )
+        with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
+            with vuetify.VCol(classes='pa-0'):
+                with trame.SizeObserver("figure_size"):
+                    ctrl.update_tplot = plotly.Figure(**CHART_STYLE).update
 
 ctrl.on_server_ready.add(ctrl.view_update)
 
@@ -600,16 +782,22 @@ with VAppLayout(server) as layout:
             stateless=True,
             v_model=("drawer", False),
             width=200):
-            vuetify.VSlider(
-                min=0,
-                max=1,
-                step=0.1,
-                v_model=('opacity', 1),
-                label="Opacity", 
-                classes="mt-8 mr-3",
-                hide_details=False,
-                dense=False,
-                thumb_label=True
+            vuetify.VSelect(
+                v_model=('user_request',),
+                label='Recent files',
+                items=('recentFiles', ),
+                v_if="activeTab === 'home'"
+                )
+            vuetify.VBtn(
+                'Clean history',
+                click='recentFiles = []',
+                v_if="activeTab === 'home'"
+                )
+            vuetify.VSelect(
+                v_model=('activeField', state.field_attrs[0] if state.field_attrs else None),
+                label='Select data',
+                items=('field_attrs', ),
+                v_if="(activeTab === '3d') | (activeTab === '2d')"
                 )
             vuetify.VSelect(
                 label="Colormap",
@@ -620,12 +808,19 @@ with VAppLayout(server) as layout:
                 hide_details=True,
                 dense=True,
                 outlined=True,
-                classes="pt-1",
+                v_if="(activeTab === '3d') | (activeTab === '2d')"
             )
-            vuetify.VSelect(
-                v_model=('activeField', state.field_attrs[0] if state.field_attrs else None),
-                label='Select field',
-                items=('field_attrs', )
+            vuetify.VSlider(
+                min=0,
+                max=1,
+                step=0.1,
+                v_model=('opacity', 1),
+                label="Opacity", 
+                classes="mt-8 mr-3",
+                hide_details=False,
+                dense=False,
+                thumb_label=True,
+                v_if="activeTab === '3d'"
                 )
 
 if __name__ == "__main__":
