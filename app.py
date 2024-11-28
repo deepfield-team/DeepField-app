@@ -343,113 +343,85 @@ def get_data_limits(component, attr, activeStep):
         vmin = 0.99 * vmin
     return vmin, vmax
 
-def create_slice(component, att, i, j, k, t,
-                 i_line, j_line, k_line,
-                 colormap, figure_size):
-    plt.close("all")
+def create_slice(component, att, i, j, k, t, i_line, j_line, k_line,
+                 colormap, figure_size, vmin, vmax):
     fig, ax = plt.subplots(**figure_size)
-    vmin, vmax = get_data_limits(component, att, t)
     component.show_slice(attr=att, i=i, j=j, k=k, t=t,
-                         i_line=i_line, j_line=j_line, k_line=k_line ,ax=ax, cmap=colormap, vmax=vmax, vmin=vmin)
-    plt.tight_layout()
+                         i_line=i_line, j_line=j_line, k_line=k_line,
+                         ax=ax, cmap=colormap, vmax=vmax, vmin=vmin)
+    fig.tight_layout()
     return fig
 
-def get_attr_from_field(attr):
-    comp, attr = attr.split('_')
-    return FIELD['model']._components[comp.lower()][attr]
+def create_cbar(colormap, figure_size, vmin, vmax):
+    fig, ax = plt.subplots(**get_figure_size(figure_size))
+    fig.colorbar(ScalarMappable(norm=Normalize(vmin=vmin, vmax=vmax),
+                                cmap=colormap),
+                 cax=ax, orientation='horizontal')
+    fig.tight_layout()
+    return fig
 
-@state.change("figure_xsize", "activeField", "activeStep", "xslice",
-              "yslice", "zslice", "colormap")
-def update_xslice(figure_xsize, activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
+@state.change("figure_size", "figure_cbar_size",
+              "activeField", "activeStep",
+              "xslice", "yslice", "zslice", "colormap")
+def update_slices(figure_size, figure_cbar_size,
+    activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
     _ = kwargs
     if activeField is None:
         return
     
-    activeStep = int(activeStep)
-    xslice = int(xslice)
     comp_name, attr = activeField.split('_')
     comp_name = comp_name.lower()
     component = getattr(FIELD['model'], comp_name)
-    if isinstance(component, deepfield.field.Rock):
-        activeStep = None
 
+    activeStep = int(activeStep) if comp_name == 'states' else None
+    xslice, yslice, zslice = int(xslice), int(yslice), int(zslice)
+    vmin, vmax = get_data_limits(component, attr, activeStep)
+    figsize = get_figure_size(figure_size)
+
+    plt.close("all")
     ctrl.update_xslice(create_slice(component, attr,
                                     i=xslice,
                                     j=None,
-                                    k=None, t=activeStep,
+                                    k=None,
+                                    t=activeStep,
                                     j_line=yslice,
                                     i_line=None,
                                     k_line=zslice,
                                     colormap=colormap,
-                                    figure_size=get_figure_size(figure_xsize)))
-
-@state.change("figure_ysize", "activeField", "activeStep", "yslice", "colormap")
-def update_yslice(figure_ysize, activeField, activeStep, yslice, colormap, **kwargs):
-    _ = kwargs
-    if activeField is None:
-        return
-
-    activeStep = int(activeStep)
-    yslice = int(yslice)
-    comp_name, attr = activeField.split('_')
-    comp_name = comp_name.lower()
-    component = getattr(FIELD['model'], comp_name)
-    if isinstance(component, deepfield.field.Rock):
-        activeStep = None
+                                    figure_size=figsize,
+                                    vmin=vmin,
+                                    vmax=vmax))
         
     ctrl.update_yslice(create_slice(component, attr,
                                     i=None,
                                     j=yslice,
                                     k=None,
+                                    t=activeStep,
                                     i_line=xslice,
                                     j_line=None,
                                     k_line=zslice,
-                                    t=activeStep, colormap=colormap,
-                                    figure_size=get_figure_size(figure_ysize)))
-
-@state.change("figure_zsize", "activeField", "activeStep", "xslice", "yslice", "zslice", "colormap")
-def update_zslice(figure_zsize, activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
-    _ = kwargs
-    if activeField is None:
-        return
+                                    colormap=colormap,
+                                    figure_size=figsize,
+                                    vmin=vmin,
+                                    vmax=vmax))
     
-    activeStep = int(activeStep)
-    zslice = int(zslice)
-    comp_name, attr = activeField.split('_')
-    comp_name = comp_name.lower()
-    component = getattr(FIELD['model'], comp_name)
-    if isinstance(component, deepfield.field.Rock):
-        activeStep = None
-        
     ctrl.update_zslice(create_slice(component, attr,
                                     i=None,
                                     j=None,
                                     k=zslice,
+                                    t=activeStep,
                                     i_line=xslice,
                                     j_line=yslice,
                                     k_line=None,
-                                    t=activeStep, colormap=colormap,
-                                    figure_size=get_figure_size(figure_zsize)))
+                                    colormap=colormap,
+                                    figure_size=figsize,
+                                    vmin=vmin,
+                                    vmax=vmax))
 
-
-@state.change("figure_cbar_size", "activeField", "activeStep", "colormap")
-def update_colorbar(figure_cbar_size, activeField, activeStep, zslice, colormap, **kwargs):
-    _ = kwargs
-    if activeField is None:
-        return
-
-    activeStep = int(activeStep)
-    comp_name, attr = activeField.split('_')
-    comp_name = comp_name.lower()
-    component = getattr(FIELD['model'], comp_name)
-    if isinstance(component, deepfield.field.Rock):
-        activeStep = None
- 
-    figure, ax = plt.subplots(**get_figure_size(figure_cbar_size))
-    vmin, vmax = get_data_limits(component, attr, activeStep)
-    figure.colorbar(ScalarMappable(norm=Normalize(vmin=vmin, vmax=vmax), cmap=colormap), cax=ax, orientation='horizontal')
-    plt.tight_layout()
-    ctrl.update_colorbar(figure)
+    ctrl.update_colorbar(create_cbar(colormap=colormap,
+                                     figure_size=figure_cbar_size,
+                                     vmin=vmin,
+                                     vmax=vmax))
 
 def render_2d():
     with vuetify.VSlider(
@@ -494,8 +466,8 @@ def render_2d():
                                 type="number",
                                 variant="outlined",
                                 hide_details=True)
-                with trame.SizeObserver("figure_xsize"):
-                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_xsize'])),
+                with trame.SizeObserver("figure_size"):
+                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_size'])),
                         style="position: absolute")
                     ctrl.update_xslice = figure.update
             with vuetify.VCol(classes='pa-0'):
@@ -518,8 +490,8 @@ def render_2d():
                             type="number",
                             variant="outlined",
                             hide_details=True)
-                with trame.SizeObserver("figure_ysize"):
-                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_ysize'])),
+                with trame.SizeObserver("figure_size"):
+                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_size'])),
                         style="position: absolute")
                     ctrl.update_yslice = figure.update
             with vuetify.VCol(classes='pa-0'):
@@ -542,8 +514,8 @@ def render_2d():
                             type="number",
                             variant="outlined",
                             hide_details=True)
-                with trame.SizeObserver("figure_zsize"):
-                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_xsize'])),
+                with trame.SizeObserver("figure_size"):
+                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_size'])),
                         style="position: absolute")
                     ctrl.update_zslice = figure.update
         with vuetify.VRow(style="width:70%; height: 10%; margin 0;", classes='pa-0'):
