@@ -89,7 +89,9 @@ state.domains = []
 state.domainMin = 0
 state.domainMax = 0
 state.domainStep = None
+state.domainToShow = None
 state.needDomain = False
+state.domainName = None
 state.recentFiles = []
 state.i_cells = []
 state.j_cells = []
@@ -261,11 +263,12 @@ def render_home():
                                 v_model=("user_request", ""),
                                 label="Input reservoir model path",
                                 clearable=True,
-                                name="searchInput"
+                                name="searchInput",
+                                tabindex="1"
                             ):
                             with vuetify.Template(v_slot_append=True,
                                 properties=[("v_slot_append", "v-slot:append")],):
-                                vuetify.VBtn('Load', click=ctrl.load_file)
+                                vuetify.VBtn('Load', tabindex="0", click=ctrl.load_file)
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
                     with vuetify.VCard(classes="overflow-auto", max_width="40vw", max_height="30vh"):
@@ -621,19 +624,22 @@ def update_plot_size(figure_size, **kwargs):
     PLOTS['plot1d'].update_layout(height=height, width=width)
     ctrl.update_plot(PLOTS['plot1d'])
 
-@state.change("tableToShow")
-def updateTableWidgets(tableToShow, **kwargs):
+@state.change("tableToShow", "tableXAxis")
+def updateTableWidgets(tableToShow, tableXAxis, **kwargs):
     if tableToShow is None:
         return
     table = FIELD['model'].tables[tableToShow]
     if len(table.domain) == 1:
-        # state.domains = []
         state.needDomain = False
-    else:
-        state.domainMin = table.index.get_level_values(0).min()
-        state.domainMax = table.index.get_level_values(0).max()
-        state.domainStep = (state.domainMax - state.domainMin) / 100
-        # state.domains = list(sorted(set(table.index.get_level_values(0))))
+    elif len(table.domain) == 2:
+        state.domains = list(table.index.names)
+        if tableXAxis is not None:
+            i = (state.domains.index(tableXAxis) + 1)%2
+            state.domainName = state.domains[i]
+            state.domainMin = table.index.get_level_values(i).min()
+            state.domainMax = table.index.get_level_values(i).max()
+            state.domainStep = (state.domainMax - state.domainMin) / 100
+            state.domainToShow = (state.domainMin + state.domainMax) / 2
         state.needDomain = True
 
 def plot_1d_table(fig, table):
@@ -663,10 +669,10 @@ def plot_1d_table(fig, table):
     fig.update_layout(
         xaxis=dict(domain=[0, 1.1-0.1*len(table.columns)]),
         **layout)
-    fig.update_xaxes(title_text=table.domain[0])
+    fig.update_xaxes(title_text=table.index.name)
     return fig
 
-def plot_table(tableToShow, domainToShow, height, width):
+def plot_table(tableToShow, tableXAxis, domainToShow, height, width):
     fig = go.Figure()
     fig.update_layout(
         height=height,
@@ -684,24 +690,39 @@ def plot_table(tableToShow, domainToShow, height, width):
     if len(domain) == 1:
         fig = plot_1d_table(fig, table)
     elif len(domain) == 2:
+        if tableXAxis is None:
+            return fig
         if domainToShow is None:
             return fig
-        cropped_table = table.loc[table.index.get_level_values(0) == domainToShow]
-        cropped_table = cropped_table.droplevel(0)
-        cropped_table.domain = [domain[1]]
-        fig = plot_1d_table(fig, cropped_table)
+
+        new_table = pd.DataFrame(columns=table.columns)
+        vals = [list(set(table.index.get_level_values(0))),
+                list(set(table.index.get_level_values(1)))]
+
+        i = list(table.index.names).index(tableXAxis)
+        x = np.linspace(min(vals[i])*1.001, max(vals[i])*0.999, 100)
+
+        inp = np.zeros((len(x), 2))
+        inp[:, i] = x
+        inp[:, (i+1)%2] = domainToShow
+
+        new_table = pd.DataFrame(table(inp),
+                                 columns=table.columns,
+                                 index=x)
+        new_table.index.name = tableXAxis
+        fig = plot_1d_table(fig, new_table)
 
     return fig
 
-@state.change("figure_size", "tableToShow", "domainToShow")
-def update_tplot_size(figure_size, tableToShow, domainToShow, **kwargs):
+@state.change("figure_size_1d", "tableToShow", "tableXAxis", "domainToShow")
+def update_tplot_size(figure_size_1d, tableToShow, tableXAxis, domainToShow, **kwargs):
     _ = kwargs
-    if figure_size is None:
+    if figure_size_1d is None:
         return
-    bounds = figure_size.get("size", {})
+    bounds = figure_size_1d.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
-    ctrl.update_tplot(plot_table(tableToShow, domainToShow, height, width))
+    ctrl.update_tplot(plot_table(tableToShow, tableXAxis, domainToShow, height, width))
 
 def render_1d():
     with vuetify.VContainer(fluid=True, style='align-items: center', classes="fill-height pa-0 ma-0"):
@@ -755,7 +776,7 @@ def render_1d():
         
         with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
-                with trame.SizeObserver("figure_size"):
+                with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
 
         with vuetify.VRow(style="width:90vw;"):
@@ -766,18 +787,35 @@ def render_1d():
                     label="Select data"
                     )
             with vuetify.VCol():
-                vuetify.VSlider(
+                vuetify.VSelect(
+                    v_model=("tableXAxis", None),
+                    items=("domains", ),
+                    label="Select x-axis",
                     disabled=("!needDomain",),
-                    v_model=("domainToShow", None),
+                    )
+            with vuetify.VCol():
+                with vuetify.VSlider(
+                    label=('domainName',),
+                    disabled=("!needDomain",),
+                    v_model=("domainToShow", ),
                     min=("domainMin",),
                     max=("domainMax",),
                     step=("domainStep",),
                     hide_details=False,
                     dense=False
-                    )
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model=("domainToShow",),
+                            density="compact",
+                            style="width: 80px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
         with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
-                with trame.SizeObserver("figure_size"):
+                with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_tplot = plotly.Figure(**CHART_STYLE).update
 
 ctrl.on_server_ready.add(ctrl.view_update)
@@ -788,7 +826,7 @@ with VAppLayout(server) as layout:
             vuetify.VAppBarNavIcon(click='drawer =! drawer')
 
             vuetify.VToolbarTitle("DeepField")
-            with vuetify.VTabs(v_model=('activeTab', 'home'), style='left: 50%; transform: translateX(-50%);'):
+            with vuetify.VTabs(v_model=('activeTab', 'home'), style='flex: 2'):
                 vuetify.VTab('Home', value="home")
                 vuetify.VTab('3d', value="3d")
                 vuetify.VTab('2d', value="2d")
