@@ -790,19 +790,24 @@ with VAppLayout(server) as layout:
                 )
             vuetify.VCheckbox(
                 label='Threshold selector',
-                v_if="activeTab === '3d'"
+                v_if="activeTab === '3d'",
+                style='height: 8vh'
                 )
             vuetify.VCheckbox(
                 label='Slice range selector',
-                v_if="activeTab === '3d'"
+                v_if="activeTab === '3d'",
+                classes='pa-0 ma-0',
+                style='height: 8vh'
                 )
             vuetify.VCheckbox(
                 label='Show wells',
-                v_if="activeTab === '3d'"
+                v_if="activeTab === '3d'",
+                style='height: 8vh'
                 )
             vuetify.VCheckbox(
                 label='Show faults',
-                v_if="activeTab === '3d'"
+                v_if="activeTab === '3d'",
+                style='height: 8vh'
                 )
             vuetify.VSelect(
                 label="Colormap",
