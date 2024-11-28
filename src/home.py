@@ -139,27 +139,45 @@ def make_empty_dataset():
     FIELD['actor'] = actor
     FIELD['dataset'] = dataset
 
+#Добавлено для сочетание клавиш
+def on_keydown(key_code, alt_pressed):
+    if key_code == "Tab":
+        state.user_request = state.dir_list[0]
+    if key_code == "Enter":
+        ctrl.load_file()
+    if alt_pressed and key_code == "Digit1":
+        state.activeTab = "1d"
+    if alt_pressed and key_code == "Digit2":
+        state.activeTab = "2d"
+    if alt_pressed and key_code == "Digit3":
+        state.activeTab = "3d"
+    if alt_pressed and key_code == "KeyH":
+        state.activeTab = "home"
+    if alt_pressed and key_code == "KeyI":
+        state.activeTab = "info"
+
 def render_home():
     with html.Div(style='position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80vw; height: 10vh'):
         with vuetify.VContainer():
             with vuetify.VRow():
                 with vuetify.VCol():
-                    with vuetify.VTextField(
+                    vuetify.VTextField(
+                        ref="searchInput",
                         v_model=("user_request", ""),
                         label="Input reservoir model path",
                         clearable=True,
                         name="searchInput",
-                        tabindex="1"
-                        ):
-                        with vuetify.Template(v_slot_append=True,
-                            properties=[("v_slot_append", "v-slot:append")],):
-                            vuetify.VBtn('Load', tabindex="0", click=ctrl.load_file)
+                        keydown=(on_keydown, "[$event.code, $event.altKey]"),
+                        __events=["keydown"])
+                with vuetify.VCol(cols=1):
+                    vuetify.VBtn('Load', click=ctrl.load_file)
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
-                    with vuetify.VCard(classes="overflow-auto", max_width="40vw", max_height="30vh"):
+                    with vuetify.VCard(
+                        classes="overflow-auto", max_width="40vw", max_height="30vh"):
                         with vuetify.VList():
                             with vuetify.VListItem(
-                                v_for='item, index in dir_list',
-                                click="user_request = item"
-                                ):
-                                vuetify.VListItemTitle('{{item}}')
+                                v_for="item, index in dir_list",
+                                click="user_request = item"):
+                                vuetify.VListItemTitle("{{item}}")
+
