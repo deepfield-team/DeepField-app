@@ -96,6 +96,9 @@ state.recentFiles = []
 state.i_cells = []
 state.j_cells = []
 state.k_cells = []
+state.i_slice = [0, 0]
+state.j_slice = [0, 0]
+state.k_slice = [0, 0]
 
 
 def make_empty_dataset():
@@ -123,6 +126,48 @@ def reset_camera():
     camera.SetPosition(fx-dist/np.sqrt(3), fy-dist/np.sqrt(3), fz-dist/np.sqrt(3))
     camera.SetViewUp(0, 0, -1)
     renderer.ResetCamera()
+
+@state.change("i_slice", "j_slice", "k_slice")
+def update_threshold_slices(i_slice, j_slice, k_slice, **kwargs):
+    _ = kwargs
+    if not FIELD['c_data']:
+        return
+
+    dataset = FIELD['dataset']
+    vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
+    vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])
+    vtk_array_k = dsa.numpyTovtkDataArray(FIELD['c_data']["K"])
+    dataset.GetCellData().SetScalars(vtk_array_i)
+    dataset.GetCellData().SetScalars(vtk_array_j)
+    dataset.GetCellData().SetScalars(vtk_array_k)
+
+    threshold = vtk.vtkThreshold()
+    threshold.SetInputData(dataset)
+    threshold.SetUpperThreshold(i_slice[1])
+    threshold.SetLowerThreshold(i_slice[0])
+    threshold.SetInputArrayToProcess(0, 0, 0, 1, "I")
+
+    threshold_j = vtk.vtkThreshold()
+    threshold_j.SetInputData(dataset)
+    threshold_j.SetInputConnection(threshold.GetOutputPort())
+    threshold_j.SetUpperThreshold(j_slice[1])
+    threshold_j.SetLowerThreshold(j_slice[0])
+    threshold_j.SetInputArrayToProcess(0, 0, 0, 1, "J")
+
+    threshold_k = vtk.vtkThreshold()
+    threshold_k.SetInputData(dataset)
+    threshold_k.SetInputConnection(threshold_j.GetOutputPort())
+    threshold_k.SetUpperThreshold(k_slice[1])
+    threshold_k.SetLowerThreshold(k_slice[0])
+    threshold_k.SetInputArrayToProcess(0, 0, 0, 1, "K")
+
+    mapper = vtk.vtkDataSetMapper()                                                
+    mapper.SetInputConnection(threshold_k.GetOutputPort())
+
+    FIELD['actor'].SetMapper(mapper)
+    update_field(state.activeField, state.activeStep, view_update=False)
+    update_cmap(state.colormap)
+    return
 
 make_empty_dataset()
 reset_camera()
@@ -213,6 +258,11 @@ def load_file(*args, **kwargs):
     FIELD['data1d']['wells'] = res
 
     state.dimens = [int(x) for x in field.grid.dimens]
+
+    state.i_slice = [0, state.dimens[0]]
+    state.j_slice = [0, state.dimens[1]]
+    state.k_slice = [0, state.dimens[2]]
+
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
     state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
@@ -918,6 +968,38 @@ with VAppLayout(server) as layout:
                 dense=False,
                 thumb_label=True,
                 v_if="activeTab === '3d'"
+                )
+            vuetify.VRangeSlider(
+                min=1,
+                max=("dimens[0]",),
+                step=1,                
+                v_model=("i_slice", ),
+                label="I",
+                thumb_label = True,
+                hide_details=False,
+                classes="mt-8 mr-3",
+                )
+            vuetify.VDivider(vertical=True, classes="mx-2")
+            vuetify.VRangeSlider(
+                min=1,
+                max=("dimens[1]",),
+                step=1,                
+                v_model=("j_slice", ),
+                label="J",
+                thumb_label = True,
+                hide_details=False,
+                classes="mt-8 mr-3",
+                )
+            vuetify.VDivider(vertical=True, classes="mx-2")
+            vuetify.VRangeSlider(
+                min=1,
+                max=("dimens[2]",),
+                step=1,                
+                v_model=("k_slice", ),
+                label="K",
+                thumb_label = True,
+                hide_details=False,
+                classes="mt-8 mr-3",
                 )
 
 if __name__ == "__main__":
