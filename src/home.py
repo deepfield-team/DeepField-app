@@ -139,12 +139,18 @@ def make_empty_dataset():
     FIELD['actor'] = actor
     FIELD['dataset'] = dataset
 
-#Добавлено для сочетание клавиш
 def on_keydown(key_code, alt_pressed):
-    if key_code == "Tab":
-        state.user_request = state.dir_list[0]
+    # if key_code == "Tab":
+        # pass
     if key_code == "Enter":
-        ctrl.load_file()
+        _, ext = os.path.splitext(state.user_request)
+        if ext.lower() in ['.data', '.hdf5']:
+            ctrl.load_file()
+            return
+        path = state.dir_list[0]
+        if os.path.isdir(path):
+            path += "\\"
+        state.user_request = path
     if alt_pressed and key_code == "Digit1":
         state.activeTab = "1d"
     if alt_pressed and key_code == "Digit2":
@@ -161,16 +167,17 @@ def render_home():
         with vuetify.VContainer():
             with vuetify.VRow():
                 with vuetify.VCol():
-                    vuetify.VTextField(
+                    with vuetify.VTextField(
                         ref="searchInput",
                         v_model=("user_request", ""),
                         label="Input reservoir model path",
                         clearable=True,
                         name="searchInput",
                         keydown=(on_keydown, "[$event.code, $event.altKey]"),
-                        __events=["keydown"])
-                with vuetify.VCol(cols=1):
-                    vuetify.VBtn('Load', click=ctrl.load_file)
+                        __events=["keydown"]):
+                        with vuetify.Template(v_slot_append=True,
+                            properties=[("v_slot_append", "v-slot:append")],):
+                            vuetify.VBtn('Load', click=ctrl.load_file)
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
                     with vuetify.VCard(
