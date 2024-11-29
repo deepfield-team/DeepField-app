@@ -36,7 +36,7 @@ state.k_cells = []
 state.i_slice = [0, 0]
 state.j_slice = [0, 0]
 state.k_slice = [0, 0]
-
+state.progress  = 0
 
 def filter_path(path):
     "True if path is a directory or has .data or .hdf5 extension."
@@ -61,6 +61,8 @@ def load_file(*args, **kwargs):
 
     FIELD['model'] = field
 
+    state.progress  = 100
+    
     dataset = field.get_vtk_dataset()
     FIELD['dataset'] = dataset
 
@@ -205,6 +207,15 @@ def render_home():
                         with vuetify.Template(v_slot_append=True,
                             properties=[("v_slot_append", "v-slot:append")],):
                             vuetify.VBtn('Load', click=ctrl.load_file)
+                        with vuetify.Template(
+                            v_slot_loader=True,
+                            properties=[("v_slot_loader", "v-slot:loader")]):
+                            vuetify.VProgressLinear(
+                                v_model=("progress", 0),
+                                height=7,
+                                color=("progress_color", "success"),
+                                indeterminate=False,
+                                style={"width": "100%"})
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
                     with vuetify.VCard(
