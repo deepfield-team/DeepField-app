@@ -5,8 +5,21 @@ import vtk
 from trame.widgets import vtk as vtk_widgets, vuetify3 as vuetify
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
+from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 
-from .config import state, ctrl, FIELD, render_window, VTK_VIEW_SETTINGS
+from .config import state, ctrl, FIELD, renderer
+
+VTK_VIEW_SETTINGS = {
+    "interactive_ratio": 1,
+    "interactive_quality": 90,
+}
+
+render_window = vtkRenderWindow()
+render_window.AddRenderer(renderer)
+
+rw_interactor = vtkRenderWindowInteractor()
+rw_interactor.SetRenderWindow(render_window)
+rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
 
 @state.change("activeField", "activeStep")
