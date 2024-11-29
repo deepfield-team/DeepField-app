@@ -83,9 +83,9 @@ def load_file(*args, **kwargs):
 
     state.dimens = [int(x) for x in field.grid.dimens]
 
-    state.i_slice = [0, state.dimens[0]]
-    state.j_slice = [0, state.dimens[1]]
-    state.k_slice = [0, state.dimens[2]]
+    state.i_slice = [1, state.dimens[0]]
+    state.j_slice = [1, state.dimens[1]]
+    state.k_slice = [1, state.dimens[2]]
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))

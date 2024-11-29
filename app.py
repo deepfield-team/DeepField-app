@@ -75,6 +75,7 @@ with VAppLayout(server) as layout:
                 )
             vuetify.VCheckbox(
                 label='Slice range selector',
+                v_model='show_slice',
                 v_if="activeTab === '3d'",
                 classes='pa-0 ma-0',
                 style='height: 8vh'
@@ -112,38 +113,7 @@ with VAppLayout(server) as layout:
                 thumb_label=True,
                 v_if="activeTab === '3d'"
                 )
-            vuetify.VRangeSlider(
-                min=1,
-                max=("dimens[0]",),
-                step=1,
-                v_model=("i_slice",),
-                label="I",
-                thumb_label = True,
-                hide_details=False,
-                classes="mt-8 mr-3",
-                )
-            vuetify.VDivider(vertical=True, classes="mx-2")
-            vuetify.VRangeSlider(
-                min=1,
-                max=("dimens[1]",),
-                step=1,
-                v_model=("j_slice", ),
-                label="J",
-                thumb_label = True,
-                hide_details=False,
-                classes="mt-8 mr-3",
-                )
-            vuetify.VDivider(vertical=True, classes="mx-2")
-            vuetify.VRangeSlider(
-                min=1,
-                max=("dimens[2]",),
-                step=1,
-                v_model=("k_slice", ),
-                label="K",
-                thumb_label = True,
-                hide_details=False,
-                classes="mt-8 mr-3",
-                )
+
 
 if __name__ == "__main__":
     server.start()

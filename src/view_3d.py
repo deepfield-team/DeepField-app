@@ -23,7 +23,7 @@ rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
 
 @state.change("activeField", "activeStep")
-def update_field(activeField, activeStep, **kwargs):
+def update_field(activeField, activeStep, view_update=True, **kwargs):
     _ = kwargs
     if activeField is None:
         return
@@ -41,7 +41,8 @@ def update_field(activeField, activeStep, **kwargs):
     mapper = FIELD['actor'].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
-    ctrl.view_update()
+    if view_update:
+        ctrl.view_update()
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
@@ -68,15 +69,15 @@ def update_threshold_slices(i_slice, j_slice, k_slice, **kwargs):
     dataset.GetCellData().SetScalars(vtk_array_j)
     dataset.GetCellData().SetScalars(vtk_array_k)
 
-    threshold = vtk.vtkThreshold()
-    threshold.SetInputData(dataset)
-    threshold.SetUpperThreshold(i_slice[1])
-    threshold.SetLowerThreshold(i_slice[0])
-    threshold.SetInputArrayToProcess(0, 0, 0, 1, "I")
+    threshold_i = vtk.vtkThreshold()
+    threshold_i.SetInputData(dataset)
+    threshold_i.SetUpperThreshold(i_slice[1])
+    threshold_i.SetLowerThreshold(i_slice[0])
+    threshold_i.SetInputArrayToProcess(0, 0, 0, 1, "I")
 
     threshold_j = vtk.vtkThreshold()
     threshold_j.SetInputData(dataset)
-    threshold_j.SetInputConnection(threshold.GetOutputPort())
+    threshold_j.SetInputConnection(threshold_i.GetOutputPort())
     threshold_j.SetUpperThreshold(j_slice[1])
     threshold_j.SetLowerThreshold(j_slice[0])
     threshold_j.SetInputArrayToProcess(0, 0, 0, 1, "J")
@@ -104,12 +105,94 @@ def update_opacity(opacity, **kwargs):
     ctrl.view_update()
 
 def render_3d():
-    with vuetify.VContainer(fluid=True, classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow(dense=True, style="height: 100%;"):
-            with vuetify.VCol(
-                classes="pa-0",
-                style="border-right: 1px solid #ccc; position: relative;"
-                ):
+    with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
+        with vuetify.VRow(style="width:100%;", classes='pa-0'):
+            with vuetify.VCol():
+                with vuetify.VRangeSlider(
+                    v_if='show_slice',
+                    min=1,
+                    max=("dimens[0]",),
+                    step=1,
+                    v_model=("i_slice",),
+                    label="I",
+                    hide_details=True
+                    ):
+                    with vuetify.Template(v_slot_prepend=True,
+                        properties=[("v_slot_prepend", "v-slot:prepend")],):
+                        vuetify.VTextField(
+                            v_model="i_slice[0]",
+                            density="compact",
+                            style="width: 70px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="i_slice[1]",
+                            density="compact",
+                            style="width: 70px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
+            with vuetify.VCol():
+                with vuetify.VRangeSlider(
+                    v_if='show_slice',
+                    min=1,
+                    max=("dimens[1]",),
+                    step=1,
+                    v_model=("j_slice",),
+                    label="J",
+                    hide_details=True
+                    ):
+                    with vuetify.Template(v_slot_prepend=True,
+                        properties=[("v_slot_prepend", "v-slot:prepend")],):
+                        vuetify.VTextField(
+                            v_model="j_slice[0]",
+                            density="compact",
+                            style="width: 70px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="j_slice[1]",
+                            density="compact",
+                            style="width: 70px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
+            with vuetify.VCol():
+                with vuetify.VRangeSlider(
+                    v_if='show_slice',
+                    min=1,
+                    max=("dimens[2]",),
+                    step=1,
+                    v_model=("k_slice",),
+                    label="K",
+                    hide_details=True
+                    ):
+                    with vuetify.Template(v_slot_prepend=True,
+                        properties=[("v_slot_prepend", "v-slot:prepend")],):
+                        vuetify.VTextField(
+                            v_model="k_slice[0]",
+                            density="compact",
+                            style="width: 70px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="k_slice[1]",
+                            density="compact",
+                            style="width: 70px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
+        with vuetify.VRow(style="width:100%;", classes='pa-0'):
+            with vuetify.VCol():
                 with vuetify.VSlider(
                     v_if='need_time_slider',
                     min=0,
@@ -117,9 +200,7 @@ def render_3d():
                     step=1,
                     v_model=('activeStep',),
                     label="Timestep",
-                    classes="mt-5 mr-5 ml-5",
-                    hide_details=False,
-                    dense=False
+                    hide_details=True
                     ):
                     with vuetify.Template(v_slot_append=True,
                         properties=[("v_slot_append", "v-slot:append")],):
@@ -130,6 +211,8 @@ def render_3d():
                             type="number",
                             variant="outlined",
                             hide_details=True)
+        with vuetify.VRow(style="height: 90%; width: 100%"):
+            with vuetify.VCol(classes="pa-0"):
                 view = vtk_widgets.VtkRemoteView(
                     render_window,
                     **VTK_VIEW_SETTINGS
