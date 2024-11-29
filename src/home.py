@@ -18,14 +18,18 @@ from deepfield import Field
 from .config import state, ctrl, FIELD, renderer
 from .common import reset_camera
 
+
+state.dir_list = []
+state.path_index = None
+state.update_dir_list = True
+state.recentFiles = []
+
 state.field_attrs = []
 state.wellnames = []
-state.dir_list = []
 state.dimens = [0, 0, 0]
 state.max_timestep = 0
 state.data1d = []
 state.tables = []
-state.recentFiles = []
 state.i_cells = []
 state.j_cells = []
 state.k_cells = []
@@ -45,7 +49,8 @@ def filter_path(path):
 def get_path_variants(user_request, **kwargs):
     _ = kwargs
     paths = list(glob(user_request + "*"))
-    state.dir_list = [p for p in paths if filter_path(p)]
+    if state.update_dir_list:
+        state.dir_list = [p for p in paths if filter_path(p)]
 
 def load_file(*args, **kwargs):
     _ = args, kwargs
@@ -142,15 +147,36 @@ def make_empty_dataset():
 def on_keydown(key_code, alt_pressed):
     # if key_code == "Tab":
         # pass
+    if key_code == 'ArrowDown':
+        if state.path_index is None:
+            state.path_index = 0
+        else:
+            state.path_index = (state.path_index + 1) % len(state.dir_list)
+        state.update_dir_list = False
+        state.user_request = state.dir_list[state.path_index]
+        return
+    if key_code == 'ArrowUp':
+        if state.path_index is None:
+            state.path_index = -1
+        else:
+            state.path_index = (state.path_index - 1) % len(state.dir_list)
+        state.update_dir_list = False
+        state.user_request = state.dir_list[state.path_index]
+        return
     if key_code == "Enter":
+        state.update_dir_list = True
         _, ext = os.path.splitext(state.user_request)
         if ext.lower() in ['.data', '.hdf5']:
             ctrl.load_file()
             return
-        path = state.dir_list[0]
-        if os.path.isdir(path):
-            path += "\\"
-        state.user_request = path
+        if state.path_index is None:
+            state.path_index = 0
+        if state.path_index < len(state.dir_list):
+            path = state.dir_list[state.path_index]
+            if os.path.isdir(path):
+                path += "\\"
+            state.user_request = path
+            state.path_index = None
     if alt_pressed and key_code == "Digit1":
         state.activeTab = "1d"
     if alt_pressed and key_code == "Digit2":
@@ -161,6 +187,7 @@ def on_keydown(key_code, alt_pressed):
         state.activeTab = "home"
     if alt_pressed and key_code == "KeyI":
         state.activeTab = "info"
+    state.update_dir_list = True
 
 def render_home():
     with html.Div(style='position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80vw; height: 10vh'):
@@ -185,6 +212,7 @@ def render_home():
                         with vuetify.VList():
                             with vuetify.VListItem(
                                 v_for="item, index in dir_list",
-                                click="user_request = item"):
+                                click="user_request = item"
+                                ):
                                 vuetify.VListItemTitle("{{item}}")
 
