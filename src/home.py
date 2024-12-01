@@ -23,6 +23,8 @@ state.dir_list = []
 state.path_index = None
 state.update_dir_list = True
 state.recentFiles = []
+state.loading = False
+state.loadComplete = False
 
 state.field_attrs = []
 state.wellnames = []
@@ -48,12 +50,19 @@ def filter_path(path):
 @state.change("user_request")
 def get_path_variants(user_request, **kwargs):
     _ = kwargs
+    state.loading = False
+    state.loadComplete = False
     paths = list(glob(user_request + "*"))
     if state.update_dir_list:
         state.dir_list = [p for p in paths if filter_path(p)]
 
-def load_file(*args, **kwargs):
-    _ = args, kwargs
+@state.change("loading")
+def load_file(loading, **kwargs):
+    _ = kwargs
+
+    if not loading:
+        return
+
     field = Field(state.user_request).load()
 
     if state.user_request not in state.recentFiles:
@@ -126,6 +135,9 @@ def load_file(*args, **kwargs):
     reset_camera()
     ctrl.view_update()
 
+    state.loading = False
+    state.loadComplete = True
+
 ctrl.load_file = load_file
 
 def make_empty_dataset():
@@ -144,9 +156,7 @@ def make_empty_dataset():
     FIELD['actor'] = actor
     FIELD['dataset'] = dataset
 
-def on_keydown(key_code, alt_pressed):
-    # if key_code == "Tab":
-        # pass
+def on_keydown(key_code):
     if key_code == 'ArrowDown':
         if state.path_index is None:
             state.path_index = 0
@@ -167,7 +177,7 @@ def on_keydown(key_code, alt_pressed):
         state.update_dir_list = True
         _, ext = os.path.splitext(state.user_request)
         if ext.lower() in ['.data', '.hdf5']:
-            ctrl.load_file()
+            # do smth to start loading
             return
         if state.path_index is None:
             state.path_index = 0
@@ -177,16 +187,6 @@ def on_keydown(key_code, alt_pressed):
                 path += "\\"
             state.user_request = path
             state.path_index = None
-    if alt_pressed and key_code == "Digit1":
-        state.activeTab = "1d"
-    if alt_pressed and key_code == "Digit2":
-        state.activeTab = "2d"
-    if alt_pressed and key_code == "Digit3":
-        state.activeTab = "3d"
-    if alt_pressed and key_code == "KeyH":
-        state.activeTab = "home"
-    if alt_pressed and key_code == "KeyI":
-        state.activeTab = "info"
     state.update_dir_list = True
 
 def render_home():
@@ -200,19 +200,31 @@ def render_home():
                         label="Input reservoir model path",
                         clearable=True,
                         name="searchInput",
-                        keydown=(on_keydown, "[$event.code, $event.altKey]"),
+                        keydown=(on_keydown, "[$event.code]"),
                         __events=["keydown"]):
                         with vuetify.Template(v_slot_append=True,
                             properties=[("v_slot_append", "v-slot:append")],):
-                            vuetify.VBtn('Load', click=ctrl.load_file)
+                            vuetify.VBtn('Load', click='loading = true')
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
+                    vuetify.VProgressCircular(
+                        v_if='loading',
+                        indeterminate=True,
+                        size="60",
+                        width="7"
+                        )
                     with vuetify.VCard(
-                        classes="overflow-auto", max_width="40vw", max_height="30vh"):
-                        with vuetify.VList():
+                        v_if='loadComplete'
+                        ):
+                        vuetify.VCardText('Loading completed')
+                    with vuetify.VCard(
+                        v_if='!loading & !loadComplete',
+                        classes="overflow-auto",
+                        max_width="40vw",
+                        max_height="30vh"):
+                        with vuetify.VList(v_if='!loading'):
                             with vuetify.VListItem(
                                 v_for="item, index in dir_list",
                                 click="user_request = item"
                                 ):
                                 vuetify.VListItemTitle("{{item}}")
-

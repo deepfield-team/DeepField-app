@@ -108,6 +108,26 @@ def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="width:100%;", classes='pa-0'):
             with vuetify.VCol():
+                with vuetify.VSlider(
+                    v_if='need_time_slider',
+                    min=0,
+                    max=("max_timestep",),
+                    step=1,
+                    v_model=('activeStep',),
+                    label="Timestep",
+                    hide_details=True
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="activeStep",
+                            density="compact",
+                            style="width: 80px",
+                            type="number",
+                            variant="outlined",
+                            hide_details=True)
+        with vuetify.VRow(style="width:100%;", classes='pa-0'):
+            with vuetify.VCol():
                 with vuetify.VRangeSlider(
                     v_if='show_slice',
                     min=1,
@@ -188,26 +208,6 @@ def render_3d():
                             v_model="k_slice[1]",
                             density="compact",
                             style="width: 70px",
-                            type="number",
-                            variant="outlined",
-                            hide_details=True)
-        with vuetify.VRow(style="width:100%;", classes='pa-0'):
-            with vuetify.VCol():
-                with vuetify.VSlider(
-                    v_if='need_time_slider',
-                    min=0,
-                    max=("max_timestep",),
-                    step=1,
-                    v_model=('activeStep',),
-                    label="Timestep",
-                    hide_details=True
-                    ):
-                    with vuetify.Template(v_slot_append=True,
-                        properties=[("v_slot_append", "v-slot:append")],):
-                        vuetify.VTextField(
-                            v_model="activeStep",
-                            density="compact",
-                            style="width: 80px",
                             type="number",
                             variant="outlined",
                             hide_details=True)
