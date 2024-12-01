@@ -4,7 +4,7 @@ from trame.ui.vuetify3 import VAppLayout
 from src.home import render_home, make_empty_dataset
 from src.view_3d import render_3d
 from src.view_2d import render_2d
-from src.view_1d import render_1d
+from src.view_1d import render_ts, render_pvt
 from src.common import reset_camera
 from src.info import render_info
 from src.config import server, state
@@ -19,15 +19,16 @@ with VAppLayout(server) as layout:
             vuetify.VAppBarNavIcon(click='drawer =! drawer')
 
             vuetify.VToolbarTitle("DeepField")
-            with vuetify.VTabs(v_model=('activeTab', 'home'), style='flex: 2'):
+            vuetify.VSpacer()
+            with vuetify.VTabs(v_model=('activeTab', 'home')):
                 vuetify.VTab('Home', value="home")
-                vuetify.VTab('3d', value="3d")
-                vuetify.VTab('2d', value="2d")
-                vuetify.VTab('1d', value="1d")
+                vuetify.VTab('3d view', value="3d")
+                vuetify.VTab('Slice view', value="2d")
+                vuetify.VTab('Timeseries', value="ts")
+                vuetify.VTab('PVT/RPP', value="pvt")
                 vuetify.VTab('Info', value="info")
-
-            with vuetify.VBtn(icon=True):
-                vuetify.VIcon("mdi-settings")
+                vuetify.VTab('Script', value="script")
+            vuetify.VSpacer()
             with vuetify.VBtn(icon=True):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
             with vuetify.VBtn(icon=True):
@@ -40,10 +41,14 @@ with VAppLayout(server) as layout:
                 render_3d()
             with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
                 render_2d()
-            with html.Div(v_if="activeTab === '1d'", classes="fill-height"):
-                render_1d()
+            with html.Div(v_if="activeTab === 'ts'", classes="fill-height"):
+                render_ts()
+            with html.Div(v_if="activeTab === 'pvt'", classes="fill-height"):
+                render_pvt()
             with html.Div(v_if="activeTab === 'info'"):
                 render_info()
+            with html.Div(v_if="activeTab === 'script'"):
+                pass
 
         with vuetify.VNavigationDrawer(
             app=True,

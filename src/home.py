@@ -200,27 +200,32 @@ def render_home():
                         label="Input reservoir model path",
                         clearable=True,
                         name="searchInput",
+                        autofocus=True,
                         keydown=(on_keydown, "[$event.code]"),
                         __events=["keydown"]):
                         with vuetify.Template(v_slot_append=True,
                             properties=[("v_slot_append", "v-slot:append")],):
                             vuetify.VBtn('Load', click='loading = true')
+                        with vuetify.Template(
+                                v_slot_loader=True,
+                                properties=[("v_slot_loader", "v-slot:loader")]
+                            ):
+                            vuetify.VProgressLinear(
+                                height=7,
+                                # color=("progress_color", "success"),
+                                indeterminate=("loading", ),
+                                style={"width": "100%"}
+                            )
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
-                    vuetify.VProgressCircular(
-                        v_if='loading',
-                        indeterminate=True,
-                        size="60",
-                        width="7"
-                        )
-                    with vuetify.VCard(
-                        v_if='loadComplete'
-                        ):
+                    with vuetify.VCard(v_if='loading'):
+                        vuetify.VCardText('Loading data, please wait')
+                    with vuetify.VCard(v_if='loadComplete'):
                         vuetify.VCardText('Loading completed')
                     with vuetify.VCard(
                         v_if='!loading & !loadComplete',
                         classes="overflow-auto",
-                        max_width="40vw",
+                        max_width="100%",
                         max_height="30vh"):
                         with vuetify.VList(v_if='!loading'):
                             with vuetify.VListItem(

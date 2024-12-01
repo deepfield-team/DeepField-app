@@ -229,7 +229,7 @@ def update_tplot_size(figure_size_1d, tableToShow, tableXAxis, domainToShow, **k
     height = bounds.get("height", 100)
     ctrl.update_tplot(plot_table(tableToShow, tableXAxis, domainToShow, height, width))
 
-def render_1d():
+def render_ts():
     with vuetify.VContainer(fluid=True, style='align-items: center', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow():
             with vuetify.VCol():
@@ -284,6 +284,8 @@ def render_1d():
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
 
+def render_pvt():
+    with vuetify.VContainer(fluid=True, style='align-items: center', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="width:90vw;"):
             with vuetify.VCol():
                 vuetify.VSelect(
