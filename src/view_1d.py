@@ -230,77 +230,77 @@ def update_tplot_size(figure_size_1d, tableToShow, tableXAxis, domainToShow, **k
     ctrl.update_tplot(plot_table(tableToShow, tableXAxis, domainToShow, height, width))
 
 def render_ts():
-    with vuetify.VContainer(fluid=True, style='align-items: center', classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow():
-            with vuetify.VCol():
+    with vuetify.VContainer(fluid=True, style='align-items: top', classes="pa-0 ma-0"):
+        with vuetify.VRow(classes='pa-0 ma-0'):
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     v_model=("data1dToShow", None),
                     items=("data1d", ),
                     label="Select data"
                     )
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("wellData",),
                     v_model=("i_cell", 'Average'),
                     items=("i_cells", ),
                     label="I index"
                     )
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("wellData",),
                     v_model=("j_cell", 'Average'),
                     items=("j_cells", ),
                     label="J index"
                     )
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("wellData",),
                     v_model=("k_cell", 'Average'),
                     items=("k_cells", ),
                     label="K index"
                     )
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("gridData",),
                     v_model=("wellNameToShow", None),
                     items=("wellnames", ),
                     label="Select well"
                     )
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSwitch(
                     v_model=("secondAxis", False),
                     color="primary",
                     label="Second Axis",
                     hide_details=True)
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
                 vuetify.VBtn('Add line', click=ctrl.add_line_to_plot)
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
                 vuetify.VBtn('Undo', click=ctrl.remove_last_line)
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
                 vuetify.VBtn('Clean', click=ctrl.clean_plot)
 
-        with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
+        with vuetify.VRow(style="width: 100%; height: 60vh", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
 
 def render_pvt():
-    with vuetify.VContainer(fluid=True, style='align-items: center', classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow(style="width:90vw;"):
-            with vuetify.VCol():
+    with vuetify.VContainer(fluid=True, style='align-items: top', classes="pa-0 ma-0"):
+        with vuetify.VRow(classes='pa-0 ma-0'):
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     v_model=("tableToShow", None),
                     items=("tables", ),
                     label="Select data"
                     )
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     v_model=("tableXAxis", None),
                     items=("domains", ),
                     label="Select x-axis",
                     disabled=("!needDomain",),
                     )
-            with vuetify.VCol():
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 with vuetify.VSlider(
                     label=('domainName',),
                     disabled=("!needDomain",),
@@ -320,7 +320,7 @@ def render_pvt():
                             type="number",
                             variant="outlined",
                             hide_details=True)
-        with vuetify.VRow(style="width:90vw; height: 60vh; margin 0;", classes='pa-0'):
+        with vuetify.VRow(style="width: 100%; height: 60vh", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_tplot = plotly.Figure(**CHART_STYLE).update
