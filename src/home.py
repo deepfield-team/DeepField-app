@@ -52,7 +52,7 @@ def get_path_variants(user_request, **kwargs):
     _ = kwargs
     state.loading = False
     state.loadComplete = False
-    paths = list(glob(user_request + "*"))
+    paths = list(glob(user_request + "*")) if user_request is not None else []
     if state.update_dir_list:
         state.dir_list = [p for p in paths if filter_path(p)]
 
@@ -206,22 +206,21 @@ def render_home():
                         with vuetify.Template(v_slot_append=True,
                             properties=[("v_slot_append", "v-slot:append")],):
                             vuetify.VBtn('Load', click='loading = true')
-                        with vuetify.Template(
-                                v_slot_loader=True,
-                                properties=[("v_slot_loader", "v-slot:loader")]
-                            ):
-                            vuetify.VProgressLinear(
-                                height=7,
-                                # color=("progress_color", "success"),
-                                indeterminate=("loading", ),
-                                style={"width": "100%"}
-                            )
+            with vuetify.VRow(classes="pa-0 ma-0"):
+                with vuetify.VCol(classes="pa-0 ma-0 text-center"):
+                    vuetify.VProgressCircular(
+                        v_if='loading',
+                        color="primary",
+                        indeterminate=True,
+                        size="60",
+                        width="7"
+                        )
+                    with vuetify.VCard(v_if='loading', variant='text'):
+                        vuetify.VCardText('Loading data, please wait')
+                    with vuetify.VCard(v_if='loadComplete', variant='text'):
+                        vuetify.VCardText('Loading completed')
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
-                    with vuetify.VCard(v_if='loading'):
-                        vuetify.VCardText('Loading data, please wait')
-                    with vuetify.VCard(v_if='loadComplete'):
-                        vuetify.VCardText('Loading completed')
                     with vuetify.VCard(
                         v_if='!loading & !loadComplete',
                         classes="overflow-auto",
