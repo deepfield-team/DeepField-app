@@ -1,7 +1,39 @@
 from trame.widgets import vuetify3 as vuetify
 
-
 def render_info():
     with vuetify.VCard(style="margin: 10px"):
         vuetify.VCardTitle("Description of the reservoir model")
         vuetify.VCardText('Dimensions: ' + '{{dimens}}')
+        vuetify.VCardTitle("Number of total cells")
+        vuetify.VCardText('Total: ' + '{{total_cells}}')
+        vuetify.VCardTitle("Number of active cells")
+        vuetify.VCardText('Active cells: ' + '{{active_cells}}')
+        vuetify.VCardTitle("Pore volume")
+        vuetify.VCardText('{{pore_volume}}' + ' ' + '{{units3}}')
+        vuetify.VCardTitle("Number of total timesteps")
+        vuetify.VCardText('num of timesteps: ' + '{{num_timesteps}}')
+        vuetify.VCardTitle("Number of wells")
+        vuetify.VCardText('Number of wells: ' + '{{num_wells}}')
+
+        vuetify.VCardTitle("Components and attributes")
+        
+        vuetify.VCardTitle("Attributes of grid")
+        vuetify.VCardText("{{att_grid}}")
+        
+        vuetify.VCardTitle("Attributes of rock")
+        vuetify.VCardText("{{att_rock}}")
+
+        vuetify.VCardTitle("Attributes of states")
+        vuetify.VCardText("{{att_states}}")
+
+        vuetify.VCardTitle("Attributes of tables")
+        vuetify.VCardText("{{att_tables}}")
+
+        vuetify.VCardTitle("Attributes of wells")
+        vuetify.VCardText("{{att_wells}}")
+
+        vuetify.VCardTitle("Attributes of faults")
+        vuetify.VCardText("{{att_faults}}")
+
+        vuetify.VCardTitle("Attributes of aquifers")
+        vuetify.VCardText("{{att_aquifers}}")
