@@ -121,8 +121,7 @@ def load_file(loading, **kwargs):
     state.total_cells = state.dimens[0] * state.dimens[1] * state.dimens[2]
     state.active_cells = int(np.sum(field.grid.actnum))
 
-    state.pore_volume = round(np.sum(np.array(field.rock.PORO) * (field.grid.dx * field.grid.dy * field.grid.dz) / state.total_cells * state.active_cells), 2)
-
+    state.pore_volume = round(np.sum(np.array(field.rock.PORO) * (field.grid.dx * field.grid.dy * field.grid.dz)), 2)
     if field.meta['UNITS'] == 'METRIC':
         state.units1 = field.meta['HUNITS'][0]
         state.units2 = field.meta['HUNITS'][1]
