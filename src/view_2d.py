@@ -133,7 +133,7 @@ def render_2d():
                 variant="outlined",
                 hide_details=True)
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow(style="width:90%; height: 80%; margin 0;", classes='pa-0'):
+        with vuetify.VRow(style="width:100%; height: 80%; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VSlider(
                     min=1,
@@ -142,8 +142,7 @@ def render_2d():
                     v_model=('xslice', 1),
                     label="x",
                     classes="mt-5 mr-5 ml-5",
-                    hide_details=False,
-                    dense=False
+                    hide_details=True
                     ):
                     with vuetify.Template(v_slot_append=True,
                         properties=[("v_slot_append", "v-slot:append")],):
@@ -156,7 +155,8 @@ def render_2d():
                             hide_details=True)
                 with trame.SizeObserver("figure_size"):
                     figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_size'])),
-                        style="position: absolute")
+                        style="position: absolute"
+                        )
                     ctrl.update_xslice = figure.update
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VSlider(
@@ -166,8 +166,7 @@ def render_2d():
                     v_model=('yslice', 1),
                     label="y",
                     classes="mt-5 mr-5 ml-5",
-                    hide_details=False,
-                    dense=False
+                    hide_details=True
                     ):
                     with vuetify.Template(v_slot_append=True,
                         properties=[("v_slot_append", "v-slot:append")],):
@@ -180,7 +179,8 @@ def render_2d():
                             hide_details=True)
                 with trame.SizeObserver("figure_size"):
                     figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_size'])),
-                        style="position: absolute")
+                        style="position: absolute"
+                        )
                     ctrl.update_yslice = figure.update
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VSlider(
@@ -190,8 +190,7 @@ def render_2d():
                     v_model=('zslice', 1),
                     label="z",
                     classes="mt-5 mr-5 ml-5",
-                    hide_details=False,
-                    dense=False
+                    hide_details=True
                     ):
                     with vuetify.Template(v_slot_append=True,
                         properties=[("v_slot_append", "v-slot:append")],):
@@ -204,7 +203,8 @@ def render_2d():
                             hide_details=True)
                 with trame.SizeObserver("figure_size"):
                     figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_size'])),
-                        style="position: absolute")
+                        style="position: absolute"
+                        )
                     ctrl.update_zslice = figure.update
         with vuetify.VRow(style="width:70%; height: 10%; margin 0;", classes='pa-0'):
             with vuetify.VCol(classes='pa-0'):
