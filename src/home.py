@@ -39,28 +39,6 @@ state.i_slice = [0, 0]
 state.j_slice = [0, 0]
 state.k_slice = [0, 0]
 
-state.total_cells = 0
-state.active_cells = 0
-state.units = 0
-state.pore_volume = 0.0
-state.num_timesteps = 0
-state.num_wells = 0
-
-state.comp_grid = 0
-state.comp_rock = 0
-state.comp_states = 0
-state.comp_tables = 0
-state.comp_wells = 0
-state.comp_faults = 0
-state.comp_aquifers = 0
-
-state.att_grid = 0
-state.att_rock = 0
-state.att_states = 0
-state.att_tables = 0
-state.att_wells = 0
-state.att_faults = 0
-state.att_aquifers = 0
 
 def filter_path(path):
     "True if path is a directory or has .data or .hdf5 extension."
@@ -117,47 +95,6 @@ def load_file(loading, **kwargs):
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
-
-    state.total_cells = state.dimens[0] * state.dimens[1] * state.dimens[2]
-    state.active_cells = int(np.sum(field.grid.actnum))
-
-    state.pore_volume = round(np.sum(np.array(field.rock.PORO) * (field.grid.dx * field.grid.dy * field.grid.dz)), 2)
-    if field.meta['UNITS'] == 'METRIC':
-        state.units1 = field.meta['HUNITS'][0]
-        state.units2 = field.meta['HUNITS'][1]
-        state.units3 = field.meta['HUNITS'][2]
-        state.units4 = field.meta['HUNITS'][3]
-        state.units5 = field.meta['HUNITS'][4]
-        state.units_base = 'Metric'
-    else:
-        state.units1 = field.meta['HUNITS'][0]
-        state.units2 = field.meta['HUNITS'][1]
-        state.units3 = field.meta['HUNITS'][2]
-        state.units4 = field.meta['HUNITS'][3]
-        state.units5 = field.meta['HUNITS'][4]
-        state.units_base = 'Field'
-    '''
-    state.num_timesteps = field.state.n_timesteps can't get any timestaps, always 0, maybe need to calculate model first?
-    '''
-    state.num_wells = field.num_wells
-
-    state.components_attrs = field.get_components_attributes()      
-    a = list(field._components)
-    state.comp_grid = a[0]
-    state.comp_rock = a[1]
-    state.comp_states = a[2]
-    state.comp_tables = a[3]
-    state.comp_wells = a[4]
-    state.comp_faults = a[5]
-    state.comp_aquifers = a[6]
-
-    state.att_grid = field._components[a[0]].attributes
-    state.att_rock = field._components[a[1]].attributes
-    state.att_states = field._components[a[2]].attributes
-    state.att_tables = field._components[a[3]].attributes
-    state.att_wells = field._components[a[4]].attributes
-    state.att_faults = field._components[a[5]].attributes
-    state.att_aquifers = field._components[a[6]].attributes
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
