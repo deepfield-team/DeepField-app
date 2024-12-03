@@ -23,7 +23,7 @@ with VAppLayout(server) as layout:
             with vuetify.VTabs(v_model=('activeTab', 'home')):
                 vuetify.VTab('Home', value="home")
                 vuetify.VTab('3d view', value="3d")
-                vuetify.VTab('Slice view', value="2d")
+                vuetify.VTab('2d view', value="2d")
                 vuetify.VTab('Timeseries', value="ts")
                 vuetify.VTab('PVT/RPP', value="pvt")
                 vuetify.VTab('Info', value="info")
