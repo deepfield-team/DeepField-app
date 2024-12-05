@@ -7,6 +7,7 @@ from src.view_2d import render_2d
 from src.view_1d import render_ts, render_pvt
 from src.common import reset_camera
 from src.info import render_info
+from src.script import render_script
 from src.config import server, state
 
 
@@ -15,17 +16,15 @@ reset_camera()
 
 with VAppLayout(server) as layout:
     with layout.root:
-        with vuetify.VAppBar(app=True, clipped_left=True):
-            vuetify.VAppBarNavIcon(click='drawer =! drawer')
-
+        with vuetify.VAppBar(app=True, clipped_left=True, density="compact"):
             vuetify.VToolbarTitle("DeepField")
             vuetify.VSpacer()
             with vuetify.VTabs(v_model=('activeTab', 'home')):
                 vuetify.VTab('Home', value="home")
                 vuetify.VTab('3d view', value="3d")
-                vuetify.VTab('Slice view', value="2d")
+                vuetify.VTab('2d view', value="2d")
                 vuetify.VTab('Timeseries', value="ts")
-                vuetify.VTab('PVT/RPP', value="pvt")
+                vuetify.VTab('PVT/RP', value="pvt")
                 vuetify.VTab('Info', value="info")
                 vuetify.VTab('Script', value="script")
             vuetify.VSpacer()
@@ -48,76 +47,7 @@ with VAppLayout(server) as layout:
             with html.Div(v_if="activeTab === 'info'"):
                 render_info()
             with html.Div(v_if="activeTab === 'script'"):
-                pass
-
-        with vuetify.VNavigationDrawer(
-            app=True,
-            clipped=True,
-            stateless=True,
-            v_model=("drawer", False),
-            width=200):
-            vuetify.VSelect(
-                v_model=('user_request',),
-                label='Recent files',
-                items=('recentFiles', ),
-                v_if="activeTab === 'home'"
-                )
-            vuetify.VBtn(
-                'Clean history',
-                click='recentFiles = []',
-                v_if="activeTab === 'home'"
-                )
-            vuetify.VSelect(
-                v_model=('activeField', state.field_attrs[0] if state.field_attrs else None),
-                label='Select data',
-                items=('field_attrs', ),
-                v_if="(activeTab === '3d') | (activeTab === '2d')"
-                )
-            vuetify.VCheckbox(
-                label='Threshold selector',
-                v_if="activeTab === '3d'",
-                style='height: 8vh'
-                )
-            vuetify.VCheckbox(
-                label='Slice range selector',
-                v_model='show_slice',
-                v_if="activeTab === '3d'",
-                classes='pa-0 ma-0',
-                style='height: 8vh'
-                )
-            vuetify.VCheckbox(
-                label='Show wells',
-                v_if="activeTab === '3d'",
-                style='height: 8vh'
-                )
-            vuetify.VCheckbox(
-                label='Show faults',
-                v_if="activeTab === '3d'",
-                style='height: 8vh'
-                )
-            vuetify.VSelect(
-                label="Colormap",
-                v_model=("colormap", 'jet'),
-                items=("colormaps",
-                    ["gray", "jet", "hsv", "Spectral", "twilight", "viridis"],
-                ),
-                hide_details=True,
-                dense=True,
-                outlined=True,
-                v_if="(activeTab === '3d') | (activeTab === '2d')"
-            )
-            vuetify.VSlider(
-                min=0,
-                max=1,
-                step=0.1,
-                v_model=('opacity', 1),
-                label="Opacity",
-                classes="mt-8 mr-3",
-                hide_details=False,
-                dense=False,
-                thumb_label=True,
-                v_if="activeTab === '3d'"
-                )
+                render_script()
 
 
 if __name__ == "__main__":

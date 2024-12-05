@@ -1,0 +1,7 @@
+trame
+trame-vuetify
+trame-vtk
+trame-components
+trame-matplotlib
+trame-plotly
+plotly

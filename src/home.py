@@ -25,8 +25,10 @@ state.update_dir_list = True
 state.recentFiles = []
 state.loading = False
 state.loadComplete = False
+state.showHistory = False
 
 state.field_attrs = []
+state.activeField = None
 state.wellnames = []
 state.dimens = [0, 0, 0]
 state.max_timestep = 0
@@ -52,6 +54,7 @@ def get_path_variants(user_request, **kwargs):
     _ = kwargs
     state.loading = False
     state.loadComplete = False
+    state.showHistory = False
     paths = list(glob(user_request + "*")) if user_request is not None else []
     if state.update_dir_list:
         state.dir_list = [p for p in paths if filter_path(p)]
@@ -184,10 +187,11 @@ def on_keydown(key_code):
         if state.path_index < len(state.dir_list):
             path = state.dir_list[state.path_index]
             if os.path.isdir(path):
-                path += "\\"
+                path += os.sep
             state.user_request = path
             state.path_index = None
     state.update_dir_list = True
+
 
 def render_home():
     with html.Div(style='position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80vw; height: 10vh'):
@@ -206,6 +210,15 @@ def render_home():
                         with vuetify.Template(v_slot_append=True,
                             properties=[("v_slot_append", "v-slot:append")],):
                             vuetify.VBtn('Load', click='loading = true')
+                        with vuetify.Template(v_slot_prepend=True,
+                            properties=[("v_slot_prepend", "v-slot:prepend")],):
+                            with vuetify.VBtn(icon=True,
+                                click='showHistory = !showHistory',
+                                flat=True,
+                                active=('showHistory',),
+                                style="background-color:transparent;\
+                                       backface-visibility:visible;"):
+                                vuetify.VIcon("mdi-history")
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0 text-center"):
                     vuetify.VProgressCircular(
@@ -217,18 +230,22 @@ def render_home():
                         )
                     with vuetify.VCard(v_if='loading', variant='text'):
                         vuetify.VCardText('Loading data, please wait')
-                    with vuetify.VCard(v_if='loadComplete', variant='text'):
+                    with vuetify.VCard(v_if='loadComplete & !showHistory', variant='text'):
                         vuetify.VCardText('Loading completed')
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0"):
                     with vuetify.VCard(
-                        v_if='!loading & !loadComplete',
+                        v_if='(!loading & !loadComplete) | showHistory',
                         classes="overflow-auto",
                         max_width="100%",
                         max_height="30vh"):
-                        with vuetify.VList(v_if='!loading'):
+                        with vuetify.VList(v_if='!loading & !showHistory'):
                             with vuetify.VListItem(
                                 v_for="item, index in dir_list",
-                                click="user_request = item"
-                                ):
+                                click="user_request = item"):
+                                vuetify.VListItemTitle("{{item}}")
+                        with vuetify.VList(v_if='showHistory'):
+                            with vuetify.VListItem(
+                                v_for="item, index in recentFiles",
+                                click="user_request = item"):
                                 vuetify.VListItemTitle("{{item}}")
