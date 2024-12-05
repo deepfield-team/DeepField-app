@@ -24,6 +24,13 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
+@state.change("theme")
+def change_vtk_bgr(theme, **kwargs):
+    if theme == 'light':
+        renderer.SetBackground(1, 1, 1)
+    else:
+        renderer.SetBackground(0, 0, 0)
+    ctrl.view_update()
 
 @state.change("activeField", "activeStep")
 def update_field(activeField, activeStep, view_update=True, **kwargs):
