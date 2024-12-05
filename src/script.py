@@ -24,6 +24,6 @@ def render_script():
     	label="Type function to be executed")
     vuetify.VBtn('Execute', click=ctrl.run_script)
 
-    with vuetify.VCard(style="margin: 10px"):
-        vuetify.VCardTitle("Script ouptput")
+    with vuetify.VCard(style="margin-top: 10px"):
+        vuetify.VCardTitle("Ouptput:")
         vuetify.VCardText('{{scriptOutput}}')
