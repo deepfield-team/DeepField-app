@@ -187,7 +187,7 @@ def on_keydown(key_code):
         if state.path_index < len(state.dir_list):
             path = state.dir_list[state.path_index]
             if os.path.isdir(path):
-                path += "\\"
+                path += os.sep
             state.user_request = path
             state.path_index = None
     state.update_dir_list = True

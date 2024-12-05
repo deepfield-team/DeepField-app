@@ -23,7 +23,7 @@ with VAppLayout(server) as layout:
                 vuetify.VTab('3d view', value="3d")
                 vuetify.VTab('2d view', value="2d")
                 vuetify.VTab('Timeseries', value="ts")
-                vuetify.VTab('PVT/RPP', value="pvt")
+                vuetify.VTab('PVT/RP', value="pvt")
                 vuetify.VTab('Info', value="info")
                 vuetify.VTab('Script', value="script")
             vuetify.VSpacer()
