@@ -7,6 +7,7 @@ from src.view_2d import render_2d
 from src.view_1d import render_ts, render_pvt
 from src.common import reset_camera
 from src.info import render_info
+from src.script import render_script
 from src.config import server, state
 
 
@@ -46,7 +47,7 @@ with VAppLayout(server) as layout:
             with html.Div(v_if="activeTab === 'info'"):
                 render_info()
             with html.Div(v_if="activeTab === 'script'"):
-                pass
+                render_script()
 
 
 if __name__ == "__main__":
