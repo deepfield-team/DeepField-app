@@ -1,4 +1,4 @@
-from trame.widgets import html, vuetify3 as vuetify
+from trame.widgets import html, client, vuetify3 as vuetify
 from trame.ui.vuetify3 import VAppLayout
 
 from src.home import render_home, make_empty_dataset
@@ -7,13 +7,31 @@ from src.view_2d import render_2d
 from src.view_1d import render_ts, render_pvt
 from src.common import reset_camera
 from src.info import render_info
-from src.config import server, state
+from src.script import render_script
+from src.config import server, state, ctrl
+
+
+state.theme = 'light'
+state.sideBarColor = "grey-lighten-4"
+state.plotlyTheme = 'plotly'
+
+def change_theme(*args, **kwargs):
+    if state.theme == 'light':
+        state.theme = 'dark'
+        state.sideBarColor = "grey-darken-4"
+        state.plotlyTheme = 'plotly_dark'
+    else:
+        state.theme = 'light'
+        state.sideBarColor = "grey-lighten-4"
+        state.plotlyTheme = 'plotly'
+ctrl.change_theme = change_theme
 
 
 make_empty_dataset()
 reset_camera()
-
-with VAppLayout(server) as layout:
+with VAppLayout(server, theme=('theme',)) as layout:
+    style = client.Style("body { background-color: white }")
+    ctrl.update_style = style.update
     with layout.root:
         with vuetify.VAppBar(app=True, clipped_left=True, density="compact"):
             vuetify.VToolbarTitle("DeepField")
@@ -26,8 +44,9 @@ with VAppLayout(server) as layout:
                 vuetify.VTab('PVT/RP', value="pvt")
                 vuetify.VTab('Info', value="info")
                 vuetify.VTab('Script', value="script")
+            
             vuetify.VSpacer()
-            with vuetify.VBtn(icon=True):
+            with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
             with vuetify.VBtn(icon=True):
                 vuetify.VIcon("mdi-dots-vertical")
@@ -46,7 +65,7 @@ with VAppLayout(server) as layout:
             with html.Div(v_if="activeTab === 'info'"):
                 render_info()
             with html.Div(v_if="activeTab === 'script'"):
-                pass
+                render_script()
 
 
 if __name__ == "__main__":

@@ -24,6 +24,13 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
+@state.change("theme")
+def change_vtk_bgr(theme, **kwargs):
+    if theme == 'light':
+        renderer.SetBackground(1, 1, 1)
+    else:
+        renderer.SetBackground(0, 0, 0)
+    ctrl.view_update()
 
 @state.change("activeField", "activeStep")
 def update_field(activeField, activeStep, view_update=True, **kwargs):
@@ -148,7 +155,9 @@ def render_3d():
                     variant="outlined",
                     hide_details=True)
 
-    with vuetify.VCard(color="grey-lighten-4", flat=True,
+    with vuetify.VCard(
+        color=('sideBarColor',),
+        flat=True,
         style='position: fixed; left: 0; top: 20vh;'):
         with vuetify.VContainer(fluid=True,
             style='align-items: start; justify-content: left;',

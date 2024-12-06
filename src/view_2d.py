@@ -245,7 +245,9 @@ def render_2d():
                     variant="outlined",
                     hide_details=True)
 
-    with vuetify.VCard(color="grey-lighten-4", flat=True,
+    with vuetify.VCard(
+        color=('sideBarColor',),
+        flat=True,
         style='position: fixed; left: 0; top: 30vh;'):
         with vuetify.VContainer(fluid=True,
             style='align-items: start; justify-content: left;',

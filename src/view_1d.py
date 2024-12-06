@@ -8,7 +8,8 @@ from trame.widgets import trame, plotly, vuetify3 as vuetify
 
 from .config import state, ctrl, FIELD
 
-PLOTS = {"plot1d": None}
+PLOTS = {"plot1d": None,
+         "plot_pvt": None}
 
 CHART_STYLE = {
     # "display_mode_bar": ("true",),
@@ -36,6 +37,17 @@ state.domainName = None
 state.gridData = True
 state.wellData = True
 
+
+@state.change("plotlyTheme")
+def change_plotly_theme(plotlyTheme, **kwargs):
+    fig = PLOTS['plot1d']
+    if fig is not None:
+        fig.layout.template = plotlyTheme
+        ctrl.update_plot(fig)
+    fig = PLOTS['plot_pvt']
+    if fig is not None:
+        fig.layout.template = plotlyTheme
+        ctrl.update_tplot(fig)
 
 @state.change("data1dToShow")
 def update1dWidgets(data1dToShow, **kwargs):
@@ -227,7 +239,8 @@ def update_tplot_size(figure_size_1d, tableToShow, tableXAxis, domainToShow, **k
     bounds = figure_size_1d.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
-    ctrl.update_tplot(plot_table(tableToShow, tableXAxis, domainToShow, height, width))
+    PLOTS['plot_pvt'] = plot_table(tableToShow, tableXAxis, domainToShow, height, width)
+    ctrl.update_tplot(PLOTS['plot_pvt'])
 
 def render_ts():
     with vuetify.VContainer(fluid=True, style='align-items: top', classes="pa-0 ma-0"):
