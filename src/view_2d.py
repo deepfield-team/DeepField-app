@@ -1,13 +1,44 @@
+import time
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 
-from trame.widgets import html, trame, vuetify3 as vuetify, matplotlib
+from deepfield.field.plot_utils import get_slice_trisurf
+from deepfield.field import States
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+
+from trame.widgets import html, trame, vuetify3 as vuetify, matplotlib, plotly
 
 from .config import state, ctrl, FIELD
 
+
 state.activeSlice = 'k'
 
+FIELD['slices'] = {}
+
+
+CHART_STYLE = {
+    # "display_mode_bar": ("true",),
+    "mode_bar_buttons_to_remove": (
+        "chart_buttons",
+        [   "orbitRotation",
+            "resetScale2d",
+            "zoomIn2d",
+            "zoomOut2d",
+            "toggleSpikelines",
+            "hoverClosestCartesian",
+            "hoverCompareCartesian",
+            "tableRotation",
+        ],
+    ),
+    "display_logo": ("false",),
+}
+
+def get_attr_from_field(attr):
+    comp, attr = attr.split('_')
+    return FIELD['model']._components[comp.lower()][attr]
 
 def get_figure_size(f_size):
     if f_size is None:
@@ -33,13 +64,46 @@ def get_data_limits(component, attr, activeStep):
         vmin = 0.99 * vmin
     return vmin, vmax
 
-def create_slice(component, att, i, j, k, t, i_line, j_line, k_line,
-                 colormap, figure_size, vmin, vmax):
-    fig, ax = plt.subplots(**figure_size)
-    component.show_slice(attr=att, i=i, j=j, k=k, t=t,
-                         i_line=i_line, j_line=j_line, k_line=k_line,
-                         ax=ax, cmap=colormap, vmax=vmax, vmin=vmin)
-    fig.tight_layout()
+
+def create_slice(component, att, i, j, k, t, width,  height, colormap):
+    x, y, triangles, data = get_slice_trisurf(component, att, i, j, k, t)
+    z = np.zeros(*x.shape)
+    fig = go.Figure(data=[
+        go.Mesh3d(
+            x=x,
+            y=y,
+            z=z,
+            intensity=data,
+            intensitymode='cell',
+            colorscale=colormap.lower(),
+            hovertemplate="y:%{x}\r\nz:%{y}<extra></extra>",
+            i=triangles[:, 0].ravel(),
+            j=triangles[:, 1].ravel(),
+            k=triangles[:, 2].ravel(),
+            showscale=False,
+            flatshading=True,
+        ),
+
+    ],
+            layout=go.Layout(
+                width=width,
+                height=height,
+                scene = {
+                    'xaxis': dict(visible=False),
+                    'zaxis': dict(visible=False),
+                    'yaxis': dict(visible=False),
+                    'aspectmode':'manual',
+                    'aspectratio': {'x':width/height, 'y': 1, 'z':0.01},
+                    'camera': dict(
+                    up=dict(x=0, y=0, z=1),
+                    center=dict(x=0, y=0, z=0),
+                    eye=dict(x=0, y=0, z=2.5)),
+                    'dragmode': False,
+                },
+                margin={'t': 30, 'r': 30, 'l': 30, 'b': 0},
+
+
+            ))
     return fig
 
 @state.change("figure_size", "activeSlice",
@@ -47,65 +111,56 @@ def create_slice(component, att, i, j, k, t, i_line, j_line, k_line,
               "xslice", "yslice", "zslice", "colormap")
 def update_slices(figure_size, activeSlice,
     activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
+
+    figure_size = figure_size
     _ = kwargs
     if activeField is None:
         return
+    if figure_size is None:
+        return
+    activeStep = int(activeStep)
 
+    bounds = figure_size.get("size", {})
+    width = bounds.get("width", 300)
+    height = bounds.get("height", 300)
     comp_name, attr = activeField.split('_')
     comp_name = comp_name.lower()
     component = getattr(FIELD['model'], comp_name)
-
-    activeStep = int(activeStep) if comp_name == 'states' else None
-    xslice, yslice, zslice = int(xslice), int(yslice), int(zslice)
-    vmin, vmax = get_data_limits(component, attr, activeStep)
-    figsize = get_figure_size(figure_size)
-
-    plt.close("all")
     if activeSlice == 'i':
-    	fig = create_slice(component, attr,
-            i=xslice,
-            j=None,
-            k=None,
-            t=activeStep,
-            j_line=yslice,
-            i_line=None,
-            k_line=zslice,
-            colormap=colormap,
-            figure_size=figsize,
-            vmin=vmin,
-            vmax=vmax)
+        ctrl.update_slice(
+            create_slice(component=component,
+                        att=attr, i=int(xslice)-1,
+                        j=None,
+                        k=None,
+                        t=int(activeStep) if isinstance(component, States) else None,
+                        width=width,
+                        height=height,
+                        colormap=colormap))
 
-    elif activeSlice == 'j':
-    	fig = create_slice(component, attr,
-            i=None,
-	    	j=yslice,
-	    	k=None,
-	    	t=activeStep,
-            i_line=xslice,
-            j_line=None,
-            k_line=zslice,
-            colormap=colormap,
-            figure_size=figsize,
-            vmin=vmin,
-            vmax=vmax)
-    
-    elif activeSlice == 'k':
-        fig = create_slice(component, attr,
-            i=None,
-            j=None,
-            k=zslice,
-            t=activeStep,
-            i_line=xslice,
-            j_line=yslice,
-            k_line=None,
-            colormap=colormap,
-            figure_size=figsize,
-            vmin=vmin,
-            vmax=vmax)
-    else:
-    	return
+    if activeSlice == 'j':
+        ctrl.update_slice(
+            create_slice(component=component,
+                        att=attr,
+                        i=None,
+                        j=int(yslice)-1,
+                        k=None,
+                        t=int(activeStep) if isinstance(component, States) else None,
+                        width=width,
+                        height=height,
+                        colormap=colormap))
 
-    ctrl.update_slice(fig)
+    if activeSlice == 'k':
+        ctrl.update_slice(
+            create_slice(
+                component=component,
+                att=attr,
+                i=None,
+                j=None,
+                k=int(zslice)-1,
+                t=int(activeStep) if isinstance(component, States) else None,
+                width=width,
+                height=height,
+                colormap=colormap))
 
 def render_2d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
@@ -167,11 +222,9 @@ def render_2d():
                             style="width: 80px",
                             type="number",
                             variant="outlined",
-                            hide_details=True)    
+                            hide_details=True)
                 with trame.SizeObserver("figure_size"):
-                    figure = matplotlib.Figure(plt.figure(**get_figure_size(state['figure_size'])),
-                        style="position: absolute")
-                    ctrl.update_slice = figure.update
+                    ctrl.update_slice = plotly.Figure(**CHART_STYLE).update
 
     with html.Div(v_if='need_time_slider', style='position: fixed; width: 100%; bottom: 0;'):
         with vuetify.VSlider(
@@ -223,13 +276,13 @@ def render_2d():
                             location="right",
                             close_on_content_click=False):
                             with vuetify.VCard(classes="overflow-auto", max_height="50vh"):
-                                with vuetify.VList():  
+                                with vuetify.VList():
                                     with vuetify.VListItem(
                                         v_for="(item, index) in colormaps",
                                         click="colormap = item",
                                         active=("item === colormap",)
                                         ):
-                                        vuetify.VListItemTitle("{{item}}")  
+                                        vuetify.VListItemTitle("{{item}}")
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
                     with vuetify.VBtn(icon=True,
