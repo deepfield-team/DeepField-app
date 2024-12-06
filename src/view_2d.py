@@ -18,8 +18,9 @@ state.activeSlice = 'k'
 
 FIELD['slices'] = {}
 
+PLOT_2D = {'fig': None}
 
-CHART_STYLE = {
+CHART_STYLE_2D = {
     # "display_mode_bar": ("true",),
     "mode_bar_buttons_to_remove": (
         "chart_buttons",
@@ -35,6 +36,14 @@ CHART_STYLE = {
     ),
     "display_logo": ("false",),
 }
+
+
+@state.change("plotlyTheme")
+def change_plotly_theme_2d(plotlyTheme, **kwargs):
+    fig = PLOT_2D['fig']
+    if fig is not None:
+        fig.update_layout(template=plotlyTheme)
+        ctrl.update_slice(fig)
 
 def get_attr_from_field(attr):
     comp, attr = attr.split('_')
@@ -86,6 +95,7 @@ def create_slice(component, att, i, j, k, t, width,  height, colormap):
 
     ],
             layout=go.Layout(
+                template=state.plotlyTheme,
                 width=width,
                 height=height,
                 scene = {
@@ -104,6 +114,7 @@ def create_slice(component, att, i, j, k, t, width,  height, colormap):
 
 
             ))
+    PLOT_2D['fig'] = fig
     return fig
 
 @state.change("figure_size", "activeSlice",
@@ -224,7 +235,7 @@ def render_2d():
                             variant="outlined",
                             hide_details=True)
                 with trame.SizeObserver("figure_size"):
-                    ctrl.update_slice = plotly.Figure(**CHART_STYLE).update
+                    ctrl.update_slice = plotly.Figure(**CHART_STYLE_2D).update
 
     with html.Div(v_if='need_time_slider', style='position: fixed; width: 100%; bottom: 0;'):
         with vuetify.VSlider(
