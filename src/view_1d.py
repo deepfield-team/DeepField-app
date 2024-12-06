@@ -136,7 +136,8 @@ def update_plot_size(figure_size_1d, **kwargs):
         PLOTS['plot1d'] = make_subplots(specs=[[{"secondary_y": True}]])
         PLOTS['plot1d'].update_layout(
             showlegend=True,
-            margin={'t': 30, 'r': 80, 'l': 100, 'b': 80}
+            margin={'t': 30, 'r': 10, 'l': 80, 'b': 30},
+            legend={'x': 1.01,},
             )
     PLOTS['plot1d'].update_layout(height=height, width=width)
     ctrl.update_plot(PLOTS['plot1d'])
@@ -184,7 +185,7 @@ def plot_1d_table(fig, table):
             )
 
     fig.update_layout(
-        xaxis=dict(domain=[0, 1.1-0.1*len(table.columns)]),
+        xaxis=dict(domain=[0, 1.02-0.02*len(table.columns)]),
         **layout)
     fig.update_xaxes(title_text=table.index.name)
     return fig
@@ -195,7 +196,7 @@ def plot_table(tableToShow, tableXAxis, domainToShow, height, width):
         height=height,
         width=width,
         showlegend=False,
-        margin={'t': 30, 'r': 80, 'l': 100, 'b': 80}
+        margin={'t': 30, 'r': 50, 'l': 80, 'b': 30},
         )
 
     if tableToShow is None:
@@ -286,13 +287,13 @@ def render_ts():
                     label="Second Axis",
                     hide_details=True)
             with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
-                vuetify.VBtn('Add line', click=ctrl.add_line_to_plot)
+                vuetify.VBtn('Add line', click=ctrl.add_line_to_plot, classes='mt-2')
+            with vuetify.VCol(classes='pa-0 mt-0', style='flex-grow: 0'):
+                vuetify.VBtn('Undo', click=ctrl.remove_last_line, classes='mt-2')
             with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
-                vuetify.VBtn('Undo', click=ctrl.remove_last_line)
-            with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
-                vuetify.VBtn('Clean', click=ctrl.clean_plot)
+                vuetify.VBtn('Clean', click=ctrl.clean_plot, classes='mt-2')
 
-        with vuetify.VRow(style="width: 100%; height: 60vh", classes='pa-0 ma-0'):
+        with vuetify.VRow(style="width: 100%; height: 75vh", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
@@ -322,6 +323,7 @@ def render_pvt():
                     max=("domainMax",),
                     step=("domainStep",),
                     hide_details=False,
+                    classes='mt-2',
                     dense=False
                     ):
                     with vuetify.Template(v_slot_append=True,
@@ -333,7 +335,7 @@ def render_pvt():
                             type="number",
                             variant="outlined",
                             hide_details=True)
-        with vuetify.VRow(style="width: 100%; height: 60vh", classes='pa-0 ma-0'):
+        with vuetify.VRow(style="width: 100%; height: 75vh", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_tplot = plotly.Figure(**CHART_STYLE).update
