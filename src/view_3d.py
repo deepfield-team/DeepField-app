@@ -45,6 +45,8 @@ def update_field(activeField, activeStep, view_update=True, **kwargs):
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
     if view_update:
+        state.field_slice_max = FIELD['c_data'][state.activeField].max()
+        state.field_slice = [0, state.field_slice_max]
         ctrl.view_update()
 
 @state.change("colormap")
@@ -58,8 +60,8 @@ def update_cmap(colormap, **kwargs):
     table.Build()
     ctrl.view_update()
 
-@state.change("i_slice", "j_slice", "k_slice")
-def update_threshold_slices(i_slice, j_slice, k_slice, **kwargs):
+@state.change("i_slice", "j_slice", "k_slice", "field_slice")
+def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     _ = kwargs
     if not FIELD['c_data']:
         return
@@ -92,8 +94,15 @@ def update_threshold_slices(i_slice, j_slice, k_slice, **kwargs):
     threshold_k.SetLowerThreshold(k_slice[0])
     threshold_k.SetInputArrayToProcess(0, 0, 0, 1, "K")
 
+    threshold_field = vtk.vtkThreshold()
+    threshold_field.SetInputData(dataset)
+    threshold_field.SetInputConnection(threshold_k.GetOutputPort())
+    threshold_field.SetUpperThreshold(field_slice[1])
+    threshold_field.SetLowerThreshold(field_slice[0])
+    threshold_field.SetInputArrayToProcess(0, 0, 0, 1, state.activeField)
+
     mapper = vtk.vtkDataSetMapper()                                         
-    mapper.SetInputConnection(threshold_k.GetOutputPort())
+    mapper.SetInputConnection(threshold_field.GetOutputPort())
 
     FIELD['actor'].SetMapper(mapper)
     update_field(state.activeField, state.activeStep, view_update=False)
@@ -112,6 +121,8 @@ def fit_view():
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
+    state.field_slice_max = FIELD['c_data'][state.activeField].max()
+    state.field_slice = [0, state.field_slice_max]
     state.opacity = 1
     ctrl.view_reset_camera()
 
@@ -121,7 +132,7 @@ def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="height: 100%; width: 100%", classes='pa-0 ma-0'):
             with vuetify.VCol(classes="pa-0"):
-                view = vtk_widgets.VtkRemoteView(
+                view = vtk_widgets.VtkLocalView(
                     render_window,
                     **VTK_VIEW_SETTINGS
                     )
@@ -312,6 +323,41 @@ def render_3d():
                                         properties=[("v_slot_append", "v-slot:append")],):
                                         vuetify.VTextField(
                                             v_model="k_slice[1]",
+                                            density="compact",
+                                            style="width: 70px",
+                                            type="number",
+                                            variant="outlined",
+                                            hide_details=True)
+            with vuetify.VRow(classes='pa-0 ma-0'):
+                with vuetify.VCol(classes='pa-0 ma-0'):
+                    with vuetify.VBtn(icon=True,flat=True,
+                        style="background-color:transparent;\
+                               backface-visibility:visible;"):
+                        vuetify.VIcon("mdi-pac-man")
+                        with vuetify.VMenu(activator="parent",
+                            location="right",
+                            close_on_content_click=False):
+                            with html.Div(style='width: 30vw'):
+                                with vuetify.VRangeSlider(
+                                    min=0,
+                                    max=("field_slice_max",),
+                                    step="field_slice_step",
+                                    v_model=("field_slice",),
+                                    hide_details=True
+                                    ):
+                                    with vuetify.Template(v_slot_prepend=True,
+                                        properties=[("v_slot_prepend", "v-slot:prepend")],):
+                                        vuetify.VTextField(
+                                            v_model="field_slice[0]",
+                                            density="compact",
+                                            style="width: 70px",
+                                            type="number",
+                                            variant="outlined",
+                                            hide_details=True)
+                                    with vuetify.Template(v_slot_append=True,
+                                        properties=[("v_slot_append", "v-slot:append")],):
+                                        vuetify.VTextField(
+                                            v_model="field_slice[1]",
                                             density="compact",
                                             style="width: 70px",
                                             type="number",

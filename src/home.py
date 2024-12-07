@@ -40,7 +40,11 @@ state.k_cells = []
 state.i_slice = [0, 0]
 state.j_slice = [0, 0]
 state.k_slice = [0, 0]
+state.field_slice = [0, 0]
+state.field_slice_max = 0
+state.field_slice_step = 0
 
+N_FIELD_SLICE_STEPS = 100
 
 def filter_path(path):
     "True if path is a directory or has .data or .hdf5 extension."
@@ -98,6 +102,10 @@ def load_file(loading, **kwargs):
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
+
+    state.field_slice_max = c_data[state.activeField].max()
+    state.field_slice = [0, state.field_slice_max]
+    state.field_slice_step = state.field_slice_max / N_FIELD_SLICE_STEPS
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
