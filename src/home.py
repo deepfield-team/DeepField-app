@@ -26,6 +26,7 @@ state.recentFiles = []
 state.loading = False
 state.loadComplete = False
 state.showHistory = False
+state.emptyHistory = True
 
 state.field_attrs = []
 state.activeField = None
@@ -70,6 +71,7 @@ def load_file(loading, **kwargs):
 
     if state.user_request not in state.recentFiles:
         state.recentFiles = state.recentFiles + [state.user_request, ]
+        state.emptyHistory = False
 
     FIELD['model'] = field
 
@@ -219,6 +221,23 @@ def render_home():
                                 style="background-color:transparent;\
                                        backface-visibility:visible;"):
                                 vuetify.VIcon("mdi-history")
+                        with vuetify.Template(v_slot_loader=True,
+                            properties=[("v_slot_loader", "v-slot:loader")],):
+                            with vuetify.VCard(
+                                v_if='(!loading & !loadComplete) | showHistory',
+                                classes="overflow-auto",
+                                max_width="100%",
+                                max_height="30vh"):
+                                with vuetify.VList(v_if='!loading & !showHistory'):
+                                    with vuetify.VListItem(
+                                        v_for="item, index in dir_list",
+                                        click="user_request = item"):
+                                        vuetify.VListItemTitle("{{item}}")
+                                with vuetify.VList(v_if='showHistory'):
+                                    with vuetify.VListItem(
+                                        v_for="item, index in recentFiles",
+                                        click="user_request = item"):
+                                        vuetify.VListItemTitle("{{item}}")
             with vuetify.VRow(classes="pa-0 ma-0"):
                 with vuetify.VCol(classes="pa-0 ma-0 text-center"):
                     vuetify.VProgressCircular(
@@ -232,20 +251,5 @@ def render_home():
                         vuetify.VCardText('Loading data, please wait')
                     with vuetify.VCard(v_if='loadComplete & !showHistory', variant='text'):
                         vuetify.VCardText('Loading completed')
-            with vuetify.VRow(classes="pa-0 ma-0"):
-                with vuetify.VCol(classes="pa-0 ma-0"):
-                    with vuetify.VCard(
-                        v_if='(!loading & !loadComplete) | showHistory',
-                        classes="overflow-auto",
-                        max_width="100%",
-                        max_height="30vh"):
-                        with vuetify.VList(v_if='!loading & !showHistory'):
-                            with vuetify.VListItem(
-                                v_for="item, index in dir_list",
-                                click="user_request = item"):
-                                vuetify.VListItemTitle("{{item}}")
-                        with vuetify.VList(v_if='showHistory'):
-                            with vuetify.VListItem(
-                                v_for="item, index in recentFiles",
-                                click="user_request = item"):
-                                vuetify.VListItemTitle("{{item}}")
+                    with vuetify.VCard(v_if='showHistory & emptyHistory', variant='text'):
+                        vuetify.VCardText('History is empty')
