@@ -8,6 +8,7 @@ from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 
 from .config import state, ctrl, FIELD, renderer
+from .home import update_field_slices_params
 
 VTK_VIEW_SETTINGS = {
     "interactive_ratio": 1,
@@ -24,10 +25,10 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
-
 @state.change("activeField", "activeStep")
 def update_field(activeField, activeStep, view_update=True, **kwargs):
     _ = kwargs
+
     if activeField is None:
         return
     if FIELD['c_data'] is None:
@@ -39,14 +40,15 @@ def update_field(activeField, activeStep, view_update=True, **kwargs):
     else:
         state.need_time_slider = False
         vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
+
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
+
     mapper = FIELD['actor'].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
     if view_update:
-        state.field_slice_max = FIELD['c_data'][state.activeField].max()
-        state.field_slice = [0, state.field_slice_max]
+        update_field_slices_params()
         ctrl.view_update()
 
 @state.change("colormap")
@@ -58,7 +60,21 @@ def update_cmap(colormap, **kwargs):
     for i, val in enumerate(colors):
         table.SetTableValue(i, val[0], val[1], val[2])
     table.Build()
+    scalarBar = vtk.vtkScalarBarActor()
+    scalarBar.SetOrientationToVertical()
+    scalarBar.SetLookupTable(table)
+    renderer.AddActor2D(scalarBar)
     ctrl.view_update()
+
+def make_threshold(slices, attr, input_threshold = None):
+    threshold = vtk.vtkThreshold()
+    threshold.SetInputData(FIELD['dataset'])
+    if input_threshold:
+        threshold.SetInputConnection(input_threshold.GetOutputPort())       
+    threshold.SetUpperThreshold(slices[1])
+    threshold.SetLowerThreshold(slices[0])
+    threshold.SetInputArrayToProcess(0, 0, 0, 1, attr)
+    return threshold
 
 @state.change("i_slice", "j_slice", "k_slice", "field_slice")
 def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
@@ -66,44 +82,13 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     if not FIELD['c_data']:
         return
 
-    dataset = FIELD['dataset']
-    vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
-    vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])
-    vtk_array_k = dsa.numpyTovtkDataArray(FIELD['c_data']["K"])
-    dataset.GetCellData().SetScalars(vtk_array_i)
-    dataset.GetCellData().SetScalars(vtk_array_j)
-    dataset.GetCellData().SetScalars(vtk_array_k)
-
-    threshold_i = vtk.vtkThreshold()
-    threshold_i.SetInputData(dataset)
-    threshold_i.SetUpperThreshold(i_slice[1])
-    threshold_i.SetLowerThreshold(i_slice[0])
-    threshold_i.SetInputArrayToProcess(0, 0, 0, 1, "I")
-
-    threshold_j = vtk.vtkThreshold()
-    threshold_j.SetInputData(dataset)
-    threshold_j.SetInputConnection(threshold_i.GetOutputPort())
-    threshold_j.SetUpperThreshold(j_slice[1])
-    threshold_j.SetLowerThreshold(j_slice[0])
-    threshold_j.SetInputArrayToProcess(0, 0, 0, 1, "J")
-
-    threshold_k = vtk.vtkThreshold()
-    threshold_k.SetInputData(dataset)
-    threshold_k.SetInputConnection(threshold_j.GetOutputPort())
-    threshold_k.SetUpperThreshold(k_slice[1])
-    threshold_k.SetLowerThreshold(k_slice[0])
-    threshold_k.SetInputArrayToProcess(0, 0, 0, 1, "K")
-
-    threshold_field = vtk.vtkThreshold()
-    threshold_field.SetInputData(dataset)
-    threshold_field.SetInputConnection(threshold_k.GetOutputPort())
-    threshold_field.SetUpperThreshold(field_slice[1])
-    threshold_field.SetLowerThreshold(field_slice[0])
-    threshold_field.SetInputArrayToProcess(0, 0, 0, 1, state.activeField)
-
+    threshold_i = make_threshold(i_slice, "I")
+    threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i)
+    threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j)
+    threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k)
+    print(state.field_slice_step)
     mapper = vtk.vtkDataSetMapper()                                         
     mapper.SetInputConnection(threshold_field.GetOutputPort())
-
     FIELD['actor'].SetMapper(mapper)
     update_field(state.activeField, state.activeStep, view_update=False)
     update_cmap(state.colormap)
@@ -132,7 +117,7 @@ def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="height: 100%; width: 100%", classes='pa-0 ma-0'):
             with vuetify.VCol(classes="pa-0"):
-                view = vtk_widgets.VtkLocalView(
+                view = vtk_widgets.VtkRemoteView(
                     render_window,
                     **VTK_VIEW_SETTINGS
                     )

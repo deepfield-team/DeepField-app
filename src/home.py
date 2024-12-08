@@ -44,14 +44,18 @@ state.field_slice = [0, 0]
 state.field_slice_max = 0
 state.field_slice_step = 0
 
-N_FIELD_SLICE_STEPS = 100
-
 def filter_path(path):
     "True if path is a directory or has .data or .hdf5 extension."
     if os.path.isdir(path):
         return True
     _, ext = os.path.splitext(path)
     return ext.lower() in ['.data', '.hdf5']
+
+def update_field_slices_params():
+    state.field_slice_max = FIELD['c_data'][state.activeField].max()
+    state.field_slice = [0, state.field_slice_max]
+    state.n_field_steps = len(np.unique(FIELD['c_data'][state.activeField]))
+    state.field_slice_step = state.field_slice_max / state.n_field_steps
 
 @state.change("user_request")
 def get_path_variants(user_request, **kwargs):
@@ -103,9 +107,15 @@ def load_file(loading, **kwargs):
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
 
-    state.field_slice_max = c_data[state.activeField].max()
-    state.field_slice = [0, state.field_slice_max]
-    state.field_slice_step = state.field_slice_max / N_FIELD_SLICE_STEPS
+    vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
+    vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])
+    vtk_array_k = dsa.numpyTovtkDataArray(FIELD['c_data']["K"])
+
+    dataset.GetCellData().SetScalars(vtk_array_i)
+    dataset.GetCellData().SetScalars(vtk_array_j)
+    dataset.GetCellData().SetScalars(vtk_array_k)
+
+    update_field_slices_params()
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
