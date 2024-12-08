@@ -8,7 +8,6 @@ from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 
 from .config import state, ctrl, FIELD, renderer
-from .home import update_field_slices_params
 
 VTK_VIEW_SETTINGS = {
     "interactive_ratio": 1,
@@ -26,7 +25,7 @@ rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
 @state.change("activeField", "activeStep")
-def update_field(activeField, activeStep, view_update=True, **kwargs):
+def update_field(activeField, activeStep, **kwargs):
     _ = kwargs
 
     if activeField is None:
@@ -40,16 +39,13 @@ def update_field(activeField, activeStep, view_update=True, **kwargs):
     else:
         state.need_time_slider = False
         vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
-
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
 
     mapper = FIELD['actor'].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
-    if view_update:
-        update_field_slices_params()
-        ctrl.view_update()
+    ctrl.view_update()
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
@@ -86,12 +82,20 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i)
     threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j)
     threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k)
-    print(state.field_slice_step)
     mapper = vtk.vtkDataSetMapper()                                         
     mapper.SetInputConnection(threshold_field.GetOutputPort())
+    mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
-    update_field(state.activeField, state.activeStep, view_update=False)
     update_cmap(state.colormap)
+
+@state.change("activeField", "activeStep")
+def update_field_slices_params(activeField, **kwargs):
+    _ = kwargs
+    if activeField:
+        state.field_slice_min = FIELD['c_data'][activeField].min()
+        state.field_slice_max = FIELD['c_data'][activeField].max()
+        state.field_slice = [state.field_slice_min, state.field_slice_max]
+        state.field_slice_step = state.field_slice_max / state.n_field_steps
 
 @state.change("opacity")
 def update_opacity(opacity, **kwargs):
@@ -106,8 +110,9 @@ def fit_view():
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
+    state.field_slice_min = FIELD['c_data'][state.activeField].min()
     state.field_slice_max = FIELD['c_data'][state.activeField].max()
-    state.field_slice = [0, state.field_slice_max]
+    state.field_slice = [state.field_slice_min, state.field_slice_max]
     state.opacity = 1
     ctrl.view_reset_camera()
 
@@ -324,7 +329,7 @@ def render_3d():
                             close_on_content_click=False):
                             with html.Div(style='width: 30vw'):
                                 with vuetify.VRangeSlider(
-                                    min=0,
+                                    min=("field_slice_min",),
                                     max=("field_slice_max",),
                                     step="field_slice_step",
                                     v_model=("field_slice",),
