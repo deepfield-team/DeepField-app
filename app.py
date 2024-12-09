@@ -21,7 +21,7 @@ def change_theme(*args, **kwargs):
         state.theme = 'dark'
         state.sideBarColor = "grey-darken-4"
         state.plotlyTheme = 'plotly_dark'
-        state.bgColor = 'grey-darken-4'
+        state.bgColor = 'black'
     else:
         state.theme = 'light'
         state.sideBarColor = "grey-lighten-4"
