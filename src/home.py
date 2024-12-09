@@ -177,6 +177,8 @@ def load_file(loading, **kwargs):
     renderer.AddActor(actor)
     FIELD['actor'] = actor
 
+    # print(field.wells.wells)
+
     reset_camera()
     ctrl.view_update()
 
