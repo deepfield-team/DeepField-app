@@ -45,22 +45,7 @@ state.units = 0
 state.pore_volume = 0.0
 state.num_timesteps = 0
 state.num_wells = 0
-
-state.comp_grid = 0
-state.comp_rock = 0
-state.comp_states = 0
-state.comp_tables = 0
-state.comp_wells = 0
-state.comp_faults = 0
-state.comp_aquifers = 0
-
-state.att_grid = 0
-state.att_rock = 0
-state.att_states = 0
-state.att_tables = 0
-state.att_wells = 0
-state.att_faults = 0
-state.att_aquifers = 0
+state.fluids = 0
 
 def filter_path(path):
     "True if path is a directory or has .data or .hdf5 extension."
@@ -123,7 +108,32 @@ def load_file(loading, **kwargs):
     state.total_cells = state.dimens[0] * state.dimens[1] * state.dimens[2]
     state.active_cells = int(np.sum(field.grid.actnum))
 
-    state.pore_volume = round(np.sum(np.array(field.rock.PORO) * (field.grid.dx * field.grid.dy * field.grid.dz)), 2)
+    active_cells = field.grid.actnum > 0
+    a1 = np.array(active_cells).flatten()
+    a2 = np.array(field.rock.PORO).flatten()
+    a3 = np.array(field.grid.cell_volumes).flatten()
+
+    # print(len(a1))
+    # print(len(a2))
+    # print(len(a3))
+
+    # # print(a1)
+    # print(a2)
+    # # print(a3)
+
+    # print(a1[0],a1[1],a1[2])
+    # print(a2[0],a2[1],a2[2])
+    # print(a3[0],a3[1],a3[2])
+    # print(a1[0]*a2[0]*a3[0])
+    # print(a1[1]*a2[1]*a3[1])
+    # print(a1[2]*a2[2]*a3[2])
+
+    # state.pore_volume = round(sum(x * y * z for x, y, z in zip(a1, a2, a3)), 2)
+    state.pore_volume = round(sum(a1[i] * a2[i] * a3[i] for i in range(len(a2))), 2)
+
+    state.fluids = field.meta['FLUIDS']
+    print(field.meta['UNITS'])
+
     if field.meta['UNITS'] == 'METRIC':
         state.units1 = field.meta['HUNITS'][0]
         state.units2 = field.meta['HUNITS'][1]
@@ -131,16 +141,14 @@ def load_file(loading, **kwargs):
         state.units4 = field.meta['HUNITS'][3]
         state.units5 = field.meta['HUNITS'][4]
         state.units_base = 'Metric'
-    else:
+    elif field.meta['UNITS'] == 'FIELD':
         state.units1 = field.meta['HUNITS'][0]
         state.units2 = field.meta['HUNITS'][1]
         state.units3 = field.meta['HUNITS'][2]
         state.units4 = field.meta['HUNITS'][3]
         state.units5 = field.meta['HUNITS'][4]
         state.units_base = 'Field'
-    '''
-    state.num_timesteps = field.state.n_timesteps can't get any timestaps, always 0, maybe need to calculate model first?
-    '''
+
     state.num_wells = field.num_wells
 
     state.components_attrs = field.get_components_attributes()      

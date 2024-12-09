@@ -5,6 +5,8 @@ def render_info():
     with vuetify.VCard(style="margin: 10px"):
         vuetify.VCardTitle("Description of the reservoir model")
         vuetify.VCardText('Dimensions: ' + '{{dimens}}')
+        vuetify.VCardTitle("Components in the model")
+        vuetify.VCardText('Components: ' + '{{fluids}}')
         vuetify.VCardTitle("Number of total cells")
         vuetify.VCardText('Total: ' + '{{total_cells}}')
         vuetify.VCardTitle("Number of active cells")
@@ -12,7 +14,7 @@ def render_info():
         vuetify.VCardTitle("Pore volume")
         vuetify.VCardText('{{pore_volume}}' + ' ' + '{{units3}}')
         vuetify.VCardTitle("Number of total timesteps")
-        vuetify.VCardText('num of timesteps: ' + '{{num_timesteps}}')
+        vuetify.VCardText('num of timesteps: ' + '{{domainMax}}')
         vuetify.VCardTitle("Number of wells")
         vuetify.VCardText('Number of wells: ' + '{{num_wells}}')
 
