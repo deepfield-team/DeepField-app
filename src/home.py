@@ -105,6 +105,10 @@ def load_file(loading, **kwargs):
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
     state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
 
+    state.xslice = 1
+    state.yslice = 1
+    state.zslice = 1
+
     if 'states' in field.components:
         attrs = field.states.attributes
         if attrs:

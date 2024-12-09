@@ -76,7 +76,12 @@ def get_data_limits(component, attr, activeStep):
 
 def create_slice(component, att, i, j, k, t, width,  height, colormap):
     x, y, triangles, data = get_slice_trisurf(component, att, i, j, k, t)
-    z = np.zeros(*x.shape)
+    if triangles is None:
+        x = np.zeros(0)
+        y = np.zeros(0)
+        triangles = np.zeros((0,3))
+        data = np.zeros(0)
+    z = np.zeros(x.shape)
     fig = go.Figure(data=[
         go.Mesh3d(
             x=x,
@@ -209,7 +214,7 @@ def render_2d():
                     with vuetify.Template(v_slot_append=True,
                         properties=[("v_slot_append", "v-slot:append")],):
                         vuetify.VTextField(
-                            v_model="xslice",
+                            v_model="yslice",
                             density="compact",
                             style="width: 80px",
                             type="number",
