@@ -56,10 +56,10 @@ def update_cmap(colormap, **kwargs):
     for i, val in enumerate(colors):
         table.SetTableValue(i, val[0], val[1], val[2])
     table.Build()
-    scalarBar = vtk.vtkScalarBarActor()
-    scalarBar.SetOrientationToVertical()
-    scalarBar.SetLookupTable(table)
-    renderer.AddActor2D(scalarBar)
+    #scalarBar = vtk.vtkScalarBarActor()
+    #scalarBar.SetOrientationToVertical()
+    #scalarBar.SetLookupTable(table)
+    #renderer.AddActor2D(scalarBar)
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold = None):
@@ -110,9 +110,7 @@ def fit_view():
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
-    state.field_slice_min = FIELD['c_data'][state.activeField].min()
-    state.field_slice_max = FIELD['c_data'][state.activeField].max()
-    state.field_slice = [state.field_slice_min, state.field_slice_max]
+    update_field_slices_params(state.activeField)
     state.opacity = 1
     ctrl.view_reset_camera()
 
