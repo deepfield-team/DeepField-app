@@ -16,27 +16,27 @@ def render_info():
         vuetify.VCardTitle("Number of total timesteps")
         vuetify.VCardText('num of timesteps: ' + '{{domainMax}}')
         vuetify.VCardTitle("Number of wells")
-        vuetify.VCardText('Number of wells: ' + '{{num_wells}}')
+        vuetify.VCardText('Number of wells: ' + '{{number_of_wells}}')
 
         vuetify.VCardTitle("Components and attributes")
         
         vuetify.VCardTitle("Attributes of grid")
-        vuetify.VCardText("{{att_grid}}")
+        vuetify.VCardText("{{components_attrs['grid']}}")
         
         vuetify.VCardTitle("Attributes of rock")
-        vuetify.VCardText("{{att_rock}}")
+        vuetify.VCardText("{{components_attrs['rock']}}")
 
         vuetify.VCardTitle("Attributes of states")
-        vuetify.VCardText("{{att_states}}")
+        vuetify.VCardText("{{components_attrs['states']}}")
 
         vuetify.VCardTitle("Attributes of tables")
-        vuetify.VCardText("{{att_tables}}")
+        vuetify.VCardText("{{components_attrs['tables']}}")
 
         vuetify.VCardTitle("Attributes of wells")
-        vuetify.VCardText("{{att_wells}}")
+        vuetify.VCardText("{{components_attrs['wells']}}")
 
         vuetify.VCardTitle("Attributes of faults")
-        vuetify.VCardText("{{att_faults}}")
+        vuetify.VCardText("{{components_attrs['faults']}}")
 
         vuetify.VCardTitle("Attributes of aquifers")
-        vuetify.VCardText("{{att_aquifers}}")
+        vuetify.VCardText("{{components_attrs['aquifers']}}")
