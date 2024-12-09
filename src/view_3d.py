@@ -101,10 +101,10 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
 def update_field_slices_params(activeField, **kwargs):
     _ = kwargs
     if activeField:
-        state.field_slice_min = FIELD['c_data'][activeField].min()
-        state.field_slice_max = FIELD['c_data'][activeField].max()
+        state.field_slice_min = float(FIELD['c_data'][activeField].min())
+        state.field_slice_max = float(FIELD['c_data'][activeField].max())
         state.field_slice = [state.field_slice_min, state.field_slice_max]
-        state.field_slice_step = state.field_slice_max / state.n_field_steps
+        state.field_slice_step = (state.field_slice_max - state.field_slice_min) / state.n_field_steps
 
 @state.change("opacity")
 def update_opacity(opacity, **kwargs):
@@ -154,6 +154,7 @@ def render_3d():
                     style="width: 80px",
                     type="number",
                     variant="outlined",
+                    bg_color=('bgColor',),
                     hide_details=True)
 
     with vuetify.VCard(
@@ -221,6 +222,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)     
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -247,6 +249,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
@@ -256,6 +259,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -282,6 +286,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
@@ -291,6 +296,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -317,6 +323,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
@@ -326,13 +333,14 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
-                        vuetify.VIcon("mdi-pac-man")
+                        vuetify.VIcon("mdi-filter")
                         with vuetify.VMenu(activator="parent",
                             location="right",
                             close_on_content_click=False):
@@ -340,7 +348,7 @@ def render_3d():
                                 with vuetify.VRangeSlider(
                                     min=("field_slice_min",),
                                     max=("field_slice_max",),
-                                    step="field_slice_step",
+                                    step=("field_slice_step",),
                                     v_model=("field_slice",),
                                     hide_details=True
                                     ):
@@ -349,18 +357,20 @@ def render_3d():
                                         vuetify.VTextField(
                                             v_model="field_slice[0]",
                                             density="compact",
-                                            style="width: 70px",
+                                            style="width: 80px;",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
                                         vuetify.VTextField(
                                             v_model="field_slice[1]",
                                             density="compact",
-                                            style="width: 70px",
+                                            style="width: 80px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
