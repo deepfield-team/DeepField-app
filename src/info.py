@@ -1,7 +1,6 @@
 from trame.widgets import vuetify3 as vuetify
 
 def render_info():
-    # Вынесем повторяющийся стиль в отдельную переменную
     common_text_style = "font-size: 20px; margin-top: 10px;"
     title_style = "font-size: 32px; font-weight: bold;"
     subtitle_style = "font-size: 28px; margin-top: 10px; font-weight: bold;"
@@ -14,12 +13,15 @@ def render_info():
         vuetify.VCardText('Active cells: ' + '{{active_cells}}', style=common_text_style)
         vuetify.VCardText('Pore volume: ' + '{{pore_volume}}' + ' ' + '{{units3}}', style=common_text_style)
         vuetify.VCardText('Oil volume: ' + '{{oil_volume}}' + ' ' + '{{units3}}', style=common_text_style)
-        vuetify.VCardText('Number of total timesteps: ' + '{{max_timestep}}', style=common_text_style)
-        vuetify.VCardText('Number of wells: ' + '{{number_of_wells}}', style=common_text_style)
+        vuetify.VCardText('Gas volume: ' + '{{oil_volume}}' + ' ' + '{{units4}}', style=common_text_style)
+        vuetify.VCardText('Water volume: ' + '{{oil_volume}}' + ' ' + '{{units3}}', style=common_text_style)
 
-        vuetify.VCardTitle("Production rates", style=subtitle_style)
-        vuetify.VCardText('Initial oil rate: ' + '{{start_oil_rate}}' + ' ' + '{{units1}}', style=common_text_style)
-        vuetify.VCardText('Initial water rate: ' + '{{start_water_rate}}' + ' ' + '{{units3}}', style=common_text_style)
+        vuetify.VCardText('Number of total timesteps: ' + '{{max_timestep}}', style=common_text_style)
+
+        vuetify.VCardText('Number of wells: ' + '{{number_of_wells}}', style=common_text_style)
+        vuetify.VCardText('Total oil production: ' + '{{total_oil_production}}' + ' ' + '{{units1}}', style=common_text_style)
+        vuetify.VCardText('Total gas production: ' + '{{total_gas_production}}' + ' ' + '{{units2}}', style=common_text_style)
+        vuetify.VCardText('Total water production: ' + '{{total_water_production}}' + ' ' + '{{units1}}', style=common_text_style)
         
         vuetify.VCardTitle("Components and attributes", style=subtitle_style)
         vuetify.VCardTitle("Attributes of grid: " + "{{components_attrs['grid']}}", style=common_text_style)

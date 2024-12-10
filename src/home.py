@@ -135,33 +135,25 @@ def load_file(loading, **kwargs):
     state.active_cells = int(np.sum(field.grid.actnum))
 
     active_cells = field.grid.actnum > 0
-    a1 = np.array(active_cells).flatten()
-    a2 = np.array(field.rock.PORO).flatten()
-    a3 = np.array(field.grid.cell_volumes).flatten()
-    if 'SOIL' in field.states.attributes:
-        a4 = np.array(field.states.SOIL).flatten()
-    else:
-        a4 = np.zeros_like(a1)
+    a_active = np.array(active_cells).flatten()
+    a_poro = np.array(field.rock.PORO).flatten()
+    a_cells = np.array(field.grid.cell_volumes).flatten()
+    a_oil = np.array(field.states.SOIL).flatten()
+    a_gas = np.array(field.states.SGAS).flatten()
+    a_water = np.array(field.states.SWAT).flatten()
 
-    state.pore_volume = round(sum(a1 * a2 * a3), 2)
-    state.oil_volume = round(sum(a1 * a2 * a3 * a4), 2)
+    state.pore_volume = round(sum(a_active * a_poro * a_cells), 2)
+    state.oil_volume = round(sum(a_active * a_poro * a_cells * a_oil), 2)
+    state.gas_volume = round(sum(a_active * a_poro * a_cells * a_gas), 2)
+    state.water_volume = round(sum(a_active * a_poro * a_cells * a_water), 2)
+
     state.fluids = field.meta['FLUIDS']
 
     if 'RESULTS' in field.wells.state.binary_attributes:
-        total_rates = {
-            'WOPR': None,
-            'WWPR': None
-        }
-
-        for well in field.wells.main_branches:
-            if 'RESULTS' in well:
-                results = well.RESULTS
-                for key in total_rates.keys():
-                    if key in results.columns:
-                        total_rates[key] += results[key].iloc[0]
-
-        state.start_oil_rate = total_rates['WOPR']
-        state.start_water_rate = total_rates['WWPR']
+        total_rates = field.wells.total_rates[['WOPR', 'WGPR', 'WWPR']].sum()
+        state.total_oil_production = total_rates['WOPR']
+        state.total_gas_production = total_rates['WGPR']
+        state.total_water_production = total_rates['WWPR']
 
     if field.meta['UNITS'] == 'METRIC':
         state.units1 = field.meta['HUNITS'][0]
