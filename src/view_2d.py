@@ -40,6 +40,16 @@ CHART_STYLE_2D = {
 }
 
 
+def triangle_centroids(x, y, triangles):
+    points = np.stack((x, y), axis=1)
+
+    median_start = points[triangles[:, 0]]
+
+    median_end = (points[triangles[:, 1]] + points[triangles[:, 2]])/2
+
+    centroids = median_end*2/3 + median_start/3
+    return centroids
+
 @state.change("plotlyTheme")
 def change_plotly_theme_2d(plotlyTheme, **kwargs):
     fig = PLOT_2D['fig']
@@ -76,7 +86,8 @@ def get_data_limits(component, attr, activeStep):
     return vmin, vmax
 
 
-def create_slice(component, att, i, j, k, t, range_x, range_y, width,  height, colormap):
+def create_slice(component, att, i, j, k, t, range_x, range_y,
+                 xaxis_name, yaxis_name, width,  height, colormap):
     x, y, triangles, data = get_slice_trisurf(component, att, i, j, k, t)
     if triangles is None:
         x = np.zeros(0)
@@ -90,9 +101,10 @@ def create_slice(component, att, i, j, k, t, range_x, range_y, width,  height, c
             y=y,
             z=z,
             intensity=data,
+            customdata=triangle_centroids(x, y, triangles),
             intensitymode='cell',
             colorscale=colormap.lower(),
-            hovertemplate="y:%{x}\r\nz:%{y}<extra></extra>",
+            hovertemplate=f"{xaxis_name}: %{{customdata[0]:.2f}}<br>{yaxis_name}: %{{customdata[1]:.2f}}<extra></extra>",
             i=triangles[:, 0].ravel(),
             j=triangles[:, 1].ravel(),
             k=triangles[:, 2].ravel(),
@@ -155,6 +167,8 @@ def update_slices(figure_size, activeSlice,
                         t=int(activeStep) if isinstance(component, States) else None,
                         range_x=range_x,
                         range_y=range_y,
+                        xaxis_name='y',
+                        yaxis_name='z',
                         width=width,
                         height=height,
                         colormap=colormap))
@@ -171,6 +185,8 @@ def update_slices(figure_size, activeSlice,
                         t=int(activeStep) if isinstance(component, States) else None,
                         range_x=range_x,
                         range_y=range_y,
+                        xaxis_name='x',
+                        yaxis_name='z',
                         width=width,
                         height=height,
                         colormap=colormap))
@@ -188,6 +204,8 @@ def update_slices(figure_size, activeSlice,
                 t=int(activeStep) if isinstance(component, States) else None,
                 range_x=range_x,
                 range_y=range_y,
+                xaxis_name='x',
+                yaxis_name='y',
                 width=width,
                 height=height,
                 colormap=colormap))
