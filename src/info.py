@@ -13,6 +13,7 @@ def render_info():
         vuetify.VCardText('Total cells: ' + '{{total_cells}}', style=common_text_style)
         vuetify.VCardText('Active cells: ' + '{{active_cells}}', style=common_text_style)
         vuetify.VCardText('Pore volume: ' + '{{pore_volume}}' + ' ' + '{{units3}}', style=common_text_style)
+        vuetify.VCardText('Oil volume: ' + '{{oil_volume}}' + ' ' + '{{units3}}', style=common_text_style)
         vuetify.VCardText('Number of total timesteps: ' + '{{max_timestep}}', style=common_text_style)
         vuetify.VCardText('Number of wells: ' + '{{number_of_wells}}', style=common_text_style)
 
