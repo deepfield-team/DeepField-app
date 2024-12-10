@@ -19,10 +19,7 @@ def render_info():
 
         vuetify.VCardTitle("Production rates", style=subtitle_style)
         vuetify.VCardText('Initial oil rate: ' + '{{start_oil_rate}}' + ' ' + '{{units1}}', style=common_text_style)
-        vuetify.VCardText('Final oil rate: ' + '{{end_oil_rate}}' + ' ' + '{{units1}}', style=common_text_style)
         vuetify.VCardText('Initial water rate: ' + '{{start_water_rate}}' + ' ' + '{{units3}}', style=common_text_style)
-        vuetify.VCardText('Final water rate: ' + '{{end_water_rate}}' + ' ' + '{{units3}}', style=common_text_style)
-
         
         vuetify.VCardTitle("Components and attributes", style=subtitle_style)
         vuetify.VCardTitle("Attributes of grid: " + "{{components_attrs['grid']}}", style=common_text_style)

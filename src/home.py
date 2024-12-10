@@ -148,31 +148,20 @@ def load_file(loading, **kwargs):
     state.fluids = field.meta['FLUIDS']
 
     if 'RESULTS' in field.wells.state.binary_attributes:
-        time_series = {
-            'DATE': None,
+        total_rates = {
             'WOPR': None,
             'WWPR': None
         }
 
-        common_dates = None
-
         for well in field.wells.main_branches:
             if 'RESULTS' in well:
                 results = well.RESULTS
-                if common_dates is None:
-                    common_dates = results['DATE']
-                    time_series['DATE'] = common_dates
-                    time_series['WOPR'] = np.zeros(len(common_dates))
-                    time_series['WWPR'] = np.zeros(len(common_dates))
-
-                for key in ['WOPR', 'WGPR', 'WWPR']:
+                for key in total_rates.keys():
                     if key in results.columns:
-                        time_series[key] += results[key].values
+                        total_rates[key] += results[key].iloc[0]
 
-        state.start_oil_rate = time_series['WOPR'][0]
-        state.end_oil_rate = time_series['WOPR'][-1]
-        state.start_water_rate = time_series['WWPR'][0]
-        state.end_water_rate = time_series['WWPR'][-1]
+        state.start_oil_rate = total_rates['WOPR']
+        state.start_water_rate = total_rates['WWPR']
 
     if field.meta['UNITS'] == 'METRIC':
         state.units1 = field.meta['HUNITS'][0]
