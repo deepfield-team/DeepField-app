@@ -74,7 +74,7 @@ def get_data_limits(component, attr, activeStep):
     return vmin, vmax
 
 
-def create_slice(component, att, i, j, k, t, width,  height, colormap):
+def create_slice(component, att, i, j, k, t, range_x, range_y, width,  height, colormap):
     x, y, triangles, data = get_slice_trisurf(component, att, i, j, k, t)
     if triangles is None:
         x = np.zeros(0)
@@ -94,28 +94,28 @@ def create_slice(component, att, i, j, k, t, width,  height, colormap):
             i=triangles[:, 0].ravel(),
             j=triangles[:, 1].ravel(),
             k=triangles[:, 2].ravel(),
-            showscale=False,
+            showscale=True,
             flatshading=True,
         ),
 
     ],
             layout=go.Layout(
                 template=state.plotlyTheme,
-                width=width,
+                width=width-10,
                 height=height,
                 scene = {
-                    'xaxis': dict(visible=False),
+                    'xaxis': dict(visible=False, range=range_x),
                     'zaxis': dict(visible=False),
-                    'yaxis': dict(visible=False),
+                    'yaxis': dict(visible=False, range=range_y),
                     'aspectmode':'manual',
-                    'aspectratio': {'x':width/height, 'y': 1, 'z':0.01},
+                    'aspectratio': dict(x=1, y=1, z=0.01),
                     'camera': dict(
                     up=dict(x=0, y=0, z=1),
                     center=dict(x=0, y=0, z=0),
-                    eye=dict(x=0, y=0, z=2.5)),
+                    eye=dict(x=0, y=0, z=1.5)),
                     'dragmode': False,
                 },
-                margin={'t': 30, 'r': 30, 'l': 30, 'b': 0},
+                margin={'t': 100, 'r': 100, 'l': 30, 'b': 0, 'pad': 20},
 
 
             ))
@@ -135,7 +135,8 @@ def update_slices(figure_size, activeSlice,
     if figure_size is None:
         return
     activeStep = int(activeStep)
-
+    grid = FIELD['model'].grid
+    xyz = grid.xyz
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
@@ -143,17 +144,23 @@ def update_slices(figure_size, activeSlice,
     comp_name = comp_name.lower()
     component = getattr(FIELD['model'], comp_name)
     if activeSlice == 'i':
+        range_x = (xyz[grid.actnum][..., 1].min(), xyz[grid.actnum][..., 1].max())
+        range_y = (xyz[grid.actnum][..., 2].min(), xyz[grid.actnum][..., 2].max())
         ctrl.update_slice(
             create_slice(component=component,
                         att=attr, i=int(xslice)-1,
                         j=None,
                         k=None,
                         t=int(activeStep) if isinstance(component, States) else None,
+                        range_x=range_x,
+                        range_y=range_y,
                         width=width,
                         height=height,
                         colormap=colormap))
 
     if activeSlice == 'j':
+        range_x = (xyz[grid.actnum][..., 0].min(), xyz[grid.actnum][..., 0].max())
+        range_y = (xyz[grid.actnum][..., 2].min(), xyz[grid.actnum][..., 2].max())
         ctrl.update_slice(
             create_slice(component=component,
                         att=attr,
@@ -161,11 +168,15 @@ def update_slices(figure_size, activeSlice,
                         j=int(yslice)-1,
                         k=None,
                         t=int(activeStep) if isinstance(component, States) else None,
+                        range_x=range_x,
+                        range_y=range_y,
                         width=width,
                         height=height,
                         colormap=colormap))
 
     if activeSlice == 'k':
+        range_x = (xyz[grid.actnum][..., 0].min(), xyz[grid.actnum][..., 0].max())
+        range_y = (xyz[grid.actnum][..., 1].min(), xyz[grid.actnum][..., 1].max())
         ctrl.update_slice(
             create_slice(
                 component=component,
@@ -174,6 +185,8 @@ def update_slices(figure_size, activeSlice,
                 j=None,
                 k=int(zslice)-1,
                 t=int(activeStep) if isinstance(component, States) else None,
+                range_x=range_x,
+                range_y=range_y,
                 width=width,
                 height=height,
                 colormap=colormap))
