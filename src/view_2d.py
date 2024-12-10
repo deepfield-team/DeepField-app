@@ -22,6 +22,7 @@ PLOT_2D = {'fig': None}
 
 CHART_STYLE_2D = {
     # "display_mode_bar": ("true",),
+    'scrollZoom': True,
     "mode_bar_buttons_to_remove": (
         "chart_buttons",
         [   "orbitRotation",
@@ -32,6 +33,8 @@ CHART_STYLE_2D = {
             "hoverClosestCartesian",
             "hoverCompareCartesian",
             "tableRotation",
+            "resetCameraDefault3d",
+            "resetCameraLastSave3d"
         ],
     ),
     "display_logo": ("false",),
@@ -96,29 +99,28 @@ def create_slice(component, att, i, j, k, t, range_x, range_y, width,  height, c
             k=triangles[:, 2].ravel(),
             showscale=True,
             flatshading=True,
-        ),
-
-    ],
-            layout=go.Layout(
-                template=state.plotlyTheme,
-                width=width-10,
-                height=height,
-                scene = {
-                    'xaxis': dict(visible=False, range=range_x),
-                    'zaxis': dict(visible=False),
-                    'yaxis': dict(visible=False, range=range_y),
-                    'aspectmode':'manual',
-                    'aspectratio': dict(x=1, y=1, z=0.01),
-                    'camera': dict(
-                    up=dict(x=0, y=0, z=1),
-                    center=dict(x=0, y=0, z=0),
-                    eye=dict(x=0, y=0, z=1.5)),
-                    'dragmode': "zoom",
-                },
-                margin={'t': 100, 'r': 100, 'l': 30, 'b': 0, 'pad': 20},
-
-
-            ))
+            colorbar=dict(len=0.75)
+            ),
+        ],
+        layout=go.Layout(
+            template=state.plotlyTheme,
+            width=width,
+            height=height,
+            scene={
+                'xaxis': dict(visible=False, range=range_x),
+                'zaxis': dict(visible=False),
+                'yaxis': dict(visible=False, range=range_y),
+                'aspectmode':'manual',
+                'aspectratio': dict(x=1, y=1, z=0.01),
+                'camera': dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=0, y=0, z=1.5)),
+                'dragmode': 'zoom',
+            },
+            margin={'t': 0, 'r': 110, 'l': 0, 'b': 0},
+            )
+        )
     PLOT_2D['fig'] = fig
     return fig
 
@@ -192,8 +194,10 @@ def update_slices(figure_size, activeSlice,
                 colormap=colormap))
 
 def render_2d():
-    with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow(style="width:100%; height: 95%; margin 0;", classes='pa-0'):
+    with vuetify.VContainer(fluid=True,
+        style='align-items: start',
+        classes="fill-height pa-0 ma-0"):
+        with vuetify.VRow(style="width:100%; height: 95%", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):
                 with vuetify.VSlider(
                 	v_if="activeSlice === 'i'",

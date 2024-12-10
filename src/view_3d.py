@@ -71,7 +71,7 @@ def update_cmap(colormap, **kwargs):
     #renderer.AddActor2D(scalarBar)
     ctrl.view_update()
 
-def make_threshold(slices, attr, input_threshold = None):
+def make_threshold(slices, attr, input_threshold=None):
     threshold = vtk.vtkThreshold()
     threshold.SetInputData(FIELD['dataset'])
     if input_threshold:
@@ -119,7 +119,7 @@ def fit_view():
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
-    update_field_slices_params(state.activeField)
+    state.field_slice = [state.field_slice_min, state.field_slice_max]
     state.opacity = 1
     ctrl.view_reset_camera()
 
