@@ -24,6 +24,7 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
+
 @state.change("theme")
 def change_vtk_bgr(theme, **kwargs):
     if theme == 'light':
@@ -33,8 +34,9 @@ def change_vtk_bgr(theme, **kwargs):
     ctrl.view_update()
 
 @state.change("activeField", "activeStep")
-def update_field(activeField, activeStep, view_update=True, **kwargs):
+def update_field(activeField, activeStep, **kwargs):
     _ = kwargs
+
     if activeField is None:
         return
     if FIELD['c_data'] is None:
@@ -48,11 +50,11 @@ def update_field(activeField, activeStep, view_update=True, **kwargs):
         vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
+
     mapper = FIELD['actor'].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
-    if view_update:
-        ctrl.view_update()
+    ctrl.view_update()
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
@@ -63,48 +65,46 @@ def update_cmap(colormap, **kwargs):
     for i, val in enumerate(colors):
         table.SetTableValue(i, val[0], val[1], val[2])
     table.Build()
+    #scalarBar = vtk.vtkScalarBarActor()
+    #scalarBar.SetOrientationToVertical()
+    #scalarBar.SetLookupTable(table)
+    #renderer.AddActor2D(scalarBar)
     ctrl.view_update()
 
-@state.change("i_slice", "j_slice", "k_slice")
-def update_threshold_slices(i_slice, j_slice, k_slice, **kwargs):
+def make_threshold(slices, attr, input_threshold = None):
+    threshold = vtk.vtkThreshold()
+    threshold.SetInputData(FIELD['dataset'])
+    if input_threshold:
+        threshold.SetInputConnection(input_threshold.GetOutputPort())       
+    threshold.SetUpperThreshold(slices[1])
+    threshold.SetLowerThreshold(slices[0])
+    threshold.SetInputArrayToProcess(0, 0, 0, 1, attr)
+    return threshold
+
+@state.change("i_slice", "j_slice", "k_slice", "field_slice")
+def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     _ = kwargs
     if not FIELD['c_data']:
         return
 
-    dataset = FIELD['dataset']
-    vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
-    vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])
-    vtk_array_k = dsa.numpyTovtkDataArray(FIELD['c_data']["K"])
-    dataset.GetCellData().SetScalars(vtk_array_i)
-    dataset.GetCellData().SetScalars(vtk_array_j)
-    dataset.GetCellData().SetScalars(vtk_array_k)
-
-    threshold_i = vtk.vtkThreshold()
-    threshold_i.SetInputData(dataset)
-    threshold_i.SetUpperThreshold(i_slice[1])
-    threshold_i.SetLowerThreshold(i_slice[0])
-    threshold_i.SetInputArrayToProcess(0, 0, 0, 1, "I")
-
-    threshold_j = vtk.vtkThreshold()
-    threshold_j.SetInputData(dataset)
-    threshold_j.SetInputConnection(threshold_i.GetOutputPort())
-    threshold_j.SetUpperThreshold(j_slice[1])
-    threshold_j.SetLowerThreshold(j_slice[0])
-    threshold_j.SetInputArrayToProcess(0, 0, 0, 1, "J")
-
-    threshold_k = vtk.vtkThreshold()
-    threshold_k.SetInputData(dataset)
-    threshold_k.SetInputConnection(threshold_j.GetOutputPort())
-    threshold_k.SetUpperThreshold(k_slice[1])
-    threshold_k.SetLowerThreshold(k_slice[0])
-    threshold_k.SetInputArrayToProcess(0, 0, 0, 1, "K")
-
+    threshold_i = make_threshold(i_slice, "I")
+    threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i)
+    threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j)
+    threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k)
     mapper = vtk.vtkDataSetMapper()                                         
-    mapper.SetInputConnection(threshold_k.GetOutputPort())
-
+    mapper.SetInputConnection(threshold_field.GetOutputPort())
+    mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
-    update_field(state.activeField, state.activeStep, view_update=False)
     update_cmap(state.colormap)
+
+@state.change("activeField", "activeStep")
+def update_field_slices_params(activeField, **kwargs):
+    _ = kwargs
+    if activeField:
+        state.field_slice_min = float(FIELD['c_data'][activeField].min())
+        state.field_slice_max = float(FIELD['c_data'][activeField].max())
+        state.field_slice = [state.field_slice_min, state.field_slice_max]
+        state.field_slice_step = (state.field_slice_max - state.field_slice_min) / state.n_field_steps
 
 @state.change("opacity")
 def update_opacity(opacity, **kwargs):
@@ -119,6 +119,7 @@ def fit_view():
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
+    update_field_slices_params(state.activeField)
     state.opacity = 1
     ctrl.view_reset_camera()
 
@@ -153,6 +154,7 @@ def render_3d():
                     style="width: 80px",
                     type="number",
                     variant="outlined",
+                    bg_color=('bgColor',),
                     hide_details=True)
 
     with vuetify.VCard(
@@ -220,6 +222,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)     
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -246,6 +249,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
@@ -255,6 +259,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -281,6 +286,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
@@ -290,6 +296,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -316,6 +323,7 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
@@ -325,6 +333,44 @@ def render_3d():
                                             style="width: 70px",
                                             type="number",
                                             variant="outlined",
+                                            bg_color=('bgColor',),
+                                            hide_details=True)
+            with vuetify.VRow(classes='pa-0 ma-0'):
+                with vuetify.VCol(classes='pa-0 ma-0'):
+                    with vuetify.VBtn(icon=True,flat=True,
+                        style="background-color:transparent;\
+                               backface-visibility:visible;"):
+                        vuetify.VIcon("mdi-filter")
+                        with vuetify.VMenu(activator="parent",
+                            location="right",
+                            close_on_content_click=False):
+                            with html.Div(style='width: 30vw'):
+                                with vuetify.VRangeSlider(
+                                    min=("field_slice_min",),
+                                    max=("field_slice_max",),
+                                    step=("field_slice_step",),
+                                    v_model=("field_slice",),
+                                    hide_details=True
+                                    ):
+                                    with vuetify.Template(v_slot_prepend=True,
+                                        properties=[("v_slot_prepend", "v-slot:prepend")],):
+                                        vuetify.VTextField(
+                                            v_model="field_slice[0]",
+                                            density="compact",
+                                            style="width: 80px;",
+                                            type="number",
+                                            variant="outlined",
+                                            bg_color=('bgColor',),
+                                            hide_details=True)
+                                    with vuetify.Template(v_slot_append=True,
+                                        properties=[("v_slot_append", "v-slot:append")],):
+                                        vuetify.VTextField(
+                                            v_model="field_slice[1]",
+                                            density="compact",
+                                            style="width: 80px",
+                                            type="number",
+                                            variant="outlined",
+                                            bg_color=('bgColor',),
                                             hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):

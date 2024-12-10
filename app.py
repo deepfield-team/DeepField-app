@@ -14,16 +14,19 @@ from src.config import server, state, ctrl
 state.theme = 'light'
 state.sideBarColor = "grey-lighten-4"
 state.plotlyTheme = 'plotly'
+state.text_color = 'black'
 
 def change_theme(*args, **kwargs):
     if state.theme == 'light':
         state.theme = 'dark'
         state.sideBarColor = "grey-darken-4"
         state.plotlyTheme = 'plotly_dark'
+        state.bgColor = 'black'
     else:
         state.theme = 'light'
         state.sideBarColor = "grey-lighten-4"
         state.plotlyTheme = 'plotly'
+        state.bgColor = 'white'
 ctrl.change_theme = change_theme
 
 
