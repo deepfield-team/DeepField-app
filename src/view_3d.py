@@ -24,13 +24,18 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
+scalarWidget = vtk.vtkScalarBarWidget()
+scalarWidget.SetInteractor(rw_interactor)
+
 
 @state.change("theme")
 def change_vtk_bgr(theme, **kwargs):
     if theme == 'light':
         renderer.SetBackground(1, 1, 1)
+        scalarWidget.GetScalarBarActor().GetLabelTextProperty().SetColor(0, 0, 0)
     else:
         renderer.SetBackground(0, 0, 0)
+        scalarWidget.GetScalarBarActor().GetLabelTextProperty().SetColor(1, 1, 1)
     ctrl.view_update()
 
 @state.change("activeField", "activeStep")
@@ -65,10 +70,9 @@ def update_cmap(colormap, **kwargs):
     for i, val in enumerate(colors):
         table.SetTableValue(i, val[0], val[1], val[2])
     table.Build()
-    #scalarBar = vtk.vtkScalarBarActor()
-    #scalarBar.SetOrientationToVertical()
-    #scalarBar.SetLookupTable(table)
-    #renderer.AddActor2D(scalarBar)
+    scalarWidget.GetScalarBarActor().SetLookupTable(table)
+    scalarWidget.GetScalarBarActor().GetLabelTextProperty().SetFontSize(1)
+    scalarWidget.On()
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None):
