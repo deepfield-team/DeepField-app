@@ -138,8 +138,41 @@ def load_file(loading, **kwargs):
     a1 = np.array(active_cells).flatten()
     a2 = np.array(field.rock.PORO).flatten()
     a3 = np.array(field.grid.cell_volumes).flatten()
-    state.pore_volume = round(sum(a1[i] * a2[i] * a3[i] for i in range(len(a1))), 2)
+    if 'SOIL' in field.states.attributes:
+        a4 = np.array(field.states.SOIL).flatten()
+    else:
+        a4 = np.zeros_like(a1)
+
+    state.pore_volume = round(sum(a1 * a2 * a3), 2)
+    state.oil_volume = round(sum(a1 * a2 * a3 * a4), 2)
     state.fluids = field.meta['FLUIDS']
+
+    if 'RESULTS' in field.wells.state.binary_attributes:
+        time_series = {
+            'DATE': None,
+            'WOPR': None,
+            'WWPR': None
+        }
+
+        common_dates = None
+
+        for well in field.wells.main_branches:
+            if 'RESULTS' in well:
+                results = well.RESULTS
+                if common_dates is None:
+                    common_dates = results['DATE']
+                    time_series['DATE'] = common_dates
+                    time_series['WOPR'] = np.zeros(len(common_dates))
+                    time_series['WWPR'] = np.zeros(len(common_dates))
+
+                for key in ['WOPR', 'WGPR', 'WWPR']:
+                    if key in results.columns:
+                        time_series[key] += results[key].values
+
+        state.start_oil_rate = time_series['WOPR'][0]
+        state.end_oil_rate = time_series['WOPR'][-1]
+        state.start_water_rate = time_series['WWPR'][0]
+        state.end_water_rate = time_series['WWPR'][-1]
 
     if field.meta['UNITS'] == 'METRIC':
         state.units1 = field.meta['HUNITS'][0]
@@ -164,12 +197,11 @@ def load_file(loading, **kwargs):
         if component:
             state.components_attrs[comp_name] = component.attributes
         else:
-            state.components_attrs[comp_name] = []
+            state.components_attrs[comp_name] = None
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
     state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
-
 
     if 'states' in field.components:
         attrs = field.states.attributes
