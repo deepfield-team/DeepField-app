@@ -46,6 +46,14 @@ state.field_slice_min = 0
 state.field_slice_max = 0
 state.n_field_steps = 100
 state.field_slice_step = 0
+state.total_cells = 0
+state.active_cells = 0
+state.units = 0
+state.pore_volume = 0.0
+state.num_timesteps = 0
+state.num_wells = 0
+state.fluids = 0
+state.oil_saturation = 0
 
 def filter_path(path):
     "True if path is a directory or has .data or .hdf5 extension."
@@ -122,6 +130,46 @@ def load_file(loading, **kwargs):
     state.xslice = 1
     state.yslice = 1
     state.zslice = 1
+
+    state.total_cells = state.dimens[0] * state.dimens[1] * state.dimens[2]
+    state.active_cells = int(np.sum(field.grid.actnum))
+
+    active_cells = field.grid.actnum > 0
+    a1 = np.array(active_cells).flatten()
+    a2 = np.array(field.rock.PORO).flatten()
+    a3 = np.array(field.grid.cell_volumes).flatten()
+    state.pore_volume = round(sum(a1[i] * a2[i] * a3[i] for i in range(len(a1))), 2)
+    state.fluids = field.meta['FLUIDS']
+
+    if field.meta['UNITS'] == 'METRIC':
+        state.units1 = field.meta['HUNITS'][0]
+        state.units2 = field.meta['HUNITS'][1]
+        state.units3 = field.meta['HUNITS'][2]
+        state.units4 = field.meta['HUNITS'][3]
+        state.units5 = field.meta['HUNITS'][4]
+        state.units_base = 'Metric'
+    elif field.meta['UNITS'] == 'FIELD':
+        state.units1 = field.meta['HUNITS'][0]
+        state.units2 = field.meta['HUNITS'][1]
+        state.units3 = field.meta['HUNITS'][2]
+        state.units4 = field.meta['HUNITS'][3]
+        state.units5 = field.meta['HUNITS'][4]
+        state.units_base = 'Field'
+
+    state.number_of_wells = len(field.wells.names)
+
+    state.components_attrs = {}
+    for comp_name in field.components:
+        component = field._components.get(comp_name)
+        if component:
+            state.components_attrs[comp_name] = component.attributes
+        else:
+            state.components_attrs[comp_name] = []
+
+    state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
+    state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
+    state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
+
 
     if 'states' in field.components:
         attrs = field.states.attributes
