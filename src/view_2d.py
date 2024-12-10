@@ -22,7 +22,6 @@ PLOT_2D = {'fig': None}
 
 CHART_STYLE_2D = {
     # "display_mode_bar": ("true",),
-    'scrollZoom': True,
     "mode_bar_buttons_to_remove": (
         "chart_buttons",
         [   "orbitRotation",
