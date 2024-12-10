@@ -116,7 +116,7 @@ def create_slice(component, att, i, j, k, t, range_x, range_y, width,  height, c
                 up=dict(x=0, y=0, z=1),
                 center=dict(x=0, y=0, z=0),
                 eye=dict(x=0, y=0, z=1.5)),
-                'dragmode': False,
+                'dragmode': 'zoom',
             },
             margin={'t': 0, 'r': 110, 'l': 0, 'b': 0},
             )
