@@ -47,7 +47,7 @@ def triangle_centroids(x, y, triangles):
 
     median_end = (points[triangles[:, 1]] + points[triangles[:, 2]])/2
 
-    centroids = median_end*2/3 + median_start*1/3
+    centroids = median_end*2/3 + median_start/3
     return centroids
 
 @state.change("plotlyTheme")
