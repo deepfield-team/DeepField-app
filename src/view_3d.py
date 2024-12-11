@@ -30,18 +30,24 @@ scalarBar = scalarWidget.GetScalarBarActor()
 scalarBar.UnconstrainedFontSizeOn()
 scalarBar.GetLabelTextProperty().BoldOff()
 scalarBar.GetLabelTextProperty().ItalicOff()
+scalarBar.GetTitleTextProperty().BoldOff()
+scalarBar.GetTitleTextProperty().ItalicOff()
 scalarBar.GetLabelTextProperty().SetFontSize(14)
-scalarBar.SetBarRatio(scalarBar.GetBarRatio() * 0.3)
+scalarBar.SetVerticalTitleSeparation(2)
+scalarBar.SetBarRatio(scalarBar.GetBarRatio() * 1.5)
+scalarBar.SetMaximumWidthInPixels(50)
 
 
 @state.change("theme")
 def change_vtk_bgr(theme, **kwargs):
     if theme == 'light':
         renderer.SetBackground(1, 1, 1)
-        scalarWidget.GetScalarBarActor().GetLabelTextProperty().SetColor(0, 0, 0)
+        scalarBar.GetLabelTextProperty().SetColor(0, 0, 0)
+        scalarBar.GetTitleTextProperty().SetColor(0, 0, 0)
     else:
         renderer.SetBackground(0, 0, 0)
-        scalarWidget.GetScalarBarActor().GetLabelTextProperty().SetColor(1, 1, 1)
+        scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
+        scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
     ctrl.view_update()
 
 @state.change("activeField", "activeStep")
@@ -65,6 +71,8 @@ def update_field(activeField, activeStep, **kwargs):
     mapper = FIELD['actor'].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
+    scalarBar.SetTitle(activeField.split('_')[1])
+
     ctrl.view_update()
 
 @state.change("colormap")
@@ -144,7 +152,6 @@ def render_3d():
                     )
                 ctrl.view_update = view.update
                 ctrl.view_reset_camera = view.reset_camera
-
 
     with html.Div(v_if='need_time_slider', style='position: fixed; width: 100%; bottom: 0;'):
         with vuetify.VSlider(

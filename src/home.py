@@ -119,7 +119,8 @@ def load_file(loading, **kwargs):
     FIELD['c_data'] = c_data
 
     state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K']]
-    state.activeField = state.field_attrs[0]
+    state.activeField = ('ROCK_PERMZ' if 'ROCK_PERMZ' in state.field_attrs
+        else state.field_attrs[0])
 
     res = []
     for well in field.wells:

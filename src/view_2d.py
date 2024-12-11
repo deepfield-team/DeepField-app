@@ -122,7 +122,7 @@ def create_slice(component, att, i, j, k, t, range_x, range_y,
             k=triangles[:, 2].ravel(),
             showscale=True,
             flatshading=True,
-            colorbar=dict(len=0.75)
+            colorbar=dict(title=att, len=0.75)
             ),
         ],
         layout=go.Layout(
