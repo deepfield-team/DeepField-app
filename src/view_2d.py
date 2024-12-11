@@ -152,8 +152,6 @@ def create_slice(component, att, i, j, k, t, range_x, range_y,
               "xslice", "yslice", "zslice", "colormap")
 def update_slices(figure_size, activeSlice,
     activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
-
-    figure_size = figure_size
     _ = kwargs
     if activeField is None:
         return

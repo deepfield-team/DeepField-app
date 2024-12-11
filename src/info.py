@@ -16,11 +16,11 @@ def render_info():
         vuetify.VCardText('Active cells: ' + '{{active_cells}}',
             classes=text_classes, style=text_style)
         vuetify.VCardText('Pore volume: ' + "{{pore_vol}}" + ' ' + "{{units3}}", 
-            lasses=text_classes, style=text_style)
+            classes=text_classes, style=text_style)
         vuetify.VCardText('Oil volume: ' + "{{oil_vol}}" + ' ' + "{{units3}}",
             classes=text_classes, style=text_style)
         vuetify.VCardText('Water volume: ' + "{{wat_vol}}" + ' ' + "{{units3}}", 
-            lasses=text_classes, style=text_style)
+            classes=text_classes, style=text_style)
         vuetify.VCardText('Gas volume: ' + "{{gas_vol}}" + ' ' + "{{units4}}",
             classes=text_classes, style=text_style)
         vuetify.VCardText('Number of timesteps: ' + '{{max_timestep}}',
