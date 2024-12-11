@@ -52,7 +52,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
             with vuetify.VBtn(icon=True):
-                vuetify.VIcon("mdi-dots-vertical")
+                vuetify.VIcon("mdi-help-circle-outline")
 
         with vuetify.VMain():
             with html.Div(v_if="activeTab === 'home'", classes="fill-height"):
