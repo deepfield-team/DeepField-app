@@ -19,6 +19,8 @@ import vtkmodules.vtkRenderingOpenGL2  # noqa
 server = get_server(client_type="vue3")
 state, ctrl = server.state, server.controller
 
+state.trame__title = "DeepField"
+
 renderer = vtkRenderer()
 renderer.SetBackground(1, 1, 1)
 

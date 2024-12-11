@@ -30,8 +30,8 @@ scalarBar = scalarWidget.GetScalarBarActor()
 scalarBar.UnconstrainedFontSizeOn()
 scalarBar.GetLabelTextProperty().BoldOff()
 scalarBar.GetLabelTextProperty().ItalicOff()
-scalarBar.GetLabelTextProperty().SetFontSize(16)
-scalarBar.SetBarRatio(scalarBar.GetBarRatio() * 0.5)
+scalarBar.GetLabelTextProperty().SetFontSize(14)
+scalarBar.SetBarRatio(scalarBar.GetBarRatio() * 0.3)
 
 
 @state.change("theme")
