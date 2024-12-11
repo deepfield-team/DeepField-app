@@ -88,15 +88,19 @@ def get_data_limits(component, attr, activeStep):
 
 def create_slice(component, att, i, j, k, t, range_x, range_y,
                  xaxis_name, yaxis_name, width,  height, colormap):
-    x, y, triangles, data = get_slice_trisurf(component, att, i, j, k, t)
+    x, y, triangles, data, indices = get_slice_trisurf(component, att, i, j, k, t)
     if triangles is None:
         x = np.zeros(0)
         y = np.zeros(0)
         triangles = np.zeros((0,3))
         data = np.zeros(0)
         centroids = np.zeros((0,2))
+        indices = np.zeros((0, 3))
     else:
         centroids = triangle_centroids(x, y, triangles)
+
+    indices = indices + 1
+    custom_data = np.hstack((centroids, indices))
     z = np.zeros(x.shape)
     fig = go.Figure(data=[
         go.Mesh3d(
@@ -104,10 +108,15 @@ def create_slice(component, att, i, j, k, t, range_x, range_y,
             y=y,
             z=z,
             intensity=data,
-            customdata=centroids,
+            customdata=custom_data,
             intensitymode='cell',
             colorscale=colormap.lower(),
-            hovertemplate=f"{xaxis_name}: %{{customdata[0]:.2f}}<br>{yaxis_name}: %{{customdata[1]:.2f}}<extra></extra>",
+            hovertemplate=(
+                "<b>(%{customdata[2]}, %{customdata[3]}, %{customdata[4]})</b><br>"+
+                f"{xaxis_name}: %{{customdata[0]:.2f}}<br>" +
+                f"{yaxis_name}: %{{customdata[1]:.2f}}"+
+                "<extra></extra>"
+            ),
             i=triangles[:, 0].ravel(),
             j=triangles[:, 1].ravel(),
             k=triangles[:, 2].ravel(),
