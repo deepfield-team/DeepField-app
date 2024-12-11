@@ -94,6 +94,9 @@ def create_slice(component, att, i, j, k, t, range_x, range_y,
         y = np.zeros(0)
         triangles = np.zeros((0,3))
         data = np.zeros(0)
+        centroids = np.zeros((0,2))
+    else:
+        centroids = triangle_centroids(x, y, triangles)
     z = np.zeros(x.shape)
     fig = go.Figure(data=[
         go.Mesh3d(
@@ -101,7 +104,7 @@ def create_slice(component, att, i, j, k, t, range_x, range_y,
             y=y,
             z=z,
             intensity=data,
-            customdata=triangle_centroids(x, y, triangles),
+            customdata=centroids,
             intensitymode='cell',
             colorscale=colormap.lower(),
             hovertemplate=f"{xaxis_name}: %{{customdata[0]:.2f}}<br>{yaxis_name}: %{{customdata[1]:.2f}}<extra></extra>",
