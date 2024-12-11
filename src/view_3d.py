@@ -26,6 +26,12 @@ rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
 scalarWidget = vtk.vtkScalarBarWidget()
 scalarWidget.SetInteractor(rw_interactor)
+scalarBar = scalarWidget.GetScalarBarActor()
+scalarBar.UnconstrainedFontSizeOn()
+scalarBar.GetLabelTextProperty().BoldOff()
+scalarBar.GetLabelTextProperty().ItalicOff()
+scalarBar.GetLabelTextProperty().SetFontSize(16)
+scalarBar.SetBarRatio(scalarBar.GetBarRatio() * 0.5)
 
 
 @state.change("theme")
@@ -71,7 +77,6 @@ def update_cmap(colormap, **kwargs):
         table.SetTableValue(i, val[0], val[1], val[2])
     table.Build()
     scalarWidget.GetScalarBarActor().SetLookupTable(table)
-    scalarWidget.GetScalarBarActor().GetLabelTextProperty().SetFontSize(1)
     scalarWidget.On()
     ctrl.view_update()
 
