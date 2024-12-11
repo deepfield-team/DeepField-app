@@ -2,6 +2,7 @@ import os
 import sys
 from glob import glob
 import numpy as np
+from anytree import PreOrderIter
 import vtk
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
@@ -49,11 +50,31 @@ state.field_slice_step = 0
 state.total_cells = 0
 state.active_cells = 0
 state.units = 0
-state.pore_volume = 0.0
-state.num_timesteps = 0
+state.pore_volume = 0
 state.num_wells = 0
-state.fluids = 0
-state.oil_saturation = 0
+state.fluids = []
+state.total_oil_production = 0
+state.total_wat_production = 0
+state.total_gas_production = 0
+state.components_attrs = {
+    'grid': [],
+    'rock': [],
+    'states': [],
+    'tables': [],
+    'wells': [],
+    'faults': [],
+    'aquifers': [],
+    }
+state.units1 = ''
+state.units2 = ''
+state.units3 = ''
+state.units4 = ''
+state.units5 = ''
+
+state.pore_vol = 0
+state.oil_vol = 0
+state.wat_vol = 0
+state.gas_vol = 0
 
 def filter_path(path):
     "True if path is a directory or has .data or .hdf5 extension."
@@ -131,54 +152,47 @@ def load_file(loading, **kwargs):
     state.yslice = 1
     state.zslice = 1
 
-    state.total_cells = state.dimens[0] * state.dimens[1] * state.dimens[2]
+    state.total_cells = int(np.prod(field.grid.dimens))
     state.active_cells = int(np.sum(field.grid.actnum))
 
-    active_cells = field.grid.actnum > 0
-    a_active = np.array(active_cells).flatten()
-    a_poro = np.array(field.rock.PORO).flatten()
-    a_cells = np.array(field.grid.cell_volumes).flatten()
-    a_oil = np.array(field.states.SOIL).flatten()
-    a_gas = np.array(field.states.SGAS).flatten()
-    a_water = np.array(field.states.SWAT).flatten()
+    soil = field.states.SOIL[0] if 'SOIL' in field.states else 0
+    swat = field.states.SWAT[0] if 'SWAT' in field.states else 0
+    sgas = field.states.SGAS[0] if 'SGAS' in field.states else 0
 
-    state.pore_volume = round(sum(a_active * a_poro * a_cells), 2)
-    state.oil_volume = round(sum(a_active * a_poro * a_cells * a_oil), 2)
-    state.gas_volume = round(sum(a_active * a_poro * a_cells * a_gas), 2)
-    state.water_volume = round(sum(a_active * a_poro * a_cells * a_water), 2)
+    c_vols = field.grid.cell_volumes
 
-    state.fluids = field.meta['FLUIDS']
+    p_vols = field.grid.actnum * field.rock.poro * c_vols
+    state.pore_vol = np.round(p_vols.sum(), 2)
+    state.oil_vol = np.round((p_vols * soil).sum(), 2)
+    state.wat_vol = np.round((p_vols * swat).sum(), 2)
+    state.gag_vol = np.round((p_vols * sgas).sum(), 2)
 
-    if 'RESULTS' in field.wells.state.binary_attributes:
-        total_rates = field.wells.total_rates[['WOPR', 'WGPR', 'WWPR']].sum()
-        state.total_oil_production = total_rates['WOPR']
-        state.total_gas_production = total_rates['WGPR']
-        state.total_water_production = total_rates['WWPR']
+    state.fluids = list(field.meta['FLUIDS'])
 
-    if field.meta['UNITS'] == 'METRIC':
-        state.units1 = field.meta['HUNITS'][0]
-        state.units2 = field.meta['HUNITS'][1]
-        state.units3 = field.meta['HUNITS'][2]
-        state.units4 = field.meta['HUNITS'][3]
-        state.units5 = field.meta['HUNITS'][4]
-        state.units_base = 'Metric'
-    elif field.meta['UNITS'] == 'FIELD':
-        state.units1 = field.meta['HUNITS'][0]
-        state.units2 = field.meta['HUNITS'][1]
-        state.units3 = field.meta['HUNITS'][2]
-        state.units4 = field.meta['HUNITS'][3]
-        state.units5 = field.meta['HUNITS'][4]
-        state.units_base = 'Field'
+    rates = field.wells.total_rates.fillna(0)
+    rates = rates if len(rates) else {}
+    state.total_oil_production = np.round(rates['WOPR'].sum(), 2) if 'WOPR' in rates else 0
+    state.total_wat_production = np.round(rates['WWPR'].sum(), 2) if 'WWPR' in rates else 0
+    state.total_gas_production = np.round(rates['WGPR'].sum(), 2) if 'WGPR' in rates else 0
 
-    state.number_of_wells = len(field.wells.names)
+    state.units1 = field.meta['HUNITS'][0]
+    state.units2 = field.meta['HUNITS'][1]
+    state.units3 = field.meta['HUNITS'][2]
+    state.units4 = field.meta['HUNITS'][3]
+    state.units5 = field.meta['HUNITS'][4]
+
+    state.num_wells = len(field.wells.names)
 
     state.components_attrs = {}
-    for comp_name in field.components:
-        component = field._components.get(comp_name)
-        if component:
-            state.components_attrs[comp_name] = component.attributes
+    for name, comp in field.items():
+        if name in ['wells', 'faults']:
+            attrs = []
+            for node in PreOrderIter(comp.root):
+                attrs.extend(list(node.attributes))
+            attrs = list(set(attrs))
         else:
-            state.components_attrs[comp_name] = None
+            attrs = list(comp.attributes)
+        state.components_attrs[name] = attrs
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
@@ -328,7 +342,7 @@ def render_home():
                         )
                     with vuetify.VCard(v_if='loading', variant='text'):
                         vuetify.VCardText('Loading data, please wait')
-                    with vuetify.VCard(v_if='loadComplete & !showHistory', variant='text'):
+                    with vuetify.VCard(v_if='loadComplete & !showHistory & !loading', variant='text'):
                         vuetify.VCardText('Loading completed')
                     with vuetify.VCard(v_if='showHistory & emptyHistory', variant='text'):
                         vuetify.VCardText('History is empty')
