@@ -138,6 +138,7 @@ def update_plot_size(figure_size_1d, **kwargs):
             showlegend=True,
             margin={'t': 30, 'r': 10, 'l': 80, 'b': 30},
             legend={'x': 1.01,},
+            template=state.plotlyTheme,
             )
     PLOTS['plot1d'].update_layout(height=height, width=width)
     ctrl.update_plot(PLOTS['plot1d'])
@@ -196,6 +197,7 @@ def plot_table(tableToShow, tableXAxis, domainToShow, height, width):
         height=height,
         width=width,
         showlegend=False,
+        template=state.plotlyTheme,
         margin={'t': 30, 'r': 50, 'l': 80, 'b': 30},
         )
 
