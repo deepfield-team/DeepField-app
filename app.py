@@ -15,6 +15,7 @@ state.theme = 'light'
 state.sideBarColor = "grey-lighten-4"
 state.plotlyTheme = 'plotly'
 state.text_color = 'black'
+state.bgColor = 'white'
 
 def change_theme(*args, **kwargs):
     if state.theme == 'light':

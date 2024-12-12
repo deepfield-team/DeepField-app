@@ -88,13 +88,18 @@ def update_cmap(colormap, **kwargs):
     scalarWidget.On()
     ctrl.view_update()
 
-def make_threshold(slices, attr, input_threshold=None):
+def make_threshold(slices, attr, input_threshold=None, ijk=False):
     threshold = vtk.vtkThreshold()
     threshold.SetInputData(FIELD['dataset'])
     if input_threshold:
-        threshold.SetInputConnection(input_threshold.GetOutputPort())       
-    threshold.SetUpperThreshold(slices[1])
-    threshold.SetLowerThreshold(slices[0])
+        threshold.SetInputConnection(input_threshold.GetOutputPort())
+    if ijk:
+        if slices[0] == slices[1]:
+            threshold.SetUpperThreshold(slices[1]-0.5)
+            threshold.SetLowerThreshold(slices[0]-1)
+        else:
+            threshold.SetUpperThreshold(slices[1]-1)
+            threshold.SetLowerThreshold(slices[0]-1)
     threshold.SetInputArrayToProcess(0, 0, 0, 1, attr)
     return threshold
 
@@ -104,9 +109,9 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     if not FIELD['c_data']:
         return
 
-    threshold_i = make_threshold(i_slice, "I")
-    threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i)
-    threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j)
+    threshold_i = make_threshold(i_slice, "I", ijk=True)
+    threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i, ijk=True)
+    threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j, ijk=True)
     threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k)
     mapper = vtk.vtkDataSetMapper()                                         
     mapper.SetInputConnection(threshold_field.GetOutputPort())
@@ -131,6 +136,33 @@ def update_opacity(opacity, **kwargs):
     FIELD['actor'].GetProperty().SetOpacity(opacity)
     ctrl.view_update()
 
+@state.change("showScalars")
+def change_field_visibility(showScalars, **kwargs):
+    _ = kwargs
+    if showScalars:
+        FIELD['actor'].GetProperty().SetRepresentationToSurface()
+        FIELD['actor'].SetVisibility(True)
+        FIELD['actor'].GetMapper().ScalarVisibilityOn()
+    else:
+        if state.showWireframe:
+            FIELD['actor'].GetProperty().SetRepresentationToWireframe()
+            FIELD['actor'].GetMapper().ScalarVisibilityOff()
+        else:
+            FIELD['actor'].SetVisibility(False)
+    ctrl.view_update()
+
+@state.change("showWireframe")
+def change_field_visibility(showWireframe, **kwargs):
+    _ = kwargs
+    if state.showScalars:
+        return 
+    if showWireframe:
+        FIELD['actor'].GetProperty().SetRepresentationToWireframe()
+        FIELD['actor'].GetMapper().ScalarVisibilityOff()
+        FIELD['actor'].SetVisibility(True)
+    else:
+        FIELD['actor'].SetVisibility(False)
+    ctrl.view_update()
 
 def fit_view():
     state.i_slice = [1, state.dimens[0]]
@@ -138,6 +170,10 @@ def fit_view():
     state.k_slice = [1, state.dimens[2]]
     state.field_slice = [state.field_slice_min, state.field_slice_max]
     state.opacity = 1
+    state.showScalars = True
+    state.showWireframe = True
+    state.showWells = True
+    state.showFaults = True
     ctrl.view_reset_camera()
 
 ctrl.fit_view = fit_view
@@ -389,6 +425,32 @@ def render_3d():
                                             variant="outlined",
                                             bg_color=('bgColor',),
                                             hide_details=True)
+            with vuetify.VRow(classes='pa-0 ma-0'):
+                with vuetify.VCol(classes='pa-0 ma-0'):
+                    with vuetify.VBtn(icon=True,flat=True,
+                        style="background-color:transparent;\
+                               backface-visibility:visible;"):
+                        vuetify.VIcon("mdi-layers-outline")
+                        with vuetify.VMenu(activator="parent",
+                            location="right",
+                            close_on_content_click=False):
+                            with vuetify.VCard(classes="pr-2"):
+                                vuetify.VCheckbox(label='Scalars',
+                                    v_model=('showScalars', True),
+                                    hide_details=True,
+                                    density='compact')
+                                vuetify.VCheckbox(label='Wireframe',
+                                    v_model=('showWireframe', True),
+                                    hide_details=True,
+                                    density='compact')
+                                vuetify.VCheckbox(label='Wells',
+                                    v_model=('showWells', True),
+                                    hide_details=True,
+                                    density='compact')
+                                vuetify.VCheckbox(label='Faults',
+                                    v_model=('showFaults', True),
+                                    hide_details=True,
+                                    density='compact')
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
                     with vuetify.VBtn(icon=True,flat=True,
