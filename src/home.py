@@ -117,6 +117,14 @@ def load_file(loading, **kwargs):
 
     FIELD['model'] = field
 
+    process_field(field)
+    
+    state.loading = False
+    state.loadComplete = True
+    state.errMessage = ''
+    state.loadFailed = False
+
+def process_field(field):
     dataset = field.get_vtk_dataset()
     FIELD['dataset'] = dataset
 
@@ -242,11 +250,6 @@ def load_file(loading, **kwargs):
 
     reset_camera()
     ctrl.view_update()
-
-    state.loading = False
-    state.loadComplete = True
-    state.errMessage = ''
-    state.loadFailed = False
 
 ctrl.load_file = load_file
 
