@@ -20,14 +20,16 @@ from .config import state, ctrl, FIELD, renderer
 from .common import reset_camera
 from .view_3d import update_field_slices_params
 
-state.dir_list = []
-state.path_index = None
-state.update_dir_list = True
+state.dirList = []
+state.pathIndex = None
+state.updateDirList = True
 state.recentFiles = []
 state.loading = False
 state.loadComplete = False
 state.showHistory = False
 state.emptyHistory = True
+state.errMessage = ''
+state.loadFailed = False
 
 state.field_attrs = []
 state.activeField = None
@@ -90,8 +92,8 @@ def get_path_variants(user_request, **kwargs):
     state.loadComplete = False
     state.showHistory = False
     paths = list(glob(user_request + "*")) if user_request is not None else []
-    if state.update_dir_list:
-        state.dir_list = [p for p in paths if filter_path(p)]
+    if state.updateDirList:
+        state.dirList = [p for p in paths if filter_path(p)]
 
 @state.change("loading")
 def load_file(loading, **kwargs):
@@ -100,7 +102,14 @@ def load_file(loading, **kwargs):
     if not loading:
         return
 
-    field = Field(state.user_request).load()
+    try:
+        field = Field(state.user_request).load()
+    except Exception as err:
+        state.errMessage = str(err)
+        state.loading = False
+        state.loadFailed = True
+        state.loadComplete = True
+        return
 
     if state.user_request not in state.recentFiles:
         state.recentFiles = state.recentFiles + [state.user_request, ]
@@ -236,6 +245,8 @@ def load_file(loading, **kwargs):
 
     state.loading = False
     state.loadComplete = True
+    state.errMessage = ''
+    state.loadFailed = False
 
 ctrl.load_file = load_file
 
@@ -257,36 +268,36 @@ def make_empty_dataset():
 
 def on_keydown(key_code):
     if key_code == 'ArrowDown':
-        if state.path_index is None:
-            state.path_index = 0
+        if state.pathIndex is None:
+            state.pathIndex = 0
         else:
-            state.path_index = (state.path_index + 1) % len(state.dir_list)
-        state.update_dir_list = False
-        state.user_request = state.dir_list[state.path_index]
+            state.pathIndex = (state.pathIndex + 1) % len(state.dirList)
+        state.updateDirList = False
+        state.user_request = state.dirList[state.pathIndex]
         return
     if key_code == 'ArrowUp':
-        if state.path_index is None:
-            state.path_index = -1
+        if state.pathIndex is None:
+            state.pathIndex = -1
         else:
-            state.path_index = (state.path_index - 1) % len(state.dir_list)
-        state.update_dir_list = False
-        state.user_request = state.dir_list[state.path_index]
+            state.pathIndex = (state.pathIndex - 1) % len(state.dirList)
+        state.updateDirList = False
+        state.user_request = state.dirList[state.pathIndex]
         return
     if key_code == "Enter":
-        state.update_dir_list = True
+        state.updateDirList = True
         _, ext = os.path.splitext(state.user_request)
         if ext.lower() in ['.data', '.hdf5']:
             # do smth to start loading
             return
-        if state.path_index is None:
-            state.path_index = 0
-        if state.path_index < len(state.dir_list):
-            path = state.dir_list[state.path_index]
+        if state.pathIndex is None:
+            state.pathIndex = 0
+        if state.pathIndex < len(state.dirList):
+            path = state.dirList[state.pathIndex]
             if os.path.isdir(path):
                 path += os.sep
             state.user_request = path
-            state.path_index = None
-    state.update_dir_list = True
+            state.pathIndex = None
+    state.updateDirList = True
 
 
 def render_home():
@@ -324,7 +335,7 @@ def render_home():
                                 max_height="30vh"):
                                 with vuetify.VList(v_if='!loading & !showHistory'):
                                     with vuetify.VListItem(
-                                        v_for="item, index in dir_list",
+                                        v_for="item, index in dirList",
                                         click="user_request = item"):
                                         vuetify.VListItemTitle("{{item}}")
                                 with vuetify.VList(v_if='showHistory'):
@@ -343,7 +354,13 @@ def render_home():
                         )
                     with vuetify.VCard(v_if='loading', variant='text'):
                         vuetify.VCardText('Loading data, please wait')
-                    with vuetify.VCard(v_if='loadComplete & !showHistory & !loading', variant='text'):
+                    with vuetify.VCard(v_if='loadComplete & !showHistory & !loading & !loadFailed',
+                        variant='text'):
+                        vuetify.VIcon('mdi-check-bold', color="success")
                         vuetify.VCardText('Loading completed')
+                    with vuetify.VCard(v_if='loadComplete & !showHistory & !loading & loadFailed',
+                        variant='text'):
+                        vuetify.VIcon('mdi-close-thick', color="error")
+                        vuetify.VCardText('Loading failed: ' + '{{errMessage}}')
                     with vuetify.VCard(v_if='showHistory & emptyHistory', variant='text'):
                         vuetify.VCardText('History is empty')
