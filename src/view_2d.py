@@ -21,7 +21,7 @@ FIELD['slices'] = {}
 PLOT_2D = {'fig': None}
 
 CHART_STYLE_2D = {
-    # "display_mode_bar": ("true",),
+    "display_mode_bar": ("false",),
     "mode_bar_buttons_to_remove": (
         "chart_buttons",
         [   "orbitRotation",
@@ -222,69 +222,71 @@ def update_slices(figure_size, activeSlice,
 
 def render_2d():
     with vuetify.VContainer(fluid=True,
-        style='align-items: start',
-        classes="fill-height pa-0 ma-0"):
-        with vuetify.VRow(style="width:100%; height: 95%", classes='pa-0 ma-0'):
-            with vuetify.VCol(classes='pa-0'):
-                with vuetify.VSlider(
-                	v_if="activeSlice === 'i'",
-                    min=1,
-                    max=("dimens[0]",),
-                    step=1,
-                    v_model=('xslice', 1),
-                    label='Slice I',
-                    classes='pt-3 pr-2 pl-2',
-                    hide_details=True
-                    ):
-                    with vuetify.Template(v_slot_append=True,
-                        properties=[("v_slot_append", "v-slot:append")],):
-                        vuetify.VTextField(
-                            v_model="xslice",
-                            density="compact",
-                            style="width: 80px",
-                            type="number",
-                            variant="outlined",
-                            hide_details=True)
-                with vuetify.VSlider(
-                	v_if="activeSlice === 'j'",
-                    min=1,
-                    max=("dimens[1]",),
-                    step=1,
-                    v_model=('yslice', 1),
-                    label='Slice J',
-                    classes='pt-3 pr-2 pl-2',
-                    hide_details=True
-                    ):
-                    with vuetify.Template(v_slot_append=True,
-                        properties=[("v_slot_append", "v-slot:append")],):
-                        vuetify.VTextField(
-                            v_model="yslice",
-                            density="compact",
-                            style="width: 80px",
-                            type="number",
-                            variant="outlined",
-                            hide_details=True)
-                with vuetify.VSlider(
-                	v_if="activeSlice === 'k'",
-                    min=1,
-                    max=("dimens[2]",),
-                    step=1,
-                    v_model=('zslice', 1),
-                    label='Slice K',
-                    classes='pt-3 pr-2 pl-2',
-                    hide_details=True
-                    ):
-                    with vuetify.Template(v_slot_append=True,
-                        properties=[("v_slot_append", "v-slot:append")],):
-                        vuetify.VTextField(
-                            v_model="zslice",
-                            density="compact",
-                            style="width: 80px",
-                            type="number",
-                            variant="outlined",
-                            hide_details=True)
+        classes="pa-0 ma-0"):
+        with vuetify.VRow(style="width:100%; height: calc(100vh - 48px)",
+            classes='pl-0 pr-0 pb-0 ma-0'):
+            with vuetify.VCol(classes='pa-0 ma-0'):
                 with trame.SizeObserver("figure_size"):
                     ctrl.update_slice = plotly.Figure(**CHART_STYLE_2D).update
+
+    with html.Div(style='position: fixed; width: 100%; top: 48px;'):
+        with vuetify.VSlider(
+            v_if="activeSlice === 'i'",
+            min=1,
+            max=("dimens[0]",),
+            step=1,
+            v_model=('xslice', 1),
+            label='Slice I',
+            classes='pt-1 pr-2 pl-2',
+            hide_details=True
+            ):
+            with vuetify.Template(v_slot_append=True,
+                properties=[("v_slot_append", "v-slot:append")],):
+                vuetify.VTextField(
+                    v_model="xslice",
+                    density="compact",
+                    style="width: 80px",
+                    type="number",
+                    variant="outlined",
+                    hide_details=True)
+        with vuetify.VSlider(
+            v_if="activeSlice === 'j'",
+            min=1,
+            max=("dimens[1]",),
+            step=1,
+            v_model=('yslice', 1),
+            label='Slice J',
+            classes='pt-1 pr-2 pl-2',
+            hide_details=True
+            ):
+            with vuetify.Template(v_slot_append=True,
+                properties=[("v_slot_append", "v-slot:append")],):
+                vuetify.VTextField(
+                    v_model="yslice",
+                    density="compact",
+                    style="width: 80px",
+                    type="number",
+                    variant="outlined",
+                    hide_details=True)
+        with vuetify.VSlider(
+            v_if="activeSlice === 'k'",
+            min=1,
+            max=("dimens[2]",),
+            step=1,
+            v_model=('zslice', 1),
+            label='Slice K',
+            classes='pt-1 pr-2 pl-2',
+            hide_details=True
+            ):
+            with vuetify.Template(v_slot_append=True,
+                properties=[("v_slot_append", "v-slot:append")],):
+                vuetify.VTextField(
+                    v_model="zslice",
+                    density="compact",
+                    style="width: 80px",
+                    type="number",
+                    variant="outlined",
+                    hide_details=True)
 
     with html.Div(v_if='need_time_slider', style='position: fixed; width: 100%; bottom: 0;'):
         with vuetify.VSlider(
@@ -293,7 +295,8 @@ def render_2d():
             step=1,
             v_model=('activeStep',),
             label="Timestep",
-            hide_details=True
+            hide_details=True,
+            classes='pr-2 pl-2 pb-1'
             ):
             with vuetify.Template(v_slot_append=True,
                 properties=[("v_slot_append", "v-slot:append")],):
@@ -308,7 +311,7 @@ def render_2d():
     with vuetify.VCard(
         color=('sideBarColor',),
         flat=True,
-        style='position: fixed; left: 0; top: 30vh;'):
+        style='position: fixed; left: 0; top: 50%; transform: translateY(-50%);'):
         with vuetify.VContainer(fluid=True,
             style='align-items: start; justify-content: left;',
             classes='pa-0 ma-0'):

@@ -160,7 +160,8 @@ def render_3d():
             step=1,
             v_model=('activeStep',),
             label="Timestep",
-            hide_details=True
+            hide_details=True,
+            classes='pr-2 pl-2 pb-1'
             ):
             with vuetify.Template(v_slot_append=True,
                 properties=[("v_slot_append", "v-slot:append")],):
@@ -176,7 +177,7 @@ def render_3d():
     with vuetify.VCard(
         color=('sideBarColor',),
         flat=True,
-        style='position: fixed; left: 0; top: 20vh;'):
+        style='position: fixed; left: 0; top: 50%; transform: translateY(-50%);'):
         with vuetify.VContainer(fluid=True,
             style='align-items: start; justify-content: left;',
             classes='pa-0 ma-0'):
