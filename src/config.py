@@ -28,4 +28,5 @@ FIELD = {"actor": None,
          "dataset": None,
          "c_data": None,
          "data1d": {'states': [], 'wells': [], 'tables': []},
-         "model": None}
+         "model": None,
+         "model_copy": None}

@@ -116,6 +116,7 @@ def load_file(loading, **kwargs):
         state.emptyHistory = False
 
     FIELD['model'] = field
+    FIELD['model_copy'] = None
 
     process_field(field)
     

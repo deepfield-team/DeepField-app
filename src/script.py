@@ -10,7 +10,7 @@ def f(field):
 """
 state.scriptOutput = ''
 state.scriptRunning = False
-state.scriptFinished = False
+state.fieldRestoring = False
 
 
 @state.change("scriptRunning")
@@ -24,6 +24,10 @@ def run_script(scriptRunning, **kwargs):
     exec(state.scriptInput, None, local_vars)
     success = False
     res = ''
+
+    if FIELD['model_copy'] is None:
+        FIELD['model_copy'] = FIELD['model'].copy()
+
     if 'f' in local_vars:
         try:
             res = local_vars['f'](FIELD['model'])
@@ -40,6 +44,17 @@ def run_script(scriptRunning, **kwargs):
     state.scriptRunning = False
     state.scriptFinished = True
 
+@state.change("fieldRestoring")
+def restore_field(fieldRestoring, **kwargs):
+    _ = kwargs
+
+    if not fieldRestoring:
+        return
+
+    FIELD['model'] = FIELD['model_copy'].copy()
+    process_field(FIELD['model'])
+    state.fieldRestoring = False
+
 def render_script():
     vuetify.VTextarea(
     	v_model=('scriptInput',),
@@ -48,6 +63,10 @@ def render_script():
         click='scriptRunning = true',
         loading=('scriptRunning',))
 
-    with vuetify.VCard(style="margin-top: 10px"):
+    with vuetify.VCard(style="margin-top: 10px", variant='flat'):
         vuetify.VCardTitle("Ouptput:")
         vuetify.VCardText('{{scriptOutput}}')
+
+    vuetify.VBtn('Restore field',
+        click='fieldRestoring = true',
+        loading=('fieldRestoring',))
