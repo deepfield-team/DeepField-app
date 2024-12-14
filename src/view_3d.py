@@ -100,6 +100,9 @@ def make_threshold(slices, attr, input_threshold=None, ijk=False):
         else:
             threshold.SetUpperThreshold(slices[1]-1)
             threshold.SetLowerThreshold(slices[0]-1)
+    else:
+        threshold.SetUpperThreshold(slices[1])
+        threshold.SetLowerThreshold(slices[0])
     threshold.SetInputArrayToProcess(0, 0, 0, 1, attr)
     return threshold
 
