@@ -216,7 +216,7 @@ def render_3d():
     with vuetify.VCard(
         color=('sideBarColor',),
         flat=True,
-        style='position: fixed; left: 0; top: 50%; transform: translateY(-50%);'):
+        style='position: fixed; left: 0; top: calc(50% + 48px); transform: translateY(calc(0px - 50% - 24px));'):
         with vuetify.VContainer(fluid=True,
             style='align-items: start; justify-content: left;',
             classes='pa-0 ma-0'):
