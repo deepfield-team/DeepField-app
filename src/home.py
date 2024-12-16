@@ -248,6 +248,33 @@ def process_field(field):
     renderer.RemoveActor(FIELD['actor'])
     renderer.AddActor(actor)
     FIELD['actor'] = actor
+    points = vtk.vtkPoints()
+    cells = vtk.vtkCellArray()
+    for well in FIELD['model'].wells:
+        point_ids = []
+        welltrack = well.welltrack
+        for line in welltrack:
+            point_ids.append(points.InsertNextPoint(line[:3]))
+
+        polyLine = vtk.vtkPolyLine()
+        polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
+        for i, id in enumerate(point_ids):
+            polyLine.GetPointIds().SetId(i, id)
+        cells.InsertNextCell(polyLine)
+
+
+    polyData = vtk.vtkPolyData()
+    polyData.SetPoints(points)
+    polyData.SetLines(cells)
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polyData)
+    actor_wells = vtk.vtkActor()
+    actor_wells.SetScale(*scales)
+    actor_wells.SetMapper(mapper)
+    actor_wells.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
+    renderer.AddActor(actor_wells)
+    FIELD['actor_wells'] = actor_wells
+
 
     reset_camera()
     ctrl.view_update()

@@ -116,7 +116,7 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i, ijk=True)
     threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j, ijk=True)
     threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k)
-    mapper = vtk.vtkDataSetMapper()                                         
+    mapper = vtk.vtkDataSetMapper()
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
@@ -158,13 +158,19 @@ def change_field_visibility(showScalars, **kwargs):
 def change_field_visibility(showWireframe, **kwargs):
     _ = kwargs
     if state.showScalars:
-        return 
+        return
     if showWireframe:
         FIELD['actor'].GetProperty().SetRepresentationToWireframe()
         FIELD['actor'].GetMapper().ScalarVisibilityOff()
         FIELD['actor'].SetVisibility(True)
     else:
         FIELD['actor'].SetVisibility(False)
+    ctrl.view_update()
+
+@state.change("showWells")
+def change_wells_visibility(showWells, **kwargs):
+    if 'actor_wells' in FIELD:
+        FIELD['actor_wells'].SetVisibility(showWells)
     ctrl.view_update()
 
 def fit_view():
@@ -246,7 +252,7 @@ def render_3d():
                             location="right",
                             close_on_content_click=False):
                             with vuetify.VCard(classes="overflow-auto", max_height="50vh"):
-                                with vuetify.VList():  
+                                with vuetify.VList():
                                     with vuetify.VListItem(
                                         v_for="(item, index) in colormaps",
                                         click="colormap = item",
@@ -279,7 +285,7 @@ def render_3d():
                                             type="number",
                                             variant="outlined",
                                             bg_color=('bgColor',),
-                                            hide_details=True)     
+                                            hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
                     with vuetify.VBtn(icon=True,flat=True,
