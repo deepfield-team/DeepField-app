@@ -119,7 +119,7 @@ def load_file(loading, **kwargs):
     FIELD['model_copy'] = None
 
     process_field(field)
-    
+
     state.loading = False
     state.loadComplete = True
     state.errMessage = ''
@@ -250,10 +250,24 @@ def process_field(field):
     FIELD['actor'] = actor
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
+
+    grid =  FIELD['model'].grid
+    z_min = grid.xyz[grid.actnum][..., 2].min()
+    dz = grid.xyz[grid.actnum][..., 2].max() - z_min
+    z_min = z_min - 0.1*dz
+
+    FIELD['model'].wells._get_first_entering_point()
     for well in FIELD['model'].wells:
+        wtrack_idx, first_intersection = well._first_entering_point
+        welltrack = well.welltrack[:, :3]
+        if first_intersection is not None:
+            welltrack_tmp = np.concatenate([np.array([[first_intersection[0], first_intersection[1], z_min]]),
+                                        np.asarray(first_intersection).reshape(1, -1),
+                                        well.welltrack[wtrack_idx + 1:, :3]])
+        else:
+            welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
         point_ids = []
-        welltrack = well.welltrack
-        for line in welltrack:
+        for line in welltrack_tmp:
             point_ids.append(points.InsertNextPoint(line[:3]))
 
         polyLine = vtk.vtkPolyLine()
@@ -272,6 +286,8 @@ def process_field(field):
     actor_wells.SetScale(*scales)
     actor_wells.SetMapper(mapper)
     actor_wells.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
+    if 'actor_wells' in FIELD:
+        renderer.RemoveActor(FIELD['actor_wells'])
     renderer.AddActor(actor_wells)
     FIELD['actor_wells'] = actor_wells
 
