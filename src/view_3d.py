@@ -72,7 +72,7 @@ def update_field(activeField, activeStep, **kwargs):
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
-
+    update_cmap(state.colormap)
     ctrl.view_update()
 
 @state.change("colormap")
@@ -88,7 +88,7 @@ def update_cmap(colormap, **kwargs):
     scalarWidget.On()
     ctrl.view_update()
 
-def make_threshold(slices, attr, input_threshold=None, ijk=False):
+def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
     threshold = vtk.vtkThreshold()
     threshold.SetInputData(FIELD['dataset'])
     if input_threshold:
@@ -104,6 +104,8 @@ def make_threshold(slices, attr, input_threshold=None, ijk=False):
         threshold.SetUpperThreshold(slices[1])
         threshold.SetLowerThreshold(slices[0])
     threshold.SetInputArrayToProcess(0, 0, 0, 1, attr)
+    if component:
+        threshold.SetSelectedComponent(component)
     return threshold
 
 @state.change("i_slice", "j_slice", "k_slice", "field_slice")
@@ -115,7 +117,7 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     threshold_i = make_threshold(i_slice, "I", ijk=True)
     threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i, ijk=True)
     threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j, ijk=True)
-    threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k)
+    threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k, component=state.activeStep)
     mapper = vtk.vtkDataSetMapper()                                         
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
