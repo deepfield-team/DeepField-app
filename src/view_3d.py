@@ -171,7 +171,13 @@ def change_field_visibility(showWireframe, **kwargs):
 def change_wells_visibility(showWells, **kwargs):
     if 'actor_wells' in FIELD:
         FIELD['actor_wells'].SetVisibility(showWells)
-    ctrl.view_update()
+        ctrl.view_update()
+
+@state.change("showFaults")
+def change_wells_visibility(showFaults, **kwargs):
+    if 'actor_faults' in FIELD:
+        FIELD['actor_faults'].SetVisibility(showFaults)
+        ctrl.view_update()
 
 def fit_view():
     state.i_slice = [1, state.dimens[0]]
