@@ -332,6 +332,7 @@ def process_field(field):
 
     reset_camera()
     ctrl.view_update()
+    ctrl.default_view()
 
 ctrl.load_file = load_file
 

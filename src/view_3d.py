@@ -77,15 +77,18 @@ def update_field(activeField, activeStep, **kwargs):
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
-    cmap = get_cmap(colormap)
-    table = FIELD['actor'].GetMapper().GetLookupTable()
-    colors = cmap(np.arange(0, cmap.N))
-    table.SetNumberOfTableValues(len(colors))
-    for i, val in enumerate(colors):
-        table.SetTableValue(i, val[0], val[1], val[2])
-    table.Build()
-    scalarWidget.GetScalarBarActor().SetLookupTable(table)
-    scalarWidget.On()
+    if state.showScalars:
+        cmap = get_cmap(colormap)
+        table = FIELD['actor'].GetMapper().GetLookupTable()
+        colors = cmap(np.arange(0, cmap.N))
+        table.SetNumberOfTableValues(len(colors))
+        for i, val in enumerate(colors):
+            table.SetTableValue(i, val[0], val[1], val[2])
+        table.Build()
+        scalarWidget.GetScalarBarActor().SetLookupTable(table)
+        scalarWidget.On()
+    else:
+        FIELD['actor'].GetMapper().ScalarVisibilityOff()
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None, ijk=False):
@@ -142,21 +145,28 @@ def update_opacity(opacity, **kwargs):
 @state.change("showScalars")
 def change_field_visibility(showScalars, **kwargs):
     _ = kwargs
+    if showScalars is None:
+        return
     if showScalars:
         FIELD['actor'].GetProperty().SetRepresentationToSurface()
         FIELD['actor'].SetVisibility(True)
         FIELD['actor'].GetMapper().ScalarVisibilityOn()
+        scalarBar.SetVisibility(True)
     else:
         if state.showWireframe:
             FIELD['actor'].GetProperty().SetRepresentationToWireframe()
             FIELD['actor'].GetMapper().ScalarVisibilityOff()
+            scalarBar.SetVisibility(False)
         else:
             FIELD['actor'].SetVisibility(False)
+            scalarBar.SetVisibility(False)
     ctrl.view_update()
 
 @state.change("showWireframe")
 def change_field_visibility(showWireframe, **kwargs):
     _ = kwargs
+    if showWireframe is None:
+        return
     if state.showScalars:
         return
     if showWireframe:
@@ -179,7 +189,7 @@ def change_wells_visibility(showFaults, **kwargs):
         FIELD['actor_faults'].SetVisibility(showFaults)
         ctrl.view_update()
 
-def fit_view():
+def default_view():
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
@@ -191,7 +201,7 @@ def fit_view():
     state.showFaults = True
     ctrl.view_reset_camera()
 
-ctrl.fit_view = fit_view
+ctrl.default_view = default_view
 
 def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
@@ -471,7 +481,7 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;",
-                        click=ctrl.fit_view):
+                        click=ctrl.default_view):
                         vuetify.VIcon("mdi-fit-to-page-outline")
 
 ctrl.on_server_ready.add(ctrl.view_update)
