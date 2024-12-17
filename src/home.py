@@ -249,82 +249,86 @@ def process_field(field):
     renderer.AddActor(actor)
     FIELD['actor'] = actor
 
-    points = vtk.vtkPoints()
-    cells = vtk.vtkCellArray()
-    for well in field.wells:
-        point_ids = []
-        welltrack = well.welltrack
-        for line in welltrack:
-            point_ids.append(points.InsertNextPoint(line[:3]))
-
-        polyLine = vtk.vtkPolyLine()
-        polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
-        for i, id in enumerate(point_ids):
-            polyLine.GetPointIds().SetId(i, id)
-        cells.InsertNextCell(polyLine)
-
-    polyData = vtk.vtkPolyData()
-    polyData.SetPoints(points)
-    polyData.SetLines(cells)
-    
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(polyData)
-    
-    actor_wells = vtk.vtkActor()
-    actor_wells.SetScale(*scales)
-    actor_wells.SetMapper(mapper)
-    actor_wells.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
-    
     if 'actor_wells' in FIELD:
         renderer.RemoveActor(FIELD['actor_wells'])
-    renderer.AddActor(actor_wells)
-    FIELD['actor_wells'] = actor_wells
 
-    field.faults.get_blocks()
-    size = 0
-    points = vtk.vtkPoints()
-    polygons = vtk.vtkCellArray()
-    for segment in field.faults:
-        blocks = segment.blocks
-        xyz = segment.faces_verts
-        active = field.grid.actnum[blocks[:, 0], blocks[:, 1], blocks[:, 2]]
-        xyz = xyz[active].reshape(-1, 3)
-        if len(xyz) == 0:
-            continue
+    if 'wells' in field.components:
+        points = vtk.vtkPoints()
+        cells = vtk.vtkCellArray()
+        for well in field.wells:
+            point_ids = []
+            welltrack = well.welltrack
+            for line in welltrack:
+                point_ids.append(points.InsertNextPoint(line[:3]))
 
-        for p in xyz:
-            points.InsertNextPoint(*p)
+            polyLine = vtk.vtkPolyLine()
+            polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
+            for i, id in enumerate(point_ids):
+                polyLine.GetPointIds().SetId(i, id)
+            cells.InsertNextCell(polyLine)
 
-        ids = np.arange(size, size+len(xyz))
-        faces1 = np.stack([ids[::4], ids[1::4], ids[3::4]]).T
-        faces2 = np.stack([ids[::4], ids[2::4], ids[3::4]]).T
-        faces = np.vstack([faces1, faces2])
-
-        for f in faces:
-            polygon = vtk.vtkPolygon()
-            polygon.GetPointIds().SetNumberOfIds(3)
-            for i, id in enumerate(f):
-                polygon.GetPointIds().SetId(i, id)
-            polygons.InsertNextCell(polygon)
-
-        size += len(xyz)
-
-    polygonPolyData = vtk.vtkPolyData()
-    polygonPolyData.SetPoints(points)
-    polygonPolyData.SetPolys(polygons)
-
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(polygonPolyData)
-
-    actor_faults = vtk.vtkActor()
-    actor_faults.SetScale(*scales)
-    actor_faults.SetMapper(mapper)
-    actor_faults.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Red'))
+        polyData = vtk.vtkPolyData()
+        polyData.SetPoints(points)
+        polyData.SetLines(cells)
+        
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(polyData)
+        
+        actor_wells = vtk.vtkActor()
+        actor_wells.SetScale(*scales)
+        actor_wells.SetMapper(mapper)
+        actor_wells.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
+        
+        renderer.AddActor(actor_wells)
+        FIELD['actor_wells'] = actor_wells
 
     if 'actor_faults' in FIELD:
         renderer.RemoveActor(FIELD['actor_faults'])
-    renderer.AddActor(actor_faults)
-    FIELD['actor_faults'] = actor_faults
+
+    if 'faults' in field.components:
+        field.faults.get_blocks()
+        points = vtk.vtkPoints()
+        polygons = vtk.vtkCellArray()
+        size = 0
+        for segment in field.faults:
+            blocks = segment.blocks
+            xyz = segment.faces_verts
+            active = field.grid.actnum[blocks[:, 0], blocks[:, 1], blocks[:, 2]]
+            xyz = xyz[active].reshape(-1, 3)
+            if len(xyz) == 0:
+                continue
+
+            for p in xyz:
+                points.InsertNextPoint(*p)
+
+            ids = np.arange(size, size+len(xyz))
+            faces1 = np.stack([ids[::4], ids[1::4], ids[3::4]]).T
+            faces2 = np.stack([ids[::4], ids[2::4], ids[3::4]]).T
+            faces = np.vstack([faces1, faces2])
+
+            for f in faces:
+                polygon = vtk.vtkPolygon()
+                polygon.GetPointIds().SetNumberOfIds(3)
+                for i, id in enumerate(f):
+                    polygon.GetPointIds().SetId(i, id)
+                polygons.InsertNextCell(polygon)
+
+            size += len(xyz)
+
+        polygonPolyData = vtk.vtkPolyData()
+        polygonPolyData.SetPoints(points)
+        polygonPolyData.SetPolys(polygons)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(polygonPolyData)
+
+        actor_faults = vtk.vtkActor()
+        actor_faults.SetScale(*scales)
+        actor_faults.SetMapper(mapper)
+        actor_faults.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Red'))
+
+        renderer.AddActor(actor_faults)
+        FIELD['actor_faults'] = actor_faults
 
     reset_camera()
     ctrl.view_update()
