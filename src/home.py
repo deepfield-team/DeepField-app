@@ -310,6 +310,7 @@ def process_field(field):
         wells_actor.SetScale(*scales)
         wells_actor.SetMapper(mapper)
         wells_actor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
+        
         if 'wells_actor' in FIELD:
             renderer.RemoveActor(FIELD['wells_actor'])
         renderer.AddActor(wells_actor)

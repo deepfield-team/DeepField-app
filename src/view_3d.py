@@ -44,10 +44,14 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(1, 1, 1)
         scalarBar.GetLabelTextProperty().SetColor(0, 0, 0)
         scalarBar.GetTitleTextProperty().SetColor(0, 0, 0)
+        if 'wells_actor' in FIELD:
+            FIELD['wells_actor'].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
     else:
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
+        if 'wells_actor' in FIELD:
+            FIELD['wells_actor'].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('White'))
     ctrl.view_update()
 
 @state.change("activeField", "activeStep")
