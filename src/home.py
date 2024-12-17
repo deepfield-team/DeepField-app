@@ -119,7 +119,7 @@ def load_file(loading, **kwargs):
     FIELD['model_copy'] = None
 
     process_field(field)
-    
+
     state.loading = False
     state.loadComplete = True
     state.errMessage = ''
@@ -255,10 +255,34 @@ def process_field(field):
     if 'wells' in field.components:
         points = vtk.vtkPoints()
         cells = vtk.vtkCellArray()
-        for well in field.wells:
+
+        grid =  FIELD['model'].grid
+        z_min = grid.xyz[grid.actnum][..., 2].min()
+        dz = grid.xyz[grid.actnum][..., 2].max() - z_min
+        z_min = z_min - 0.1*dz
+
+        FIELD['model'].wells._get_first_entering_point()
+
+        n_wells = len(FIELD['model'].wells.names)
+        labeled_points = vtk.vtkPoints()
+        labels = vtk.vtkStringArray()
+        labels.SetNumberOfValues(n_wells)
+        labels.SetName("labels")
+
+        for i, well in enumerate(FIELD['model'].wells):
+            labels.SetValue(i, well.name)
+
+            wtrack_idx, first_intersection = well._first_entering_point
+            welltrack = well.welltrack[:, :3]
+            if first_intersection is not None:
+                welltrack_tmp = np.concatenate([np.array([[first_intersection[0], first_intersection[1], z_min]]),
+                                            np.asarray(first_intersection).reshape(1, -1),
+                                            well.welltrack[wtrack_idx + 1:, :3]])
+            else:
+                welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
             point_ids = []
-            welltrack = well.welltrack
-            for line in welltrack:
+            labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*scales)
+            for line in welltrack_tmp:
                 point_ids.append(points.InsertNextPoint(line[:3]))
 
             polyLine = vtk.vtkPolyLine()
@@ -267,20 +291,34 @@ def process_field(field):
                 polyLine.GetPointIds().SetId(i, id)
             cells.InsertNextCell(polyLine)
 
+
+        label_PolyData = vtk.vtkPolyData()
+        label_PolyData.SetPoints(labeled_points)
+        label_PolyData.GetPointData().AddArray(labels)
+        label_mapper = vtk.vtkLabeledDataMapper()
+        label_mapper.SetInputData(label_PolyData)
+        label_mapper.SetFieldDataName('labels')
+        label_mapper.SetLabelModeToLabelFieldData()
+        label_actor = vtk.vtkActor2D()
+        label_actor.SetMapper(label_mapper)
         polyData = vtk.vtkPolyData()
         polyData.SetPoints(points)
         polyData.SetLines(cells)
-        
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(polyData)
-        
-        actor_wells = vtk.vtkActor()
-        actor_wells.SetScale(*scales)
-        actor_wells.SetMapper(mapper)
-        actor_wells.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
-        
-        renderer.AddActor(actor_wells)
-        FIELD['actor_wells'] = actor_wells
+        wells_actor = vtk.vtkActor()
+        wells_actor.SetScale(*scales)
+        wells_actor.SetMapper(mapper)
+        wells_actor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
+        if 'wells_actor' in FIELD:
+            renderer.RemoveActor(FIELD['wells_actor'])
+        renderer.AddActor(wells_actor)
+        FIELD['wells_actor'] = wells_actor
+
+        if 'well_labels_actor' in FIELD:
+            renderer.RemoveActor(FIELD['well_labels_actor'])
+        renderer.AddActor(label_actor)
+        FIELD['well_labels_actor'] = label_actor
 
     if 'actor_faults' in FIELD:
         renderer.RemoveActor(FIELD['actor_faults'])
