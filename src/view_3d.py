@@ -179,9 +179,10 @@ def change_field_visibility(showWireframe, **kwargs):
 
 @state.change("showWells")
 def change_wells_visibility(showWells, **kwargs):
-    if 'actor_wells' in FIELD:
-        FIELD['actor_wells'].SetVisibility(showWells)
-        ctrl.view_update()
+    for name in ('wells_actor', 'well_labels_actor'):
+        if name in FIELD:
+            FIELD[name].SetVisibility(showWells)
+    ctrl.view_update()
 
 @state.change("showFaults")
 def change_wells_visibility(showFaults, **kwargs):
