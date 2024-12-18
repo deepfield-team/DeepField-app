@@ -58,10 +58,9 @@ def change_vtk_bgr(theme, **kwargs):
 def update_field(activeField, activeStep, **kwargs):
     _ = kwargs
 
-    if activeField is None:
+    if (activeField is None) or (FIELD['c_data'] is None):
         return
-    if FIELD['c_data'] is None:
-        return
+
     activeStep = int(activeStep)
     if activeField.split("_")[0].lower() == 'states':
         state.need_time_slider = True
@@ -76,8 +75,9 @@ def update_field(activeField, activeStep, **kwargs):
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
-    update_cmap(state.colormap)
-    ctrl.view_update()
+    # update_cmap(state.colormap)
+
+    update_threshold_slices(state.i_slice, state.j_slice, state.k_slice, state.field_slice)
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
@@ -131,14 +131,15 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     FIELD['actor'].SetMapper(mapper)
     update_cmap(state.colormap)
 
-@state.change("activeField", "activeStep")
+@state.change("activeField")
 def update_field_slices_params(activeField, **kwargs):
     _ = kwargs
-    if activeField:
-        state.field_slice_min = float(FIELD['c_data'][activeField].min())
-        state.field_slice_max = float(FIELD['c_data'][activeField].max())
-        state.field_slice = [state.field_slice_min, state.field_slice_max]
-        state.field_slice_step = (state.field_slice_max - state.field_slice_min) / state.n_field_steps
+    if activeField is None:
+        return
+    state.field_slice_min = float(FIELD['c_data'][activeField].min())
+    state.field_slice_max = float(FIELD['c_data'][activeField].max())
+    state.field_slice = [state.field_slice_min, state.field_slice_max]
+    state.field_slice_step = (state.field_slice_max - state.field_slice_min) / state.n_field_steps
 
 @state.change("opacity")
 def update_opacity(opacity, **kwargs):
