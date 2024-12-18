@@ -38,6 +38,12 @@ state.gridData = True
 state.wellData = True
 
 
+@state.change('modelID')
+def reset_plots(modelID, **kwargs):
+    _ = kwargs
+    clean_plot()
+    clean_pvt_plot()
+
 @state.change("plotlyTheme")
 def change_plotly_theme(plotlyTheme, **kwargs):
     fig = PLOTS['plot1d']
@@ -111,6 +117,8 @@ def add_line_to_plot():
 ctrl.add_line_to_plot = add_line_to_plot
 
 def clean_plot():
+    if PLOTS['plot1d'] is None:
+        return
     PLOTS['plot1d'].data = []
     ctrl.update_plot(PLOTS['plot1d'])
 
@@ -245,6 +253,12 @@ def update_tplot_size(figure_size_1d, tableToShow, tableXAxis, domainToShow, **k
     PLOTS['plot_pvt'] = plot_table(tableToShow, tableXAxis, domainToShow, height, width)
     ctrl.update_tplot(PLOTS['plot_pvt'])
 
+def clean_pvt_plot():
+    if PLOTS['plot_pvt'] is None:
+        return
+    PLOTS['plot_pvt'].data = []
+    ctrl.update_tplot(PLOTS['plot_pvt'])
+
 def render_ts():
     with vuetify.VContainer(fluid=True, style='align-items: top', classes="pa-0 ma-0"):
         with vuetify.VRow(classes='pa-0 ma-0'):
@@ -299,6 +313,7 @@ def render_ts():
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
+                    update_plot_size(state.figure_size_1d)
 
 def render_pvt():
     with vuetify.VContainer(fluid=True, style='align-items: top', classes="pa-0 ma-0"):
@@ -341,3 +356,4 @@ def render_pvt():
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_tplot = plotly.Figure(**CHART_STYLE).update
+                    update_tplot_size(state.figure_size_1d, None, None, None)

@@ -30,6 +30,7 @@ state.showHistory = False
 state.emptyHistory = True
 state.errMessage = ''
 state.loadFailed = False
+state.modelID = 0
 
 state.field_attrs = []
 state.activeField = None
@@ -124,6 +125,7 @@ def load_file(loading, **kwargs):
     state.loadComplete = True
     state.errMessage = ''
     state.loadFailed = False
+    state.modelID = state.modelID + 1
 
 def process_field(field):
     dataset = field.get_vtk_dataset()

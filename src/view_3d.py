@@ -75,7 +75,6 @@ def update_field(activeField, activeStep, **kwargs):
     mapper.SetScalarRange(dataset.GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
-    # update_cmap(state.colormap)
 
     update_threshold_slices(state.i_slice, state.j_slice, state.k_slice, state.field_slice)
 

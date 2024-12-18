@@ -228,6 +228,7 @@ def render_2d():
             with vuetify.VCol(classes='pa-0 ma-0'):
                 with trame.SizeObserver("figure_size"):
                     ctrl.update_slice = plotly.Figure(**CHART_STYLE_2D).update
+                    PLOT_2D['fig'] = go.Figure()
 
     with html.Div(style='position: fixed; width: 100%; top: 48px;'):
         with vuetify.VSlider(
