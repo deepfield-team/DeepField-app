@@ -192,9 +192,10 @@ def change_wells_visibility(showWells, **kwargs):
 
 @state.change("showFaults")
 def change_wells_visibility(showFaults, **kwargs):
-    if 'actor_faults' in FIELD:
-        FIELD['actor_faults'].SetVisibility(showFaults)
-        ctrl.view_update()
+    for name in ['actor_faults', 'faults_links_actor', 'faults_label_actor']:
+        if name in FIELD:
+            FIELD[name].SetVisibility(showFaults)
+            ctrl.view_update()
 
 def default_view():
     state.i_slice = [1, state.dimens[0]]
