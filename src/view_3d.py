@@ -44,10 +44,14 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(1, 1, 1)
         scalarBar.GetLabelTextProperty().SetColor(0, 0, 0)
         scalarBar.GetTitleTextProperty().SetColor(0, 0, 0)
+        if 'wells_actor' in FIELD:
+            FIELD['wells_actor'].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
     else:
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
+        if 'wells_actor' in FIELD:
+            FIELD['wells_actor'].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('White'))
     ctrl.view_update()
 
 @state.change("activeField", "activeStep")
@@ -77,15 +81,18 @@ def update_field(activeField, activeStep, **kwargs):
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
-    cmap = get_cmap(colormap)
-    table = FIELD['actor'].GetMapper().GetLookupTable()
-    colors = cmap(np.arange(0, cmap.N))
-    table.SetNumberOfTableValues(len(colors))
-    for i, val in enumerate(colors):
-        table.SetTableValue(i, val[0], val[1], val[2])
-    table.Build()
-    scalarWidget.GetScalarBarActor().SetLookupTable(table)
-    scalarWidget.On()
+    if state.showScalars:
+        cmap = get_cmap(colormap)
+        table = FIELD['actor'].GetMapper().GetLookupTable()
+        colors = cmap(np.arange(0, cmap.N))
+        table.SetNumberOfTableValues(len(colors))
+        for i, val in enumerate(colors):
+            table.SetTableValue(i, val[0], val[1], val[2])
+        table.Build()
+        scalarWidget.GetScalarBarActor().SetLookupTable(table)
+        scalarWidget.On()
+    else:
+        FIELD['actor'].GetMapper().ScalarVisibilityOff()
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
@@ -144,23 +151,30 @@ def update_opacity(opacity, **kwargs):
 @state.change("showScalars")
 def change_field_visibility(showScalars, **kwargs):
     _ = kwargs
+    if showScalars is None:
+        return
     if showScalars:
         FIELD['actor'].GetProperty().SetRepresentationToSurface()
         FIELD['actor'].SetVisibility(True)
         FIELD['actor'].GetMapper().ScalarVisibilityOn()
+        scalarBar.SetVisibility(True)
     else:
         if state.showWireframe:
             FIELD['actor'].GetProperty().SetRepresentationToWireframe()
             FIELD['actor'].GetMapper().ScalarVisibilityOff()
+            scalarBar.SetVisibility(False)
         else:
             FIELD['actor'].SetVisibility(False)
+            scalarBar.SetVisibility(False)
     ctrl.view_update()
 
 @state.change("showWireframe")
 def change_field_visibility(showWireframe, **kwargs):
     _ = kwargs
+    if showWireframe is None:
+        return
     if state.showScalars:
-        return 
+        return
     if showWireframe:
         FIELD['actor'].GetProperty().SetRepresentationToWireframe()
         FIELD['actor'].GetMapper().ScalarVisibilityOff()
@@ -169,7 +183,20 @@ def change_field_visibility(showWireframe, **kwargs):
         FIELD['actor'].SetVisibility(False)
     ctrl.view_update()
 
-def fit_view():
+@state.change("showWells")
+def change_wells_visibility(showWells, **kwargs):
+    for name in ('wells_actor', 'well_labels_actor'):
+        if name in FIELD:
+            FIELD[name].SetVisibility(showWells)
+    ctrl.view_update()
+
+@state.change("showFaults")
+def change_wells_visibility(showFaults, **kwargs):
+    if 'actor_faults' in FIELD:
+        FIELD['actor_faults'].SetVisibility(showFaults)
+        ctrl.view_update()
+
+def default_view():
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
@@ -181,7 +208,7 @@ def fit_view():
     state.showFaults = True
     ctrl.view_reset_camera()
 
-ctrl.fit_view = fit_view
+ctrl.default_view = default_view
 
 def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
@@ -218,7 +245,7 @@ def render_3d():
     with vuetify.VCard(
         color=('sideBarColor',),
         flat=True,
-        style='position: fixed; left: 0; top: 50%; transform: translateY(-50%);'):
+        style='position: fixed; left: 0; top: calc(50% + 48px); transform: translateY(calc(0px - 50% - 24px));'):
         with vuetify.VContainer(fluid=True,
             style='align-items: start; justify-content: left;',
             classes='pa-0 ma-0'):
@@ -248,7 +275,7 @@ def render_3d():
                             location="right",
                             close_on_content_click=False):
                             with vuetify.VCard(classes="overflow-auto", max_height="50vh"):
-                                with vuetify.VList():  
+                                with vuetify.VList():
                                     with vuetify.VListItem(
                                         v_for="(item, index) in colormaps",
                                         click="colormap = item",
@@ -281,7 +308,7 @@ def render_3d():
                                             type="number",
                                             variant="outlined",
                                             bg_color=('bgColor',),
-                                            hide_details=True)     
+                                            hide_details=True)
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
                     with vuetify.VBtn(icon=True,flat=True,
@@ -461,7 +488,7 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;",
-                        click=ctrl.fit_view):
+                        click=ctrl.default_view):
                         vuetify.VIcon("mdi-fit-to-page-outline")
 
 ctrl.on_server_ready.add(ctrl.view_update)
