@@ -63,8 +63,11 @@ def update_field(activeField, activeStep, **kwargs):
 
     activeStep = int(activeStep)
     if activeField.split("_")[0].lower() == 'states':
-        state.need_time_slider = True
-        vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField][:, activeStep])
+        data = FIELD['c_data'][activeField]
+        if data.shape == 2:
+            data = data[:, activeStep]
+        state.need_time_slider = False
+        vtk_array = dsa.numpyTovtkDataArray(data)
     else:
         state.need_time_slider = False
         vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
