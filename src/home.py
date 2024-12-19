@@ -37,6 +37,9 @@ state.activeField = None
 state.wellnames = []
 state.dimens = [0, 0, 0]
 state.max_timestep = 0
+state.stateDate = None
+state.startDate = None
+state.lastDate = None
 state.data1d = []
 state.tables = []
 state.i_cells = []
@@ -249,6 +252,12 @@ def get_field_info(field):
         else:
             attrs = list(comp.attributes)
         state.components_attrs[name] = attrs
+
+    FIELD['dates'] = field.result_dates
+
+    state.stateDate = FIELD['dates'][0].strftime('%Y-%m-%d')
+    state.startDate = FIELD['dates'][0].strftime('%Y-%m-%d')
+    state.lastDate = FIELD['dates'][-1].strftime('%Y-%m-%d')
 
 def add_scalars(field, scales):
     actor = vtkActor()

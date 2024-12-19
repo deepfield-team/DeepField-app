@@ -23,6 +23,10 @@ def render_info():
             classes=text_classes, style=text_style)
         vuetify.VCardText('Gas volume: ' + "{{gas_vol}}" + ' ' + "{{units4}}",
             classes=text_classes, style=text_style)
+        vuetify.VCardText('Start date: ' + '{{startDate}}',
+            classes=text_classes, style=text_style)
+        vuetify.VCardText('Last date: ' + '{{lastDate}}',
+            classes=text_classes, style=text_style)
         vuetify.VCardText('Number of timesteps: ' + '{{max_timestep}}',
             classes=text_classes, style=text_style)
         vuetify.VCardText('Number of wells: ' + '{{num_wells}}',

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from matplotlib.pyplot import get_cmap
 import vtk
 
@@ -64,10 +65,11 @@ def update_field(activeField, activeStep, **kwargs):
     activeStep = int(activeStep)
     if activeField.split("_")[0].lower() == 'states':
         data = FIELD['c_data'][activeField]
-        if data.shape == 2:
+        if data.ndim == 2:
             data = data[:, activeStep]
-        state.need_time_slider = False
+        state.need_time_slider = True
         vtk_array = dsa.numpyTovtkDataArray(data)
+        state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
     else:
         state.need_time_slider = False
         vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
@@ -80,6 +82,18 @@ def update_field(activeField, activeStep, **kwargs):
     scalarBar.SetTitle(activeField.split('_')[1])
 
     update_threshold_slices(state.i_slice, state.j_slice, state.k_slice, state.field_slice)
+
+@state.change('stateDate')
+def update_date(stateDate, **kwargs):
+    if stateDate is None:
+        return
+    if 'dates' in FIELD:
+        stateDate = pd.to_datetime(stateDate)
+        if FIELD['dates'][-1] < stateDate:
+            i = state.max_timestep
+        else:
+            i = np.argmax(FIELD['dates'] >= stateDate)
+        state.activeStep = int(i)
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
@@ -126,7 +140,7 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     threshold_i = make_threshold(i_slice, "I", ijk=True)
     threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i, ijk=True)
     threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j, ijk=True)
-    threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k, component=state.activeStep)
+    threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k, component=int(state.activeStep))
     mapper = vtk.vtkDataSetMapper()                                         
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
@@ -211,6 +225,7 @@ def default_view():
     state.showWireframe = True
     state.showWells = True
     state.showFaults = True
+    state.activeStep = 0
     ctrl.view_reset_camera()
 
 ctrl.default_view = default_view
@@ -226,26 +241,35 @@ def render_3d():
                 ctrl.view_update = view.update
                 ctrl.view_reset_camera = view.reset_camera
 
-    with html.Div(v_if='need_time_slider', style='position: fixed; width: 100%; bottom: 0;'):
-        with vuetify.VSlider(
-            min=0,
-            max=("max_timestep",),
-            step=1,
-            v_model=('activeStep',),
-            label="Timestep",
-            hide_details=True,
-            classes='pr-2 pl-2 pb-1'
-            ):
+    with html.Div(v_if='need_time_slider',
+        style='position: fixed; width: 100%; bottom: 0; padding-left: 10vw; padding-right: 10vw;'):
+        with vuetify.VTextField(
+              v_model=("stateDate",),
+              label="Select a date",
+              hide_details=True,
+              density='compact',
+              type="date"):
             with vuetify.Template(v_slot_append=True,
                 properties=[("v_slot_append", "v-slot:append")],):
-                vuetify.VTextField(
-                    v_model="activeStep",
-                    density="compact",
-                    style="width: 80px",
-                    type="number",
-                    variant="outlined",
-                    bg_color=('bgColor',),
-                    hide_details=True)
+                with vuetify.VSlider(
+                    min=0,
+                    max=("max_timestep",),
+                    step=1,
+                    v_model=('activeStep',),
+                    label="Timestep",
+                    hide_details=True,
+                    style='width: 60vw'
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="activeStep",
+                            density="compact",
+                            style="width: 80px",
+                            type="number",
+                            variant="outlined",
+                            bg_color=('bgColor',),
+                            hide_details=True)
 
     with vuetify.VCard(
         color=('sideBarColor',),

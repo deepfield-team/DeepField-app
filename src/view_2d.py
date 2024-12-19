@@ -289,25 +289,35 @@ def render_2d():
                     variant="outlined",
                     hide_details=True)
 
-    with html.Div(v_if='need_time_slider', style='position: fixed; width: 100%; bottom: 0;'):
-        with vuetify.VSlider(
-            min=0,
-            max=("max_timestep",),
-            step=1,
-            v_model=('activeStep',),
-            label="Timestep",
-            hide_details=True,
-            classes='pr-2 pl-2 pb-1'
-            ):
+    with html.Div(v_if='need_time_slider',
+        style='position: fixed; width: 100%; bottom: 0; padding-left: 10vw; padding-right: 10vw;'):
+        with vuetify.VTextField(
+              v_model=("stateDate",),
+              label="Select a date",
+              hide_details=True,
+              density='compact',
+              type="date"):
             with vuetify.Template(v_slot_append=True,
                 properties=[("v_slot_append", "v-slot:append")],):
-                vuetify.VTextField(
-                    v_model="activeStep",
-                    density="compact",
-                    style="width: 80px",
-                    type="number",
-                    variant="outlined",
-                    hide_details=True)
+                with vuetify.VSlider(
+                    min=0,
+                    max=("max_timestep",),
+                    step=1,
+                    v_model=('activeStep',),
+                    label="Timestep",
+                    hide_details=True,
+                    style='width: 60vw'
+                    ):
+                    with vuetify.Template(v_slot_append=True,
+                        properties=[("v_slot_append", "v-slot:append")],):
+                        vuetify.VTextField(
+                            v_model="activeStep",
+                            density="compact",
+                            style="width: 80px",
+                            type="number",
+                            variant="outlined",
+                            bg_color=('bgColor',),
+                            hide_details=True)
 
     with vuetify.VCard(
         color=('sideBarColor',),
