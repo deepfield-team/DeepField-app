@@ -128,29 +128,58 @@ def load_file(loading, **kwargs):
     state.modelID = state.modelID + 1
 
 def process_field(field):
+    "Prepare field data for visualization."
     dataset = field.get_vtk_dataset()
     FIELD['dataset'] = dataset
-
-    mapper = vtkDataSetMapper()
-    mapper.SetInputData(dataset)
 
     py_ds = dsa.WrapDataObject(dataset)
     c_data = py_ds.CellData
     FIELD['c_data'] = c_data
 
+    state.dimens = [int(x) for x in field.grid.dimens]
+
     state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K']]
     state.activeField = ('ROCK_PERMZ' if 'ROCK_PERMZ' in state.field_attrs
         else state.field_attrs[0])
 
-    res = []
+    attrs = []
     for well in field.wells:
         if 'RESULTS' in well:
-            res.extend([k for k in well.RESULTS.columns if k != 'DATE'])
-    res = sorted(list(set(res)))
-    FIELD['data1d']['wells'] = res
+            attrs.extend([k for k in well.RESULTS.columns if k != 'DATE'])
+    attrs = sorted(list(set(attrs)))
+    state.wellsAttrs = attrs
 
-    state.dimens = [int(x) for x in field.grid.dimens]
+    attrs = list(field.states.attributes)
+    state.max_timestep = field.states[attrs[0]].shape[0] - 1 if attrs else []
+    state.statesAttrs = attrs
 
+    attrs = field.tables.attributes
+    state.tables = [t for t in attrs if field.tables[t].domain]
+
+    state.data1d = state.statesAttrs + state.wellsAttrs
+
+    prepare_slices(dataset)
+
+    get_field_info(field)
+
+    bbox = field.grid.bounding_box
+    ds = abs(bbox[1] - bbox[0])
+    ds_max = ds.max()
+    scales = ds_max / ds
+
+    add_scalars(field, scales)
+
+    add_wells(field, scales)
+
+    add_faults(field, scales)
+
+    reset_camera()
+    ctrl.view_update()
+    ctrl.default_view()
+
+ctrl.load_file = load_file
+
+def prepare_slices(dataset):
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
@@ -173,6 +202,12 @@ def process_field(field):
     state.yslice = 1
     state.zslice = 1
 
+    state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
+    state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
+    state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
+
+def get_field_info(field):
+    "Collect field info."
     state.total_cells = int(np.prod(field.grid.dimens))
     state.active_cells = int(np.sum(field.grid.actnum))
 
@@ -215,36 +250,17 @@ def process_field(field):
             attrs = list(comp.attributes)
         state.components_attrs[name] = attrs
 
-    state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
-    state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
-    state.k_cells = ['Average'] + list(range(1, state.dimens[2]+1))
-
-    if 'states' in field.components:
-        attrs = field.states.attributes
-        if attrs:
-            state.max_timestep = field.states[attrs[0]].shape[0] - 1
-        FIELD['data1d']['states'] = attrs
-
-    if 'tables' in field.components:
-        attrs = field.tables.attributes
-        if attrs:
-            state.tables = [t for t in attrs if field.tables[t].domain]
-
-    state.data1d = list(np.concatenate([v for _, v in FIELD['data1d'].items()]))
-
+def add_scalars(field, scales):
     actor = vtkActor()
-    colors = vtk.vtkNamedColors()
-
-    bbox = field.grid.bounding_box
-    ds = abs(bbox[1] - bbox[0])
-    ds_max = ds.max()
-    scales = ds_max / ds
     actor.SetScale(*scales)
 
-    vtk_array = dsa.numpyTovtkDataArray(c_data[state.activeField])
+    vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][state.activeField])
 
+    dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
 
+    mapper = vtkDataSetMapper()
+    mapper.SetInputData(dataset)
     mapper.SetScalarRange(dataset.GetScalarRange())
     actor.SetMapper(mapper)
 
@@ -252,175 +268,185 @@ def process_field(field):
                  'faults_links_actor', 'faults_label_actor']:
         if name in FIELD:
              renderer.RemoveActor(FIELD[name])
+
     renderer.AddActor(actor)
     FIELD['actor'] = actor
 
+def add_wells(field, scales):
+    points = vtk.vtkPoints()
+    cells = vtk.vtkCellArray()
 
-    if 'wells' in field.components:
-        points = vtk.vtkPoints()
-        cells = vtk.vtkCellArray()
+    grid = field.grid
+    z = grid.xyz[grid.actnum][..., 2]
+    z_min = z.min()
+    dz = z.max() - z_min
+    z_min = z_min - 0.1*dz
 
-        grid =  FIELD['model'].grid
-        z_min = grid.xyz[grid.actnum][..., 2].min()
-        dz = grid.xyz[grid.actnum][..., 2].max() - z_min
-        z_min = z_min - 0.1*dz
+    field.wells._get_first_entering_point()
 
-        FIELD['model'].wells._get_first_entering_point()
+    n_wells = len(field.wells.names)
+    labeled_points = vtk.vtkPoints()
+    labels = vtk.vtkStringArray()
+    labels.SetNumberOfValues(n_wells)
+    labels.SetName("labels")
 
-        n_wells = len(FIELD['model'].wells.names)
-        labeled_points = vtk.vtkPoints()
-        labels = vtk.vtkStringArray()
-        labels.SetNumberOfValues(n_wells)
-        labels.SetName("labels")
+    for i, well in enumerate(field.wells):
+        labels.SetValue(i, well.name)
 
-        for i, well in enumerate(FIELD['model'].wells):
-            labels.SetValue(i, well.name)
+        wtrack_idx, first_intersection = well._first_entering_point
+        welltrack = well.welltrack[:, :3]
+        
+        if first_intersection is not None:
+            welltrack_tmp = np.concatenate([np.array([[first_intersection[0], first_intersection[1], z_min]]),
+                                        np.asarray(first_intersection).reshape(1, -1),
+                                        well.welltrack[wtrack_idx + 1:, :3]])
+        else:
+            welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
+        
+        point_ids = []
+        labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*scales)
+        for line in welltrack_tmp:
+            point_ids.append(points.InsertNextPoint(line[:3]))
 
-            wtrack_idx, first_intersection = well._first_entering_point
-            welltrack = well.welltrack[:, :3]
-            if first_intersection is not None:
-                welltrack_tmp = np.concatenate([np.array([[first_intersection[0], first_intersection[1], z_min]]),
-                                            np.asarray(first_intersection).reshape(1, -1),
-                                            well.welltrack[wtrack_idx + 1:, :3]])
-            else:
-                welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
-            point_ids = []
-            labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*scales)
-            for line in welltrack_tmp:
-                point_ids.append(points.InsertNextPoint(line[:3]))
+        polyLine = vtk.vtkPolyLine()
+        polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
+        for i, id in enumerate(point_ids):
+            polyLine.GetPointIds().SetId(i, id)
+        cells.InsertNextCell(polyLine)
 
-            polyLine = vtk.vtkPolyLine()
-            polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
-            for i, id in enumerate(point_ids):
-                polyLine.GetPointIds().SetId(i, id)
-            cells.InsertNextCell(polyLine)
+    label_PolyData = vtk.vtkPolyData()
+    label_PolyData.SetPoints(labeled_points)
+    label_PolyData.GetPointData().AddArray(labels)
+    label_mapper = vtk.vtkLabeledDataMapper()
+    label_mapper.SetInputData(label_PolyData)
+    label_mapper.SetFieldDataName('labels')
+    label_mapper.SetLabelModeToLabelFieldData()
+    label_actor = vtk.vtkActor2D()
+    label_actor.SetMapper(label_mapper)
 
+    renderer.AddActor(label_actor)
+    FIELD['well_labels_actor'] = label_actor
+    
+    polyData = vtk.vtkPolyData()
+    polyData.SetPoints(points)
+    polyData.SetLines(cells)
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polyData)
+    wells_actor = vtk.vtkActor()
+    wells_actor.SetScale(*scales)
+    wells_actor.SetMapper(mapper)
 
-        label_PolyData = vtk.vtkPolyData()
-        label_PolyData.SetPoints(labeled_points)
-        label_PolyData.GetPointData().AddArray(labels)
-        label_mapper = vtk.vtkLabeledDataMapper()
-        label_mapper.SetInputData(label_PolyData)
-        label_mapper.SetFieldDataName('labels')
-        label_mapper.SetLabelModeToLabelFieldData()
-        label_actor = vtk.vtkActor2D()
-        label_actor.SetMapper(label_mapper)
-        polyData = vtk.vtkPolyData()
-        polyData.SetPoints(points)
-        polyData.SetLines(cells)
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(polyData)
-        wells_actor = vtk.vtkActor()
-        wells_actor.SetScale(*scales)
-        wells_actor.SetMapper(mapper)
-        (wells_actor.GetProperty()
-            .SetColor(colors
-                .GetColor3d('White' if state.theme == 'dark' else 'Black')))
+    colors = vtk.vtkNamedColors()
 
-        renderer.AddActor(wells_actor)
-        FIELD['wells_actor'] = wells_actor
+    (wells_actor.GetProperty()
+        .SetColor(colors
+            .GetColor3d('White' if state.theme == 'dark' else 'Black')))
 
-        renderer.AddActor(label_actor)
-        FIELD['well_labels_actor'] = label_actor
+    renderer.AddActor(wells_actor)
+    FIELD['wells_actor'] = wells_actor
 
+def add_faults(field, scales):
+    field.faults.get_blocks()
+    n_segments = len(field.faults.names)
+    
+    labels = vtk.vtkStringArray()
+    labels.SetNumberOfValues(n_segments)
+    labels.SetName("labels")
+    
+    grid = field.grid
+    z = grid.xyz[grid.actnum][..., 2]
+    z_min = z.min()
+    dz = z.max() - z_min
+    z_min = z_min - 0.05*dz
+    
+    points = vtk.vtkPoints()
+    polygons = vtk.vtkCellArray()
+    
+    labeled_points = vtk.vtkPoints()
+    links_points = vtk.vtkPoints()
+    links_points_ids = []
+    link_cells = vtk.vtkCellArray()
+    
+    size = 0
+    for i, segment in enumerate(field.faults):
+        blocks = segment.blocks
+        xyz = segment.faces_verts
+        active = field.grid.actnum[blocks[:, 0], blocks[:, 1], blocks[:, 2]]
+        xyz = xyz[active].reshape(-1, 3)
+        if len(xyz) == 0:
+            continue
 
-    if 'faults' in field.components:
-        n_segments = len(field.faults.names)
-        labels = vtk.vtkStringArray()
-        labels.SetNumberOfValues(n_segments)
-        labels.SetName("labels")
-        grid =  FIELD['model'].grid
-        z_min = grid.xyz[grid.actnum][..., 2].min()
-        dz = grid.xyz[grid.actnum][..., 2].max() - z_min
-        z_min = z_min - 0.05*dz
-        field.faults.get_blocks()
-        points = vtk.vtkPoints()
-        polygons = vtk.vtkCellArray()
-        size = 0
-        labeled_points = vtk.vtkPoints()
-        links_points = vtk.vtkPoints()
-        links_points_ids = []
-        link_cells = vtk.vtkCellArray()
-        for i, segment in enumerate(field.faults):
-            labels.SetValue(i, segment.name)
-            blocks = segment.blocks
-            xyz = segment.faces_verts
-            active = field.grid.actnum[blocks[:, 0], blocks[:, 1], blocks[:, 2]]
-            xyz = xyz[active].reshape(-1, 3)
-            if len(xyz) == 0:
-                continue
+        for p in xyz:
+            points.InsertNextPoint(*p)
 
-            labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*scales)
-            links_points_ids.append(links_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])))
-            links_points_ids.append(links_points.InsertNextPoint(*xyz[0]))
-            for p in xyz:
-                points.InsertNextPoint(*p)
+        labels.SetValue(i, segment.name)
+        labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*scales)
+        links_points_ids.append(links_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])))
+        links_points_ids.append(links_points.InsertNextPoint(*xyz[0]))
 
-            ids = np.arange(size, size+len(xyz))
-            faces1 = np.stack([ids[::4], ids[1::4], ids[3::4]]).T
-            faces2 = np.stack([ids[::4], ids[2::4], ids[3::4]]).T
-            faces = np.vstack([faces1, faces2])
+        ids = np.arange(size, size+len(xyz))
+        faces1 = np.stack([ids[::4], ids[1::4], ids[3::4]]).T
+        faces2 = np.stack([ids[::4], ids[2::4], ids[3::4]]).T
+        faces = np.vstack([faces1, faces2])
 
-            for f in faces:
-                polygon = vtk.vtkPolygon()
-                polygon.GetPointIds().SetNumberOfIds(3)
-                for i, id in enumerate(f):
-                    polygon.GetPointIds().SetId(i, id)
-                polygons.InsertNextCell(polygon)
+        for f in faces:
+            polygon = vtk.vtkPolygon()
+            polygon.GetPointIds().SetNumberOfIds(3)
+            for i, id in enumerate(f):
+                polygon.GetPointIds().SetId(i, id)
+            polygons.InsertNextCell(polygon)
 
-            size += len(xyz)
+        size += len(xyz)
 
-            polyLine = vtk.vtkPolyLine()
-            polyLine.GetPointIds().SetNumberOfIds(2)
-            for i, id in enumerate(links_points_ids[-2:]):
-                polyLine.GetPointIds().SetId(i, id)
-            link_cells.InsertNextCell(polyLine)
+        polyLine = vtk.vtkPolyLine()
+        polyLine.GetPointIds().SetNumberOfIds(2)
+        for i, id in enumerate(links_points_ids[-2:]):
+            polyLine.GetPointIds().SetId(i, id)
+        link_cells.InsertNextCell(polyLine)
 
-        link_polyData = vtk.vtkPolyData()
-        link_polyData.SetPoints(links_points)
-        link_polyData.SetLines(link_cells)
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(link_polyData)
-        fault_links_actor = vtk.vtkActor()
-        fault_links_actor.SetScale(*scales)
-        fault_links_actor.SetMapper(mapper)
-        (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Red')))
-        FIELD['faults_links_actor'] = fault_links_actor
-        renderer.AddActor(fault_links_actor)
+    colors = vtk.vtkNamedColors()
 
-        label_PolyData = vtk.vtkPolyData()
-        label_PolyData.SetPoints(labeled_points)
-        label_PolyData.GetPointData().AddArray(labels)
-        label_mapper = vtk.vtkLabeledDataMapper()
-        label_mapper.SetInputData(label_PolyData)
-        label_mapper.SetFieldDataName('labels')
-        label_mapper.SetLabelModeToLabelFieldData()
-        label_actor = vtk.vtkActor2D()
-        label_actor.SetMapper(label_mapper)
-        label_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
-        FIELD['faults_label_actor'] = label_actor
-        renderer.AddActor(label_actor)
+    link_polyData = vtk.vtkPolyData()
+    link_polyData.SetPoints(links_points)
+    link_polyData.SetLines(link_cells)
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(link_polyData)
+    fault_links_actor = vtk.vtkActor()
+    fault_links_actor.SetScale(*scales)
+    fault_links_actor.SetMapper(mapper)
+    (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Red')))
+    
+    FIELD['faults_links_actor'] = fault_links_actor
+    renderer.AddActor(fault_links_actor)
 
-        polygonPolyData = vtk.vtkPolyData()
-        polygonPolyData.SetPoints(points)
-        polygonPolyData.SetPolys(polygons)
+    label_PolyData = vtk.vtkPolyData()
+    label_PolyData.SetPoints(labeled_points)
+    label_PolyData.GetPointData().AddArray(labels)
+    label_mapper = vtk.vtkLabeledDataMapper()
+    label_mapper.SetInputData(label_PolyData)
+    label_mapper.SetFieldDataName('labels')
+    label_mapper.SetLabelModeToLabelFieldData()
+    label_actor = vtk.vtkActor2D()
+    label_actor.SetMapper(label_mapper)
+    label_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
+    
+    FIELD['faults_label_actor'] = label_actor
+    renderer.AddActor(label_actor)
 
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(polygonPolyData)
+    polygonPolyData = vtk.vtkPolyData()
+    polygonPolyData.SetPoints(points)
+    polygonPolyData.SetPolys(polygons)
 
-        actor_faults = vtk.vtkActor()
-        actor_faults.SetScale(*scales)
-        actor_faults.SetMapper(mapper)
-        actor_faults.GetProperty().SetColor(colors.GetColor3d('Red'))
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polygonPolyData)
 
-        renderer.AddActor(actor_faults)
-        FIELD['actor_faults'] = actor_faults
+    actor_faults = vtk.vtkActor()
+    actor_faults.SetScale(*scales)
+    actor_faults.SetMapper(mapper)
+    actor_faults.GetProperty().SetColor(colors.GetColor3d('Red'))
 
-    reset_camera()
-    ctrl.view_update()
-    ctrl.default_view()
-
-ctrl.load_file = load_file
+    renderer.AddActor(actor_faults)
+    FIELD['actor_faults'] = actor_faults
 
 def make_empty_dataset():
     dataset = vtk.vtkUnstructuredGrid()

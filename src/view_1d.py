@@ -60,8 +60,8 @@ def update1dWidgets(data1dToShow, **kwargs):
     _ = kwargs
     if data1dToShow is None:
         return
-    state.gridData = data1dToShow in FIELD['data1d']['states']
-    state.wellData = data1dToShow in FIELD['data1d']['wells']
+    state.gridData = data1dToShow in state.statesAttrs
+    state.wellData = data1dToShow in state.wellsAttrs
     if state.wellData:
         state.gridItemToShow = None
         wellnames = []

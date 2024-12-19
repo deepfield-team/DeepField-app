@@ -195,9 +195,10 @@ def change_wells_visibility(showFaults, **kwargs):
     for name in ['actor_faults', 'faults_links_actor', 'faults_label_actor']:
         if name in FIELD:
             FIELD[name].SetVisibility(showFaults)
-            ctrl.view_update()
+    ctrl.view_update()
 
 def default_view():
+    "Resert 3d view to initial state."
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
