@@ -97,7 +97,7 @@ def render_help():
 		):
 		vuetify.VCardTitle("Script")
 		vuetify.VCardText("This tab allows you to write and execute\
-			custom scripts for the reservoir model.\
+			custom python scripts for the reservoir model.\
 			The script shoud be contained in a single function named 'f' with a\
 			single agrument 'field'. When executed, the 'field' argument is\
 			substituted with the actual reservoir model.\
