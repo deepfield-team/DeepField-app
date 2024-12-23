@@ -8,6 +8,7 @@ from src.view_1d import render_ts, render_pvt
 from src.common import reset_camera
 from src.info import render_info
 from src.script import render_script
+from src.help import render_help
 from src.config import server, state, ctrl
 
 
@@ -52,8 +53,19 @@ with VAppLayout(server, theme=('theme',)) as layout:
             vuetify.VSpacer()
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
+                vuetify.VTooltip(
+                    text='Switch between light and dark theme',
+                    activator="parent",
+                    location="bottom")
             with vuetify.VBtn(icon=True):
+                vuetify.VTooltip(
+                    text='Help page',
+                    activator="parent",
+                    location="bottom")
                 vuetify.VIcon("mdi-help-circle-outline")
+                with vuetify.VOverlay(activator="parent",
+                    location_strategy="connected"):
+                    render_help()
 
         with vuetify.VMain():
             with html.Div(v_if="activeTab === 'home'", classes="fill-height"):

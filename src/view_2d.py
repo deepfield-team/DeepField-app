@@ -331,6 +331,10 @@ def render_2d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Select field to show',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-database-export-outline")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -347,6 +351,10 @@ def render_2d():
                     with vuetify.VBtn(icon=True, flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Change colormap',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-format-color-fill")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -367,6 +375,10 @@ def render_2d():
                         active=("activeSlice === 'i'",),
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Show I slices',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-alpha-i")
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -376,6 +388,10 @@ def render_2d():
                         active=("activeSlice === 'j'",),
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Show J slices',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-alpha-j")
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
@@ -385,4 +401,8 @@ def render_2d():
                         active=("activeSlice === 'k'",),
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Show K slices',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-alpha-k")

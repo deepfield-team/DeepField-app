@@ -303,11 +303,29 @@ def render_ts():
                     label="Second Axis",
                     hide_details=True)
             with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
-                vuetify.VBtn('Add line', click=ctrl.add_line_to_plot, classes='mt-2')
+                with vuetify.VBtn('Add line',
+                    click=ctrl.add_line_to_plot,
+                    classes='mt-2'):
+                    vuetify.VTooltip(
+                        text='Add line to the plot',
+                        activator="parent",
+                        location="bottom")
             with vuetify.VCol(classes='pa-0 mt-0', style='flex-grow: 0'):
-                vuetify.VBtn('Undo', click=ctrl.remove_last_line, classes='mt-2')
+                with vuetify.VBtn('Undo',
+                    click=ctrl.remove_last_line,
+                    classes='mt-2'):
+                    vuetify.VTooltip(
+                        text='Delete last line from the plot',
+                        activator="parent",
+                        location="bottom")
             with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
-                vuetify.VBtn('Clean', click=ctrl.clean_plot, classes='mt-2')
+                with vuetify.VBtn('Clean',
+                    click=ctrl.clean_plot,
+                    classes='mt-2'):
+                    vuetify.VTooltip(
+                        text='Delete lines from the plot',
+                        activator="parent",
+                        location="bottom")
 
         with vuetify.VRow(style="width: 100%; height: 75vh", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):

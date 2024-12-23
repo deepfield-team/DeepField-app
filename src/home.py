@@ -523,7 +523,11 @@ def render_home():
                         __events=["keydown"]):
                         with vuetify.Template(v_slot_append=True,
                             properties=[("v_slot_append", "v-slot:append")],):
-                            vuetify.VBtn('Load', click='loading = true')
+                            with vuetify.VBtn('Load', click='loading = true'):
+                                vuetify.VTooltip(
+                                    text='Start reading data',
+                                    activator="parent",
+                                    location="top")
                         with vuetify.Template(v_slot_prepend=True,
                             properties=[("v_slot_prepend", "v-slot:prepend")],):
                             with vuetify.VBtn(icon=True,
@@ -533,6 +537,10 @@ def render_home():
                                 style="background-color:transparent;\
                                        backface-visibility:visible;"):
                                 vuetify.VIcon("mdi-history")
+                                vuetify.VTooltip(
+                                    text='Show recent files',
+                                    activator="parent",
+                                    location="top")
                         with vuetify.Template(v_slot_loader=True,
                             properties=[("v_slot_loader", "v-slot:loader")],):
                             with vuetify.VCard(

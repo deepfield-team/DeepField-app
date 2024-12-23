@@ -59,14 +59,22 @@ def render_script():
     vuetify.VTextarea(
     	v_model=('scriptInput',),
     	label="Type function to be executed")
-    vuetify.VBtn('Execute',
+    with vuetify.VBtn('Execute',
         click='scriptRunning = true',
-        loading=('scriptRunning',))
+        loading=('scriptRunning',)):
+        vuetify.VTooltip(
+            text='Run the script',
+            activator="parent",
+            location="end")
 
     with vuetify.VCard(style="margin-top: 10px", variant='flat'):
         vuetify.VCardTitle("Ouptput:")
         vuetify.VCardText('{{scriptOutput}}')
 
-    vuetify.VBtn('Restore field',
+    with vuetify.VBtn('Restore field',
         click='fieldRestoring = true',
-        loading=('fieldRestoring',))
+        loading=('fieldRestoring',)):
+        vuetify.VTooltip(
+            text='Discard all changes in the reservoir model',
+            activator="parent",
+            location="end")

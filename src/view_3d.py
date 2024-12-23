@@ -283,6 +283,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Select field to show',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-database-export-outline")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -299,6 +303,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Change colormap',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-format-color-fill")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -316,6 +324,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Set opacity',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-circle-opacity")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -343,6 +355,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Filter grid based on cell index I',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-alpha-i")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -380,6 +396,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Filter grid based on cell index J',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-alpha-j")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -417,6 +437,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Filter grid based on cell index K',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-alpha-k")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -454,6 +478,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Filter grid based of scalar values',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-filter")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -491,6 +519,10 @@ def render_3d():
                     with vuetify.VBtn(icon=True,flat=True,
                         style="background-color:transparent;\
                                backface-visibility:visible;"):
+                        vuetify.VTooltip(
+                            text='Change visibility of the objects',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-layers-outline")
                         with vuetify.VMenu(activator="parent",
                             location="right",
@@ -518,6 +550,10 @@ def render_3d():
                         style="background-color:transparent;\
                                backface-visibility:visible;",
                         click=ctrl.default_view):
+                        vuetify.VTooltip(
+                            text='Reset view settings to default values',
+                            activator="parent",
+                            location="end")
                         vuetify.VIcon("mdi-fit-to-page-outline")
 
 ctrl.on_server_ready.add(ctrl.view_update)
