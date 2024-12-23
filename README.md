@@ -31,7 +31,7 @@ Plots obtained from interpolation of PVT or relative permeability tables:
 
 <img src="static/scene4.PNG" width="50%"/>
 
-Descrition of the reservoir model and white theme of the application:
+Description of the reservoir model and a white theme of the application:
 
 <img src="static/scene5.PNG" width="50%"/>
 
