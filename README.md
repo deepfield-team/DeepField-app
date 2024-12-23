@@ -63,6 +63,10 @@ You can add a few optional parameters to the command line:
 * --app - use to launch the application in a separate window rather than in the browser
 * --port 1234 - to change the default port 8080 to, e.g., 1234
 
+When the application is running, you can click on the help icon in the upper right corner
+to read a brief description of the page. Hover over buttons and icons to see a tooltip
+with textual information about them.
+
 ## Open-source reservoir models
 
 An example reservoir model with dynamics simulation can be found in the `open_data` directory in the DeepField repository [https://github.com/deepfield-team/DeepField](https://github.com/deepfield-team/DeepField),
