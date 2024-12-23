@@ -304,14 +304,14 @@ def add_wells(field, scales):
 
         wtrack_idx, first_intersection = well._first_entering_point
         welltrack = well.welltrack[:, :3]
-        
+
         if first_intersection is not None:
             welltrack_tmp = np.concatenate([np.array([[first_intersection[0], first_intersection[1], z_min]]),
                                         np.asarray(first_intersection).reshape(1, -1),
                                         well.welltrack[wtrack_idx + 1:, :3]])
         else:
             welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
-        
+
         point_ids = []
         labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*scales)
         for line in welltrack_tmp:
@@ -335,7 +335,7 @@ def add_wells(field, scales):
 
     renderer.AddActor(label_actor)
     FIELD['well_labels_actor'] = label_actor
-    
+
     polyData = vtk.vtkPolyData()
     polyData.SetPoints(points)
     polyData.SetLines(cells)
@@ -344,6 +344,7 @@ def add_wells(field, scales):
     wells_actor = vtk.vtkActor()
     wells_actor.SetScale(*scales)
     wells_actor.SetMapper(mapper)
+    wells_actor.GetProperty().SetLineWidth(5)
 
     colors = vtk.vtkNamedColors()
 
@@ -357,25 +358,25 @@ def add_wells(field, scales):
 def add_faults(field, scales):
     field.faults.get_blocks()
     n_segments = len(field.faults.names)
-    
+
     labels = vtk.vtkStringArray()
     labels.SetNumberOfValues(n_segments)
     labels.SetName("labels")
-    
+
     grid = field.grid
     z = grid.xyz[grid.actnum][..., 2]
     z_min = z.min()
     dz = z.max() - z_min
     z_min = z_min - 0.05*dz
-    
+
     points = vtk.vtkPoints()
     polygons = vtk.vtkCellArray()
-    
+
     labeled_points = vtk.vtkPoints()
     links_points = vtk.vtkPoints()
     links_points_ids = []
     link_cells = vtk.vtkCellArray()
-    
+
     size = 0
     for i, segment in enumerate(field.faults):
         blocks = segment.blocks
@@ -424,7 +425,7 @@ def add_faults(field, scales):
     fault_links_actor.SetScale(*scales)
     fault_links_actor.SetMapper(mapper)
     (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Red')))
-    
+
     FIELD['faults_links_actor'] = fault_links_actor
     renderer.AddActor(fault_links_actor)
 
@@ -438,7 +439,7 @@ def add_faults(field, scales):
     label_actor = vtk.vtkActor2D()
     label_actor.SetMapper(label_mapper)
     label_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
-    
+
     FIELD['faults_label_actor'] = label_actor
     renderer.AddActor(label_actor)
 
