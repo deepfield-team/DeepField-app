@@ -11,14 +11,37 @@ view and explore data in 3D, 2D and 1D, write and execute custom scripts
 containing reservoir model transformations or calculations, 
 and immediately view the results of these transformations.
 
-Example of the reservoir model in 3D view:
+Main page of the application:
 
-![img](static/scene1.png)
+<img src="static/scene0.PNG" width="50%"/>
 
-2D view:
+An example of a reservoir model in 3D view with a filter applied to scalar values:
 
-Construnction of a multiline 1D plot to compare dynamic properties of grid cells and wells:
+<img src="static/scene1.PNG" width="50%"/>
 
+2D slice view of the reservoir model:
+
+<img src="static/scene2.PNG" width="50%"/>
+
+Construction of a multiline 1D plot to compare dynamic properties of grid cells and wells:
+
+<img src="static/scene3.PNG" width="50%"/>
+
+Plots obtained from interpolation of PVT or relative permeability tables:
+
+<img src="static/scene4.PNG" width="50%"/>
+
+Descrition of the reservoir model and white theme of the application:
+
+<img src="static/scene5.PNG" width="50%"/>
+
+Script writing
+
+<img src="static/scene6.PNG" width="50%"/>
+
+...and the results of its execution:
+
+<img src="static/scene7.PNG" width="50%"/>
 
 
 ## Installation
