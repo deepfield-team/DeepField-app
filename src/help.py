@@ -8,7 +8,7 @@ def render_help():
 		style='max-width: 80vw;'):
 		vuetify.VCardTitle("Home page")
 		vuetify.VCardText("Work with the application starts on the HOME page.\
-			This application supports reservoir models in the ECLIPSE file format.\
+			The application supports reservoir models in the ECLIPSE file format.\
 			To load the model, input the path to the main reseroir model file with .DATA extension.\
 			You can use the up and down arrow keys and the enter key to autocomplete the path you type.\
 			Click the LOAD button to start reading data. This may take a while.\
@@ -16,7 +16,15 @@ def render_help():
 			Read more about supported keywords and file formats here: https://github.com/deepfield-team/DeepField.",
 			style="text-wrap: auto", 
 			)
-		vuetify.VCardText("Once the model is loaded, click on one of the tabs in the top panel to begin exploring the model.",
+		vuetify.VCardText("Once the model is loaded, click on one of the tabs in the top panel\
+			to begin exploring the model. Click on the help icon in the upper right corner\
+			to read a brief description of the page. Hover over buttons and icons to see a tooltip\
+			with textual information about them.",
+			style="text-wrap: auto",
+			classes='pt-1'
+			)
+		vuetify.VCardText("Optionally, you can convert the model from .DATA format to .HDF5 format\
+			to speed up the next time you read the data.",
 			style="text-wrap: auto",
 			classes='pt-1'
 			)

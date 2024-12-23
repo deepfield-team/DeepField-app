@@ -344,7 +344,7 @@ def add_wells(field, scales):
     wells_actor = vtk.vtkActor()
     wells_actor.SetScale(*scales)
     wells_actor.SetMapper(mapper)
-    wells_actor.GetProperty().SetLineWidth(5)
+    wells_actor.GetProperty().SetLineWidth(3)
 
     colors = vtk.vtkNamedColors()
 
