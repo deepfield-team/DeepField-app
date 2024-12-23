@@ -27,6 +27,11 @@ setup(
         "trame-plotly",
         "plotly"
     ],
+    entry_points={
+    'console_scripts': [
+        'deepfield-app = deepfield_app.app:server_start',
+    ],
+    },
     extras_require={
     },
     classifiers=[

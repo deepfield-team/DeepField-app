@@ -48,7 +48,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 vuetify.VTab('PVT/RP', value="pvt")
                 vuetify.VTab('Info', value="info")
                 vuetify.VTab('Script', value="script")
-            
+
             vuetify.VSpacer()
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
@@ -73,4 +73,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
 
 
 if __name__ == "__main__":
+    server.start()
+
+def server_start():
     server.start()
