@@ -1,14 +1,14 @@
 from trame.widgets import html, client, vuetify3 as vuetify
 from trame.ui.vuetify3 import VAppLayout
 
-from src.home import render_home, make_empty_dataset
-from src.view_3d import render_3d
-from src.view_2d import render_2d
-from src.view_1d import render_ts, render_pvt
-from src.common import reset_camera
-from src.info import render_info
-from src.script import render_script
-from src.config import server, state, ctrl
+from .src.home import render_home, make_empty_dataset
+from .src.view_3d import render_3d
+from .src.view_2d import render_2d
+from .src.view_1d import render_ts, render_pvt
+from .src.common import reset_camera
+from .src.info import render_info
+from .src.script import render_script
+from .src.config import server, state, ctrl
 
 
 state.theme = 'light'
