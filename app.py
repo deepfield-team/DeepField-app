@@ -1,3 +1,4 @@
+"App layout."
 from trame.widgets import html, client, vuetify3 as vuetify
 from trame.ui.vuetify3 import VAppLayout
 
@@ -19,6 +20,8 @@ state.text_color = 'black'
 state.bgColor = 'white'
 
 def change_theme(*args, **kwargs):
+    "Change app theme."
+    _ = args, kwargs
     if state.theme == 'light':
         state.theme = 'dark'
         state.sideBarColor = "grey-darken-4"
@@ -49,7 +52,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 vuetify.VTab('PVT/RP', value="pvt")
                 vuetify.VTab('Info', value="info")
                 vuetify.VTab('Script', value="script")
-            
+
             vuetify.VSpacer()
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")

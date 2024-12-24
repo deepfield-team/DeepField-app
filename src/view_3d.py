@@ -1,3 +1,4 @@
+"3D view page."
 import numpy as np
 import pandas as pd
 from matplotlib.pyplot import get_cmap
@@ -41,6 +42,8 @@ scalarBar.SetMaximumWidthInPixels(50)
 
 @state.change("theme")
 def change_vtk_bgr(theme, **kwargs):
+    "Change background in vtk."
+    _ = kwargs
     if theme == 'light':
         renderer.SetBackground(1, 1, 1)
         scalarBar.GetLabelTextProperty().SetColor(0, 0, 0)
@@ -57,6 +60,7 @@ def change_vtk_bgr(theme, **kwargs):
 
 @state.change("activeField", "activeStep")
 def update_field(activeField, activeStep, **kwargs):
+    "Update field in vtk."
     _ = kwargs
 
     if (activeField is None) or (FIELD['c_data'] is None):
@@ -85,6 +89,8 @@ def update_field(activeField, activeStep, **kwargs):
 
 @state.change('stateDate')
 def update_date(stateDate, **kwargs):
+    "Synchronize date and activeStep."
+    _ = kwargs
     if stateDate is None:
         return
     if 'dates' in FIELD:
@@ -97,6 +103,8 @@ def update_date(stateDate, **kwargs):
 
 @state.change("colormap")
 def update_cmap(colormap, **kwargs):
+    "Update colormap."
+    _ = kwargs
     if state.showScalars:
         cmap = get_cmap(colormap)
         table = FIELD['actor'].GetMapper().GetLookupTable()
@@ -112,6 +120,7 @@ def update_cmap(colormap, **kwargs):
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
+    "Set threshold filter limits."
     threshold = vtk.vtkThreshold()
     threshold.SetInputData(FIELD['dataset'])
     if input_threshold:
@@ -133,6 +142,7 @@ def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None
 
 @state.change("i_slice", "j_slice", "k_slice", "field_slice")
 def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
+    "Filter scalars based on index and values."
     _ = kwargs
     if not FIELD['c_data']:
         return
@@ -140,8 +150,9 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     threshold_i = make_threshold(i_slice, "I", ijk=True)
     threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i, ijk=True)
     threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j, ijk=True)
-    threshold_field = make_threshold(field_slice, state.activeField, input_threshold=threshold_k, component=int(state.activeStep))
-    mapper = vtk.vtkDataSetMapper()                                         
+    threshold_field = make_threshold(field_slice, state.activeField,
+        input_threshold=threshold_k, component=int(state.activeStep))
+    mapper = vtk.vtkDataSetMapper()
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
     FIELD['actor'].SetMapper(mapper)
@@ -149,6 +160,7 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
 
 @state.change("activeField")
 def update_field_slices_params(activeField, **kwargs):
+    "Init filter limints."
     _ = kwargs
     if activeField is None:
         return
@@ -159,6 +171,7 @@ def update_field_slices_params(activeField, **kwargs):
 
 @state.change("opacity")
 def update_opacity(opacity, **kwargs):
+    "Update opacity."
     _ = kwargs
     if opacity is None:
         return
@@ -167,6 +180,7 @@ def update_opacity(opacity, **kwargs):
 
 @state.change("showScalars")
 def change_field_visibility(showScalars, **kwargs):
+    "Set visibility of scalars."
     _ = kwargs
     if showScalars is None:
         return
@@ -186,7 +200,8 @@ def change_field_visibility(showScalars, **kwargs):
     ctrl.view_update()
 
 @state.change("showWireframe")
-def change_field_visibility(showWireframe, **kwargs):
+def change_wireframe_visibility(showWireframe, **kwargs):
+    "Set visibility of wireframe."
     _ = kwargs
     if showWireframe is None:
         return
@@ -202,20 +217,24 @@ def change_field_visibility(showWireframe, **kwargs):
 
 @state.change("showWells")
 def change_wells_visibility(showWells, **kwargs):
+    "Set visibility of wells."
+    _ = kwargs
     for name in ('wells_actor', 'well_labels_actor'):
         if name in FIELD:
             FIELD[name].SetVisibility(showWells)
     ctrl.view_update()
 
 @state.change("showFaults")
-def change_wells_visibility(showFaults, **kwargs):
+def change_faults_visibility(showFaults, **kwargs):
+    "Set visibility of faults."
+    _ = kwargs
     for name in ['actor_faults', 'faults_links_actor', 'faults_label_actor']:
         if name in FIELD:
             FIELD[name].SetVisibility(showFaults)
     ctrl.view_update()
 
 def default_view():
-    "Resert 3d view to initial state."
+    "Resert 3d view setting to initial state."
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
@@ -231,6 +250,7 @@ def default_view():
 ctrl.default_view = default_view
 
 def render_3d():
+    "3D view layout."
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="height: 100%; width: 100%", classes='pa-0 ma-0'):
             with vuetify.VCol(classes="pa-0"):

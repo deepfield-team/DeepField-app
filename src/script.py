@@ -1,11 +1,12 @@
+"Script page."
 from trame.widgets import vuetify3 as vuetify
 
-from .config import state, ctrl, FIELD
+from .config import state, FIELD
 from .home import process_field
 
 
 state.scriptInput = """
-def f(field):
+def f(field): #do not change this line
     return
 """
 state.scriptOutput = ''
@@ -15,6 +16,7 @@ state.fieldRestoring = False
 
 @state.change("scriptRunning")
 def run_script(scriptRunning, **kwargs):
+    "Run script."
     _ = kwargs
 
     if not scriptRunning:
@@ -46,6 +48,7 @@ def run_script(scriptRunning, **kwargs):
 
 @state.change("fieldRestoring")
 def restore_field(fieldRestoring, **kwargs):
+    "Restore initial field data."
     _ = kwargs
 
     if not fieldRestoring:
@@ -56,6 +59,7 @@ def restore_field(fieldRestoring, **kwargs):
     state.fieldRestoring = False
 
 def render_script():
+    "Script page layout."
     vuetify.VTextarea(
     	v_model=('scriptInput',),
     	label="Type function to be executed")

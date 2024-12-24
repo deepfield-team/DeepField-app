@@ -1,3 +1,4 @@
+"App configs."
 from trame.app import get_server
 
 from vtkmodules.vtkIOXML import vtkXMLUnstructuredGridReader
@@ -8,13 +9,8 @@ from vtkmodules.vtkRenderingCore import (
     vtkDataSetMapper,
     vtkRenderer
 )
-
-from vtkmodules.vtkInteractionStyle import (
-    vtkInteractorStyleRubberBandPick,
-    vtkInteractorStyleSwitch,
-)
-
 import vtkmodules.vtkRenderingOpenGL2  # noqa
+
 
 server = get_server(client_type="vue3")
 state, ctrl = server.state, server.controller

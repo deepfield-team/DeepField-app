@@ -1,6 +1,8 @@
+"Info page."
 from trame.widgets import vuetify3 as vuetify
 
 def render_info():
+    "Info page layout."
     text_classes = 'pa-0 ma-0'
     text_style = "font-size: 16px;"
 
@@ -15,11 +17,11 @@ def render_info():
             classes=text_classes, style=text_style)
         vuetify.VCardText('Active cells: ' + '{{active_cells}}',
             classes=text_classes, style=text_style)
-        vuetify.VCardText('Pore volume: ' + "{{pore_vol}}" + ' ' + "{{units3}}", 
+        vuetify.VCardText('Pore volume: ' + "{{pore_vol}}" + ' ' + "{{units3}}",
             classes=text_classes, style=text_style)
         vuetify.VCardText('Oil volume: ' + "{{oil_vol}}" + ' ' + "{{units3}}",
             classes=text_classes, style=text_style)
-        vuetify.VCardText('Water volume: ' + "{{wat_vol}}" + ' ' + "{{units3}}", 
+        vuetify.VCardText('Water volume: ' + "{{wat_vol}}" + ' ' + "{{units3}}",
             classes=text_classes, style=text_style)
         vuetify.VCardText('Gas volume: ' + "{{gas_vol}}" + ' ' + "{{units4}}",
             classes=text_classes, style=text_style)
@@ -37,7 +39,7 @@ def render_info():
             classes=text_classes, style=text_style)
         vuetify.VCardText('Total gas production: ' + '{{total_gas_production}}' + ' ' + "{{units2}}",
             classes=text_classes, style=text_style)
-        
+
         vuetify.VCardTitle("Components and attributes",
             classes='pa-0 ma-0')
         vuetify.VCardText("Attributes of grid: " + "{{components_attrs['grid']}}",

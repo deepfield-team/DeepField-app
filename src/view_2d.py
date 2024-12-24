@@ -1,15 +1,11 @@
-import time
-import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
-from matplotlib.cm import ScalarMappable
+"2D view page."
+import numpy as np
+import plotly.graph_objects as go
+
+from trame.widgets import html, trame, vuetify3 as vuetify, plotly
 
 from deepfield.field.plot_utils import get_slice_trisurf
 from deepfield.field import States
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-
-from trame.widgets import html, trame, vuetify3 as vuetify, matplotlib, plotly
 
 from .config import state, ctrl, FIELD
 
@@ -41,6 +37,7 @@ CHART_STYLE_2D = {
 
 
 def triangle_centroids(x, y, triangles):
+    "Get centroids."
     points = np.stack((x, y), axis=1)
 
     median_start = points[triangles[:, 0]]
@@ -52,16 +49,20 @@ def triangle_centroids(x, y, triangles):
 
 @state.change("plotlyTheme")
 def change_plotly_theme_2d(plotlyTheme, **kwargs):
+    "Change plotly theme."
+    _ = kwargs
     fig = PLOT_2D['fig']
     if fig is not None:
         fig.update_layout(template=plotlyTheme)
         ctrl.update_slice(fig)
 
 def get_attr_from_field(attr):
+    "Get attribute data from field."
     comp, attr = attr.split('_')
-    return FIELD['model']._components[comp.lower()][attr]
+    return getattr(FIELD['model'], comp.lower())[attr]
 
 def get_figure_size(f_size):
+    "Calculate figure size."
     if f_size is None:
         return {}
 
@@ -73,6 +74,7 @@ def get_figure_size(f_size):
     return {"figsize": (w_inch, h_inch), "dpi": dpi}
 
 def get_data_limits(component, attr, activeStep):
+    "Get min and max values."
     data = getattr(component, attr)
     if data.ndim == 4:
         data = data[activeStep]
@@ -88,6 +90,7 @@ def get_data_limits(component, attr, activeStep):
 
 def create_slice(component, att, i, j, k, t, range_x, range_y,
                  xaxis_name, yaxis_name, width,  height, colormap):
+    "Create slice plot."
     x, y, triangles, data, indices = get_slice_trisurf(component, att, i, j, k, t)
     if triangles is None:
         x = np.zeros(0)
@@ -152,6 +155,7 @@ def create_slice(component, att, i, j, k, t, range_x, range_y,
               "xslice", "yslice", "zslice", "colormap")
 def update_slices(figure_size, activeSlice,
     activeField, activeStep, xslice, yslice, zslice, colormap, **kwargs):
+    "Update slice data."
     _ = kwargs
     if activeField is None:
         return
@@ -221,6 +225,7 @@ def update_slices(figure_size, activeSlice,
                 colormap=colormap))
 
 def render_2d():
+    "2D view layout."
     with vuetify.VContainer(fluid=True,
         classes="pa-0 ma-0"):
         with vuetify.VRow(style="width:100%; height: calc(100vh - 48px)",

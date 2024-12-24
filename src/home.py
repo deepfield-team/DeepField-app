@@ -1,3 +1,4 @@
+"Home page."
 import os
 import sys
 from glob import glob
@@ -91,6 +92,7 @@ def filter_path(path):
 
 @state.change("user_request")
 def get_path_variants(user_request, **kwargs):
+    "Collect and filter paths."
     _ = kwargs
     state.loading = False
     state.loadComplete = False
@@ -101,6 +103,7 @@ def get_path_variants(user_request, **kwargs):
 
 @state.change("loading")
 def load_file(loading, **kwargs):
+    "Read and process reservoir model data."
     _ = kwargs
 
     if not loading:
@@ -170,7 +173,7 @@ def process_field(field):
     ds_max = ds.max()
     scales = ds_max / ds
 
-    add_scalars(field, scales)
+    add_scalars(scales)
 
     add_wells(field, scales)
 
@@ -183,6 +186,7 @@ def process_field(field):
 ctrl.load_file = load_file
 
 def prepare_slices(dataset):
+    "Get slice data and sclice ranges."
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
@@ -259,7 +263,8 @@ def get_field_info(field):
     state.startDate = FIELD['dates'][0].strftime('%Y-%m-%d')
     state.lastDate = FIELD['dates'][-1].strftime('%Y-%m-%d')
 
-def add_scalars(field, scales):
+def add_scalars(scales):
+    "Add actor for scalars."
     actor = vtkActor()
     actor.SetScale(*scales)
 
@@ -274,14 +279,15 @@ def add_scalars(field, scales):
     actor.SetMapper(mapper)
 
     for name in ['actor', 'wells_actor', 'actor_faults', 'well_labels_actor',
-                 'faults_links_actor', 'faults_label_actor']:
+        'faults_links_actor', 'faults_label_actor']:
         if name in FIELD:
-             renderer.RemoveActor(FIELD[name])
+            renderer.RemoveActor(FIELD[name])
 
     renderer.AddActor(actor)
     FIELD['actor'] = actor
 
 def add_wells(field, scales):
+    "Add actor for wells."
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
 
@@ -319,15 +325,15 @@ def add_wells(field, scales):
 
         polyLine = vtk.vtkPolyLine()
         polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
-        for i, id in enumerate(point_ids):
-            polyLine.GetPointIds().SetId(i, id)
+        for j, id in enumerate(point_ids):
+            polyLine.GetPointIds().SetId(j, id)
         cells.InsertNextCell(polyLine)
 
-    label_PolyData = vtk.vtkPolyData()
-    label_PolyData.SetPoints(labeled_points)
-    label_PolyData.GetPointData().AddArray(labels)
+    label_polyData = vtk.vtkPolyData()
+    label_polyData.SetPoints(labeled_points)
+    label_polyData.GetPointData().AddArray(labels)
     label_mapper = vtk.vtkLabeledDataMapper()
-    label_mapper.SetInputData(label_PolyData)
+    label_mapper.SetInputData(label_polyData)
     label_mapper.SetFieldDataName('labels')
     label_mapper.SetLabelModeToLabelFieldData()
     label_actor = vtk.vtkActor2D()
@@ -356,6 +362,7 @@ def add_wells(field, scales):
     FIELD['wells_actor'] = wells_actor
 
 def add_faults(field, scales):
+    "Add actor for faults."
     field.faults.get_blocks()
     n_segments = len(field.faults.names)
 
@@ -402,16 +409,16 @@ def add_faults(field, scales):
         for f in faces:
             polygon = vtk.vtkPolygon()
             polygon.GetPointIds().SetNumberOfIds(3)
-            for i, id in enumerate(f):
-                polygon.GetPointIds().SetId(i, id)
+            for j, id in enumerate(f):
+                polygon.GetPointIds().SetId(j, id)
             polygons.InsertNextCell(polygon)
 
         size += len(xyz)
 
         polyLine = vtk.vtkPolyLine()
         polyLine.GetPointIds().SetNumberOfIds(2)
-        for i, id in enumerate(links_points_ids[-2:]):
-            polyLine.GetPointIds().SetId(i, id)
+        for j, id in enumerate(links_points_ids[-2:]):
+            polyLine.GetPointIds().SetId(j, id)
         link_cells.InsertNextCell(polyLine)
 
     colors = vtk.vtkNamedColors()
@@ -429,11 +436,11 @@ def add_faults(field, scales):
     FIELD['faults_links_actor'] = fault_links_actor
     renderer.AddActor(fault_links_actor)
 
-    label_PolyData = vtk.vtkPolyData()
-    label_PolyData.SetPoints(labeled_points)
-    label_PolyData.GetPointData().AddArray(labels)
+    label_polyData = vtk.vtkPolyData()
+    label_polyData.SetPoints(labeled_points)
+    label_polyData.GetPointData().AddArray(labels)
     label_mapper = vtk.vtkLabeledDataMapper()
-    label_mapper.SetInputData(label_PolyData)
+    label_mapper.SetInputData(label_polyData)
     label_mapper.SetFieldDataName('labels')
     label_mapper.SetLabelModeToLabelFieldData()
     label_actor = vtk.vtkActor2D()
@@ -443,12 +450,12 @@ def add_faults(field, scales):
     FIELD['faults_label_actor'] = label_actor
     renderer.AddActor(label_actor)
 
-    polygonPolyData = vtk.vtkPolyData()
-    polygonPolyData.SetPoints(points)
-    polygonPolyData.SetPolys(polygons)
+    polygon_polyData = vtk.vtkPolyData()
+    polygon_polyData.SetPoints(points)
+    polygon_polyData.SetPolys(polygons)
 
     mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(polygonPolyData)
+    mapper.SetInputData(polygon_polyData)
 
     actor_faults = vtk.vtkActor()
     actor_faults.SetScale(*scales)
@@ -459,6 +466,7 @@ def add_faults(field, scales):
     FIELD['actor_faults'] = actor_faults
 
 def make_empty_dataset():
+    "Init variables."
     dataset = vtk.vtkUnstructuredGrid()
 
     mapper = vtkDataSetMapper()
@@ -475,6 +483,7 @@ def make_empty_dataset():
     FIELD['dataset'] = dataset
 
 def on_keydown(key_code):
+    "Autocomplete path input."
     if key_code == 'ArrowDown':
         if state.pathIndex is None:
             state.pathIndex = 0
@@ -509,7 +518,9 @@ def on_keydown(key_code):
 
 
 def render_home():
-    with html.Div(style='position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80vw; height: 10vh'):
+    "Home page layout."
+    with html.Div(style='position: fixed; left: 50%; top: 50%;\
+        transform: translate(-50%, -50%); width: 80vw; height: 10vh'):
         with vuetify.VContainer():
             with vuetify.VRow():
                 with vuetify.VCol():
