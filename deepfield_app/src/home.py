@@ -1,6 +1,5 @@
 "Home page."
 import os
-import sys
 from glob import glob
 import numpy as np
 from anytree import PreOrderIter
@@ -14,7 +13,6 @@ from vtkmodules.vtkRenderingCore import (
 
 from trame.widgets import html, vuetify3 as vuetify
 
-sys.path.append('../deepfield-team/DeepField')
 from deepfield import Field
 
 from .config import state, ctrl, FIELD, renderer

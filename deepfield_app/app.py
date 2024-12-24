@@ -1,7 +1,17 @@
 "App layout."
+import sys
 from trame.widgets import html, client, vuetify3 as vuetify
 from trame.ui.vuetify3 import VAppLayout
 
+try:
+    from deepfield import Field
+except ModuleNotFoundError:
+    try:
+        sys.path.append('../../DeepField')
+    except:
+        raise ModuleNotFoundError("Module deepfield is not found.")
+
+from src.config import server, state, ctrl
 from src.home import render_home, make_empty_dataset
 from src.view_3d import render_3d
 from src.view_2d import render_2d
@@ -10,7 +20,6 @@ from src.common import reset_camera
 from src.info import render_info
 from src.script import render_script
 from src.help import render_help
-from src.config import server, state, ctrl
 
 
 state.theme = 'light'
