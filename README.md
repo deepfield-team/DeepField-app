@@ -46,7 +46,15 @@ Script writing
 
 ## Installation
 
-Run in the terminal:
+We recommend creating a new virtual environment with python 3.11 to install the project dependencies:
+
+	conda create -n app python=3.11
+
+Activate the new environment:
+
+	conda activate app
+
+To install the project dependencies, run in the terminal:
 
     pip install "git+https://github.com/deepfield-team/DeepField-app.git@setup
 
@@ -79,3 +87,15 @@ transformations and calculations. The script should be based on the DeepField fr
 [https://github.com/deepfield-team/DeepField](https://github.com/deepfield-team/DeepField).
 Read the [documentation](https://deepfield-team.github.io/DeepField/) and see
 [examples](https://github.com/deepfield-team/DeepField/blob/main/tutorials) in the DeepField repository to prepare a script.
+
+## Next releases
+
+The project is developing. We are preparing new releases with new features.
+Your suggestions and issues reports will help to make the application even better.
+
+## Citing
+
+We hope that this project will help you in your research and you will decide to cite it as
+```
+DeepField web application (2024). GitHub repository, https://github.com/deepfield-team/DeepField-app.
+```
