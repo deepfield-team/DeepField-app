@@ -11,15 +11,15 @@ except ModuleNotFoundError:
     except:
         raise ModuleNotFoundError("Module deepfield is not found.")
 
-from src.config import server, state, ctrl
-from src.home import render_home, make_empty_dataset
-from src.view_3d import render_3d
-from src.view_2d import render_2d
-from src.view_1d import render_ts, render_pvt
-from src.common import reset_camera
-from src.info import render_info
-from src.script import render_script
-from src.help import render_help
+from .src.config import server, state, ctrl
+from .src.home import render_home, make_empty_dataset
+from .src.view_3d import render_3d
+from .src.view_2d import render_2d
+from .src.view_1d import render_ts, render_pvt
+from .src.common import reset_camera
+from .src.info import render_info
+from .src.script import render_script
+from .src.help import render_help
 
 
 state.theme = 'light'
@@ -97,4 +97,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
 
 
 if __name__ == "__main__":
+    server.start()
+
+def server_start():
     server.start()
