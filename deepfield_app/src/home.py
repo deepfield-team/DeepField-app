@@ -19,9 +19,13 @@ from .config import state, ctrl, FIELD, renderer
 from .common import reset_camera
 from .view_3d import update_field_slices_params
 
+USER_DIR = os.path.expanduser("~")
+
+state.user_request = USER_DIR
 state.dirList = []
 state.pathIndex = None
 state.updateDirList = True
+state.initalDirList = True
 state.recentFiles = []
 state.loading = False
 state.loadComplete = False
@@ -482,6 +486,7 @@ def make_empty_dataset():
 
 def on_keydown(key_code):
     "Autocomplete path input."
+    state.initalDirList = False
     if key_code == 'ArrowDown':
         if state.pathIndex is None:
             state.pathIndex = 0
@@ -524,7 +529,7 @@ def render_home():
                 with vuetify.VCol():
                     with vuetify.VTextField(
                         ref="searchInput",
-                        v_model=("user_request", ""),
+                        v_model=("user_request",),
                         label="Input reservoir model path",
                         clearable=True,
                         name="searchInput",
@@ -558,7 +563,7 @@ def render_home():
                                 classes="overflow-auto",
                                 max_width="100%",
                                 max_height="30vh"):
-                                with vuetify.VList(v_if='!loading & !showHistory'):
+                                with vuetify.VList(v_if='!loading & !showHistory & !initalDirList'):
                                     with vuetify.VListItem(
                                         v_for="item, index in dirList",
                                         click="user_request = item"):

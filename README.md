@@ -44,7 +44,7 @@ Script writing
 <img src="static/scene7.PNG" width="50%"/>
 
 
-## Installation
+## Installation as a package
 
 We recommend creating a new virtual environment with python 3.11 to install the project dependencies:
 
@@ -58,9 +58,7 @@ To install the project dependencies, run in the terminal:
 
     pip install "git+https://github.com/deepfield-team/DeepField-app.git@setup
 
-## Run the application
-
-After installation, type and run in the terminal:
+After installation, run in the terminal:
 
 	deepfield-app
 
@@ -71,22 +69,47 @@ You can add a few optional parameters to the command line:
 * --app - use to launch the application in a separate window rather than in the browser
 * --port 1234 - to change the default port 8080 to, e.g., 1234
 
-When the application is running, you can click on the help icon in the upper right corner
-to read a brief description of the page. Hover over buttons and icons to see a tooltip
-with textual information about them.
+When the application is running, you can click on the help icon in
+the upper right corner to read a brief description of the page. 
+Hover over buttons and icons to see a tooltip with textual information
+about them.
+
+## Installation from source code
+
+Another option to run the application is to clone the entire repository:
+
+	git clone https://github.com/deepfield-team/DeepField-app.git
+
+Addionally, you will need to clone the repository `DeepField` into the same directory as the `DeepField-app`:
+
+	git clone https://github.com/deepfield-team/DeepField.git
+
+Install dependencties in both repositories using
+
+	pip install -r requirements.txt
+
+Then navigate to the directory DeepField-app and run in the terminal
+
+	python -m deepfield.app
+
+to start the application.
+
 
 ## Open-source reservoir models
 
-An example reservoir model with dynamics simulation can be found in the `open_data` directory in the DeepField repository [https://github.com/deepfield-team/DeepField](https://github.com/deepfield-team/DeepField),
+An example reservoir model with dynamics simulation can be found in the `open_data` directory in the `DeepField` repository [https://github.com/deepfield-team/DeepField](https://github.com/deepfield-team/DeepField),
 as well as links to a number of other open source models.
 
 ## Script writing
 
-The application allows you to write and execute python scripts for reservoir model 
-transformations and calculations. The script should be based on the DeepField framework 
+The application allows you to write and execute python scripts for
+reservoir model transformations and calculations. The script should 
+be based on the `DeepField` framework 
 [https://github.com/deepfield-team/DeepField](https://github.com/deepfield-team/DeepField).
-Read the [documentation](https://deepfield-team.github.io/DeepField/) and see
-[examples](https://github.com/deepfield-team/DeepField/blob/main/tutorials) in the DeepField repository to prepare a script.
+Read the [documentation](https://deepfield-team.github.io/DeepField/)
+and see
+[examples](https://github.com/deepfield-team/DeepField/blob/main/tutorials) 
+in the DeepField repository to prepare a script.
 
 ## Next releases
 

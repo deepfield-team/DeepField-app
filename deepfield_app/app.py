@@ -7,7 +7,7 @@ try:
     from deepfield import Field
 except ModuleNotFoundError:
     try:
-        sys.path.append('../../DeepField')
+        sys.path.append('../DeepField')
     except:
         raise ModuleNotFoundError("Module deepfield is not found.")
 
@@ -100,4 +100,5 @@ if __name__ == "__main__":
     server.start()
 
 def server_start():
+    "Start server."
     server.start()
