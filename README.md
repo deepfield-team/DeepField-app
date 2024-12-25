@@ -90,7 +90,7 @@ Install dependencties in both repositories using
 
 Then navigate to the directory DeepField-app and run in the terminal
 
-	python -m deepfield.app
+	python -m deepfield_app.app
 
 to start the application.
 
