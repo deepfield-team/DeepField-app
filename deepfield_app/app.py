@@ -25,7 +25,6 @@ from .src.help import render_help
 state.theme = 'light'
 state.sideBarColor = "grey-lighten-4"
 state.plotlyTheme = 'plotly'
-state.text_color = 'black'
 state.bgColor = 'white'
 
 def change_theme(*args, **kwargs):

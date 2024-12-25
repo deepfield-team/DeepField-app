@@ -16,8 +16,12 @@ VTK_VIEW_SETTINGS = {
     "interactive_quality": 90,
 }
 
-state.colormaps = ["jet", "gray", "hsv", "Spectral", "twilight", "viridis"]
-state.colormap = state.colormaps[0]
+state.colormaps = sorted(["cividis", "inferno", "jet",
+    "hot", "hsv", "magma", "plasma", "rainbow",
+    "Spectral", 'turbo', "twilight", "viridis",
+    'YlGn', 'YlGnBu', 'RdGy', 'RdYlBu', 'BuGn',
+    "gray", 'Blues', 'Greens', 'Oranges', 'Reds'])
+state.colormap = 'jet'
 
 render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)

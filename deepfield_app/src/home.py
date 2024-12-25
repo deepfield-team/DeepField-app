@@ -188,7 +188,7 @@ def process_field(field):
 ctrl.load_file = load_file
 
 def prepare_slices(dataset):
-    "Get slice data and sclice ranges."
+    "Get slice data and slice ranges."
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
