@@ -2,19 +2,15 @@ from setuptools import setup, find_packages
 
 VERSION = "0.0.1"
 
-# with open('docs/index.rst', 'r') as f:
-#     LONG_DESCRIPTION = f.read()
-
 setup(
     name='DeepField-app',
     packages=find_packages(),
     version=VERSION,
-    url='https://github.com/deepfield-team/DeepField',
-    license='Apache License 2.0',
+    url='https://github.com/deepfield-team/DeepField-app',
+    license='GNU General Public License v3.0',
     author='deepfield-team',
     author_email='',
-    description='Deepfield visualization toolbox.',
-    # long_description=LONG_DESCRIPTION,
+    description='DeepField web application.',
     zip_safe=False,
     platforms='any',
     install_requires=[
@@ -38,7 +34,7 @@ setup(
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
-        'License :: Apache License 2.0',
+        'License :: GNU General Public License v3.0',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',

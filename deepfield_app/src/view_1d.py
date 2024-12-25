@@ -1,3 +1,4 @@
+"Timeseries and PVT pages."
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -8,11 +9,10 @@ from trame.widgets import trame, plotly, vuetify3 as vuetify
 
 from .config import state, ctrl, FIELD
 
-PLOTS = {"plot1d": None,
+PLOTS = {"plot_ts": None,
          "plot_pvt": None}
 
 CHART_STYLE = {
-    # "display_mode_bar": ("true",),
     "mode_bar_buttons_to_remove": (
         "chart_buttons",
         [
@@ -39,24 +39,28 @@ state.wellData = True
 
 
 @state.change('modelID')
-def reset_plots(modelID, **kwargs):
-    _ = kwargs
-    clean_plot()
+def reset_plots(*args, **kwargs):
+    "Reset all 1d plots."
+    _ = args, kwargs
+    clean_ts_plot()
     clean_pvt_plot()
 
 @state.change("plotlyTheme")
 def change_plotly_theme(plotlyTheme, **kwargs):
-    fig = PLOTS['plot1d']
+    "Change plotly theme."
+    _ = kwargs
+    fig = PLOTS['plot_ts']
     if fig is not None:
         fig.layout.template = plotlyTheme
-        ctrl.update_plot(fig)
+        ctrl.update_ts_plot(fig)
     fig = PLOTS['plot_pvt']
     if fig is not None:
         fig.layout.template = plotlyTheme
-        ctrl.update_tplot(fig)
+        ctrl.update_pvt_plot(fig)
 
 @state.change("data1dToShow")
-def update1dWidgets(data1dToShow, **kwargs):
+def update_ts_widgets(data1dToShow, **kwargs):
+    "Update timeseries widgets."
     _ = kwargs
     if data1dToShow is None:
         return
@@ -74,7 +78,8 @@ def update1dWidgets(data1dToShow, **kwargs):
         state.wellNameToShow = None
 
 def add_line_to_plot():
-    fig = PLOTS['plot1d']
+    "Add line to timeseries plot."
+    fig = PLOTS['plot_ts']
     if fig is None:
         return
 
@@ -90,7 +95,7 @@ def add_line_to_plot():
             data = data.mean(axis=tuple(ids+1))
         icells = cells[~avr].astype(int)
         if len(icells) > 0:
-            data = data[:, *icells]
+            pass#data = data[:, *icells]
         dates = FIELD['model'].result_dates.strftime("%Y-%m-%d")
         if np.any(avr):
             cells[avr] = ":"
@@ -112,47 +117,52 @@ def add_line_to_plot():
     ), secondary_y=state.secondAxis)
 
     fig.update_xaxes(title_text="Date")
-    ctrl.update_plot(fig)
+    ctrl.update_ts_plot(fig)
 
 ctrl.add_line_to_plot = add_line_to_plot
 
-def clean_plot():
-    if PLOTS['plot1d'] is None:
+def clean_ts_plot():
+    "Clean timeseries plot."
+    if PLOTS['plot_ts'] is None:
         return
-    PLOTS['plot1d'].data = []
-    ctrl.update_plot(PLOTS['plot1d'])
+    PLOTS['plot_ts'].data = []
+    ctrl.update_ts_plot(PLOTS['plot_ts'])
 
-ctrl.clean_plot = clean_plot
+ctrl.clean_ts_plot = clean_ts_plot
 
 def remove_last_line():
-    if not PLOTS['plot1d'].data:
+    "Remove last line from timeseries plot."
+    if not PLOTS['plot_ts'].data:
         return
-    PLOTS['plot1d'].data = PLOTS['plot1d'].data[:-1]
-    ctrl.update_plot(PLOTS['plot1d'])
+    PLOTS['plot_ts'].data = PLOTS['plot_ts'].data[:-1]
+    ctrl.update_ts_plot(PLOTS['plot_ts'])
 
 ctrl.remove_last_line = remove_last_line
 
 @state.change("figure_size_1d")
-def update_plot_size(figure_size_1d, **kwargs):
+def update_ts_plot(figure_size_1d, **kwargs):
+    "Update timeseries plot size."
     _ = kwargs
     if figure_size_1d is None:
         return
     bounds = figure_size_1d.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
-    if PLOTS['plot1d'] is None:
-        PLOTS['plot1d'] = make_subplots(specs=[[{"secondary_y": True}]])
-        PLOTS['plot1d'].update_layout(
+    if PLOTS['plot_ts'] is None:
+        PLOTS['plot_ts'] = make_subplots(specs=[[{"secondary_y": True}]])
+        PLOTS['plot_ts'].update_layout(
             showlegend=True,
             margin={'t': 30, 'r': 10, 'l': 80, 'b': 30},
             legend={'x': 1.01,},
             template=state.plotlyTheme,
             )
-    PLOTS['plot1d'].update_layout(height=height, width=width)
-    ctrl.update_plot(PLOTS['plot1d'])
+    PLOTS['plot_ts'].update_layout(height=height, width=width)
+    ctrl.update_ts_plot(PLOTS['plot_ts'])
 
 @state.change("tableToShow", "tableXAxis")
-def updateTableWidgets(tableToShow, tableXAxis, **kwargs):
+def update_pvt_widgets(tableToShow, tableXAxis, **kwargs):
+    "Update pvt widgets."
+    _ = kwargs
     if tableToShow is None:
         return
     table = FIELD['model'].tables[tableToShow]
@@ -170,6 +180,7 @@ def updateTableWidgets(tableToShow, tableXAxis, **kwargs):
         state.needDomain = True
 
 def plot_1d_table(fig, table):
+    "Plot 1d table."
     colors = px.colors.qualitative.Plotly
     x = table.index.values
     layout = {}
@@ -200,6 +211,7 @@ def plot_1d_table(fig, table):
     return fig
 
 def plot_table(tableToShow, tableXAxis, domainToShow, height, width):
+    "Plot table."
     fig = go.Figure()
     fig.update_layout(
         height=height,
@@ -243,7 +255,8 @@ def plot_table(tableToShow, tableXAxis, domainToShow, height, width):
     return fig
 
 @state.change("figure_size_1d", "tableToShow", "tableXAxis", "domainToShow")
-def update_tplot_size(figure_size_1d, tableToShow, tableXAxis, domainToShow, **kwargs):
+def update_pvt_plot(figure_size_1d, tableToShow, tableXAxis, domainToShow, **kwargs):
+    "Update pvt plot."
     _ = kwargs
     if figure_size_1d is None:
         return
@@ -251,15 +264,17 @@ def update_tplot_size(figure_size_1d, tableToShow, tableXAxis, domainToShow, **k
     width = bounds.get("width", 300)
     height = bounds.get("height", 100)
     PLOTS['plot_pvt'] = plot_table(tableToShow, tableXAxis, domainToShow, height, width)
-    ctrl.update_tplot(PLOTS['plot_pvt'])
+    ctrl.update_pvt_plot(PLOTS['plot_pvt'])
 
 def clean_pvt_plot():
+    "Delete lines in pvt plot."
     if PLOTS['plot_pvt'] is None:
         return
     PLOTS['plot_pvt'].data = []
-    ctrl.update_tplot(PLOTS['plot_pvt'])
+    ctrl.update_pvt_plot(PLOTS['plot_pvt'])
 
 def render_ts():
+    "Timeseries page layout."
     with vuetify.VContainer(fluid=True, style='align-items: top', classes="pa-0 ma-0"):
         with vuetify.VRow(classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0 ma-0'):
@@ -303,19 +318,38 @@ def render_ts():
                     label="Second Axis",
                     hide_details=True)
             with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
-                vuetify.VBtn('Add line', click=ctrl.add_line_to_plot, classes='mt-2')
+                with vuetify.VBtn('Add line',
+                    click=ctrl.add_line_to_plot,
+                    classes='mt-2'):
+                    vuetify.VTooltip(
+                        text='Add line to the plot',
+                        activator="parent",
+                        location="bottom")
             with vuetify.VCol(classes='pa-0 mt-0', style='flex-grow: 0'):
-                vuetify.VBtn('Undo', click=ctrl.remove_last_line, classes='mt-2')
+                with vuetify.VBtn('Undo',
+                    click=ctrl.remove_last_line,
+                    classes='mt-2'):
+                    vuetify.VTooltip(
+                        text='Delete last line from the plot',
+                        activator="parent",
+                        location="bottom")
             with vuetify.VCol(classes='pa-0 ma-0', style='flex-grow: 0'):
-                vuetify.VBtn('Clean', click=ctrl.clean_plot, classes='mt-2')
+                with vuetify.VBtn('Clean',
+                    click=ctrl.clean_ts_plot,
+                    classes='mt-2'):
+                    vuetify.VTooltip(
+                        text='Delete lines from the plot',
+                        activator="parent",
+                        location="bottom")
 
         with vuetify.VRow(style="width: 100%; height: 75vh", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
-                    ctrl.update_plot = plotly.Figure(**CHART_STYLE).update
-                    update_plot_size(state.figure_size_1d)
+                    ctrl.update_ts_plot = plotly.Figure(**CHART_STYLE).update
+                    update_ts_plot(state.figure_size_1d)
 
 def render_pvt():
+    "PVT page layout."
     with vuetify.VContainer(fluid=True, style='align-items: top', classes="pa-0 ma-0"):
         with vuetify.VRow(classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0 ma-0'):
@@ -355,5 +389,5 @@ def render_pvt():
         with vuetify.VRow(style="width: 100%; height: 75vh", classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0'):
                 with trame.SizeObserver("figure_size_1d"):
-                    ctrl.update_tplot = plotly.Figure(**CHART_STYLE).update
-                    update_tplot_size(state.figure_size_1d, None, None, None)
+                    ctrl.update_pvt_plot = plotly.Figure(**CHART_STYLE).update
+                    update_pvt_plot(state.figure_size_1d, None, None, None)

@@ -1,6 +1,17 @@
+"App layout."
+import sys
 from trame.widgets import html, client, vuetify3 as vuetify
 from trame.ui.vuetify3 import VAppLayout
 
+try:
+    from deepfield import Field
+except ModuleNotFoundError:
+    try:
+        sys.path.append('../../DeepField')
+    except:
+        raise ModuleNotFoundError("Module deepfield is not found.")
+
+from .src.config import server, state, ctrl
 from .src.home import render_home, make_empty_dataset
 from .src.view_3d import render_3d
 from .src.view_2d import render_2d
@@ -8,7 +19,7 @@ from .src.view_1d import render_ts, render_pvt
 from .src.common import reset_camera
 from .src.info import render_info
 from .src.script import render_script
-from .src.config import server, state, ctrl
+from .src.help import render_help
 
 
 state.theme = 'light'
@@ -18,6 +29,8 @@ state.text_color = 'black'
 state.bgColor = 'white'
 
 def change_theme(*args, **kwargs):
+    "Change app theme."
+    _ = args, kwargs
     if state.theme == 'light':
         state.theme = 'dark'
         state.sideBarColor = "grey-darken-4"
@@ -52,8 +65,19 @@ with VAppLayout(server, theme=('theme',)) as layout:
             vuetify.VSpacer()
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
+                vuetify.VTooltip(
+                    text='Switch between light and dark theme',
+                    activator="parent",
+                    location="bottom")
             with vuetify.VBtn(icon=True):
+                vuetify.VTooltip(
+                    text='Help page',
+                    activator="parent",
+                    location="bottom")
                 vuetify.VIcon("mdi-help-circle-outline")
+                with vuetify.VOverlay(activator="parent",
+                    location_strategy="connected"):
+                    render_help()
 
         with vuetify.VMain():
             with html.Div(v_if="activeTab === 'home'", classes="fill-height"):
