@@ -56,7 +56,7 @@ Activate the new environment:
 
 To install the project dependencies, run in the terminal:
 
-    pip install "git+https://github.com/deepfield-team/DeepField-app.git@setup
+    pip install "git+https://github.com/deepfield-team/DeepField-app.git"
 
 After installation, run in the terminal:
 
