@@ -20,7 +20,7 @@ state.colormaps = sorted(["cividis", "inferno", "jet",
     "hot", "hsv", "magma", "plasma", "rainbow",
     "Spectral", 'turbo', "twilight", "viridis",
     'YlGn', 'YlGnBu', 'RdGy', 'RdYlBu', 'BuGn',
-    "gray", 'Blues', 'Greens', 'Oranges', 'Reds'])
+    "gray", 'Blues', 'Greens', 'Oranges', 'Reds'], key=str.casefold)
 state.colormap = 'jet'
 
 render_window = vtkRenderWindow()
