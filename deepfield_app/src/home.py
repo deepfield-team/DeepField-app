@@ -394,8 +394,8 @@ def add_faults(field, scales):
         for p in xyz:
             points.InsertNextPoint(*p)
 
-        labels.SetValue(i, segment.name)
-        labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*scales)
+        labeled_points_id = labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*scales)
+        labels.SetValue(labeled_points_id, segment.name)
         links_points_ids.append(links_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])))
         links_points_ids.append(links_points.InsertNextPoint(*xyz[0]))
 
