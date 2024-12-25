@@ -116,6 +116,12 @@ in the DeepField repository to prepare a script.
 The project is developing. We are preparing new releases with new features.
 Your suggestions and issues reports will help to make the application even better.
 
+## What's inside
+
+We use
+* [trame](https://github.com/Kitware/trame) to build the web application
+* [DeepField](https://github.com/deepfield-team/DeepField) to read and process reservoir models
+
 ## Citing
 
 We hope that this project will help you in your research and you will decide to cite it as
