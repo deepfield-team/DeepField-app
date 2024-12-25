@@ -109,7 +109,7 @@ be based on the `DeepField` framework
 Read the [documentation](https://deepfield-team.github.io/DeepField/)
 and see
 [examples](https://github.com/deepfield-team/DeepField/blob/main/tutorials) 
-in the DeepField repository to prepare a script.
+in the `DeepField` repository to prepare a script.
 
 ## Next releases
 
