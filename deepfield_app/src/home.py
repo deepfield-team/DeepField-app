@@ -127,7 +127,14 @@ def load_file(loading, **kwargs):
     FIELD['model'] = field
     FIELD['model_copy'] = None
 
-    process_field(field)
+    try:
+        process_field(field)
+    except Exception as err:
+        state.errMessage = str(err)
+        state.loading = False
+        state.loadFailed = True
+        state.loadComplete = True
+        return
 
     state.loading = False
     state.loadComplete = True
