@@ -64,7 +64,7 @@ After installation, run in the terminal:
 
 This should open a new tab in your default browser to http://localhost:8080/ with the application's home page.
 
-You can add a few optional parameters to the command line:
+You can add a few optional parameters to the application start command:
 * --server - use to prevent a new tab from opening in the browser
 * --app - use to launch the application in a separate window rather than in the browser
 * --port 1234 - to change the default port 8080 to, e.g., 1234
