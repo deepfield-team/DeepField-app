@@ -27,23 +27,40 @@ CHART_STYLE = {
     "display_logo": ("false",),
 }
 
-state.domains = []
-state.domainMin = 0
-state.domainMax = 0
-state.domainStep = None
-state.domainToShow = None
-state.needDomain = False
-state.domainName = None
-state.gridData = True
-state.wellData = True
+def reset_ts_widgets():
+    "Reset timeseries widgets"
+    state.data1dToShow = None
+    state.wellNameToShow = None
+    state.i_cell = 'Average'
+    state.j_cell = 'Average'
+    state.k_cell = 'Average'
+    state.secondAxis = False
+reset_ts_widgets()
 
+def reset_pvt_widgets():
+    "Reset pvt widgets"
+    state.tableToShow = None
+    state.tableXAxis = None
+    state.domains = []
+    state.domainMin = 0
+    state.domainMax = 0
+    state.domainStep = None
+    state.domainToShow = None
+    state.needDomain = False
+    state.domainName = None
+    state.gridData = True
+    state.wellData = True
+reset_pvt_widgets()
 
 @state.change('modelID')
 def reset_plots(*args, **kwargs):
     "Reset all 1d plots."
     _ = args, kwargs
     clean_ts_plot()
+    reset_ts_widgets()
+
     clean_pvt_plot()
+    reset_pvt_widgets()
 
 @state.change("plotlyTheme")
 def change_plotly_theme(plotlyTheme, **kwargs):
@@ -95,7 +112,7 @@ def add_line_to_plot():
             data = data.mean(axis=tuple(ids+1))
         icells = cells[~avr].astype(int)
         if len(icells) > 0:
-            pass#data = data[:, *icells]
+            data = data[:, *icells]
         dates = FIELD['model'].result_dates.strftime("%Y-%m-%d")
         if np.any(avr):
             cells[avr] = ":"
@@ -279,41 +296,41 @@ def render_ts():
         with vuetify.VRow(classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
-                    v_model=("data1dToShow", None),
+                    v_model=("data1dToShow",),
                     items=("data1d", ),
                     label="Select data"
                     )
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("wellData",),
-                    v_model=("i_cell", 'Average'),
+                    v_model=("i_cell",),
                     items=("i_cells", ),
                     label="I index"
                     )
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("wellData",),
-                    v_model=("j_cell", 'Average'),
+                    v_model=("j_cell",),
                     items=("j_cells", ),
                     label="J index"
                     )
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("wellData",),
-                    v_model=("k_cell", 'Average'),
+                    v_model=("k_cell",),
                     items=("k_cells", ),
                     label="K index"
                     )
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
                     disabled=("gridData",),
-                    v_model=("wellNameToShow", None),
+                    v_model=("wellNameToShow",),
                     items=("wellnames", ),
                     label="Select well"
                     )
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSwitch(
-                    v_model=("secondAxis", False),
+                    v_model=("secondAxis",),
                     color="primary",
                     label="Second Axis",
                     hide_details=True)
@@ -354,13 +371,13 @@ def render_pvt():
         with vuetify.VRow(classes='pa-0 ma-0'):
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
-                    v_model=("tableToShow", None),
+                    v_model=("tableToShow",),
                     items=("tables", ),
                     label="Select data"
                     )
             with vuetify.VCol(classes='pa-0 ma-0'):
                 vuetify.VSelect(
-                    v_model=("tableXAxis", None),
+                    v_model=("tableXAxis",),
                     items=("domains", ),
                     label="Select x-axis",
                     disabled=("!needDomain",),
