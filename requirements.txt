@@ -4,3 +4,4 @@ trame-vtk
 trame-components
 trame-plotly
 plotly
+pywebview>=3.4
