@@ -62,7 +62,7 @@ def change_vtk_bgr(theme, **kwargs):
             FIELD['wells_actor'].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('White'))
     ctrl.view_update()
 
-@state.change("activeField", "activeStep")
+@state.change("activeField", "activeStep", "modelID")
 def update_field(activeField, activeStep, **kwargs):
     "Update field in vtk."
     _ = kwargs
@@ -89,6 +89,7 @@ def update_field(activeField, activeStep, **kwargs):
     FIELD['actor'].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
 
+    update_field_slices_params(activeField)
     update_threshold_slices(state.i_slice, state.j_slice, state.k_slice, state.field_slice)
 
 @state.change('stateDate')
@@ -162,10 +163,8 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     FIELD['actor'].SetMapper(mapper)
     update_cmap(state.colormap)
 
-@state.change("activeField")
-def update_field_slices_params(activeField, **kwargs):
-    "Init filter limints."
-    _ = kwargs
+def update_field_slices_params(activeField):
+    "Init filter limits."
     if activeField is None:
         return
     state.field_slice_min = float(FIELD['c_data'][activeField].min())
