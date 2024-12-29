@@ -71,6 +71,10 @@ def render_help():
         	To delete the last added line, click the UNDO button.\
         	Click the button CLEAN to remove all lines from the plot.",
         	style="text-wrap: auto")
+        vuetify.VCardText("Click the EXPORT button to save the plot data to a csv file.",
+            style="text-wrap: auto",
+            classes='pt-1'
+            )
 
     with vuetify.VCard(v_if="activeTab === 'pvt'",
         classes="pa-2 text-truncate",
