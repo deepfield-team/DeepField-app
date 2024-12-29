@@ -5,12 +5,15 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-from trame.widgets import trame, plotly, vuetify3 as vuetify
+from trame.widgets import trame, html, plotly, vuetify3 as vuetify
 
 from .config import state, ctrl, FIELD
 
+state.plot_content = ""
+
 PLOTS = {"plot_ts": None,
-         "plot_pvt": None}
+         "plot_pvt": None,
+         "df": pd.DataFrame()}
 
 CHART_STYLE = {
     "mode_bar_buttons_to_remove": (
@@ -122,7 +125,7 @@ def add_line_to_plot():
         if state.wellNameToShow is None:
             return
         df = FIELD['model'].wells[state.wellNameToShow].RESULTS
-        data = df[state.data1dToShow]
+        data = df[state.data1dToShow].values
         dates = df.DATE.dt.strftime("%Y-%m-%d")
         name = state.wellNameToShow + '/' + state.data1dToShow
 
@@ -134,6 +137,17 @@ def add_line_to_plot():
     ), secondary_y=state.secondAxis)
 
     fig.update_xaxes(title_text="Date")
+
+    dates = pd.to_datetime(dates)
+    if PLOTS['df'].empty:
+        PLOTS['df'] = pd.DataFrame({name: data}, index=dates)
+        PLOTS['df'].index.rename('DATE', inplace=True)
+    else:
+        try:
+            PLOTS['df'].loc[dates, name] = data
+        except Exception as err:
+            PLOTS['df'][name] = None
+    state.plot_content = PLOTS['df'].to_csv()
     ctrl.update_ts_plot(fig)
 
 ctrl.add_line_to_plot = add_line_to_plot
@@ -143,6 +157,7 @@ def clean_ts_plot():
     if PLOTS['plot_ts'] is None:
         return
     PLOTS['plot_ts'].data = []
+    PLOTS['df'] = pd.DataFrame()
     ctrl.update_ts_plot(PLOTS['plot_ts'])
 
 ctrl.clean_ts_plot = clean_ts_plot
@@ -152,6 +167,7 @@ def remove_last_line():
     if not PLOTS['plot_ts'].data:
         return
     PLOTS['plot_ts'].data = PLOTS['plot_ts'].data[:-1]
+    PLOTS['df'] = PLOTS['df'].drop(labels=PLOTS['df'].columns[-1], axis=1) 
     ctrl.update_ts_plot(PLOTS['plot_ts'])
 
 ctrl.remove_last_line = remove_last_line
@@ -364,6 +380,15 @@ def render_ts():
                 with trame.SizeObserver("figure_size_1d"):
                     ctrl.update_ts_plot = plotly.Figure(**CHART_STYLE).update
                     update_ts_plot(state.figure_size_1d)
+
+    with html.Div(style='position: fixed; bottom: 0; right: 0;'):
+        with vuetify.VBtn("Export",
+            click="utils.download('data.csv', plot_content, 'text/csv')",):
+            vuetify.VTooltip(
+                text='Export plot data to csv',
+                activator="parent",
+                location="left")
+
 
 def render_pvt():
     "PVT page layout."
