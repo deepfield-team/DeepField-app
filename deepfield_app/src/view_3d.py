@@ -80,9 +80,9 @@ def update_field(activeField, activeStep, **kwargs):
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
 
-    mapper = FIELD['actor'].GetMapper()
+    mapper = FIELD[ActorNames.MAIN.value].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
-    FIELD['actor'].SetMapper(mapper)
+    FIELD[ActorNames.MAIN.value].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
 
     update_field_slices_params(activeField)
@@ -133,7 +133,7 @@ def update_cmap(colormap, **kwargs):
     _ = kwargs
     if state.showScalars:
         cmap = get_cmap(colormap)
-        table = FIELD['actor'].GetMapper().GetLookupTable()
+        table = FIELD[ActorNames.MAIN.value].GetMapper().GetLookupTable()
         colors = cmap(np.arange(0, cmap.N))
         table.SetNumberOfTableValues(len(colors))
         for i, val in enumerate(colors):
@@ -142,7 +142,7 @@ def update_cmap(colormap, **kwargs):
         scalarWidget.GetScalarBarActor().SetLookupTable(table)
         scalarWidget.On()
     else:
-        FIELD['actor'].GetMapper().ScalarVisibilityOff()
+        FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOff()
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
@@ -181,7 +181,7 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
-    FIELD['actor'].SetMapper(mapper)
+    FIELD[ActorNames.MAIN.value].SetMapper(mapper)
     update_cmap(state.colormap)
 
 def update_field_slices_params(activeField):
@@ -199,7 +199,7 @@ def update_opacity(opacity, **kwargs):
     _ = kwargs
     if opacity is None:
         return
-    FIELD['actor'].GetProperty().SetOpacity(opacity)
+    FIELD[ActorNames.MAIN.value].GetProperty().SetOpacity(opacity)
     ctrl.view_update()
 
 @state.change("showScalars")
@@ -209,17 +209,17 @@ def change_field_visibility(showScalars, **kwargs):
     if showScalars is None:
         return
     if showScalars:
-        FIELD['actor'].GetProperty().SetRepresentationToSurface()
-        FIELD['actor'].SetVisibility(True)
-        FIELD['actor'].GetMapper().ScalarVisibilityOn()
+        FIELD[ActorNames.MAIN.value].GetProperty().SetRepresentationToSurface()
+        FIELD[ActorNames.MAIN.value].SetVisibility(True)
+        FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOn()
         scalarBar.SetVisibility(True)
     else:
         if state.showWireframe:
-            FIELD['actor'].GetProperty().SetRepresentationToWireframe()
-            FIELD['actor'].GetMapper().ScalarVisibilityOff()
+            FIELD[ActorNames.MAIN.value].GetProperty().SetRepresentationToWireframe()
+            FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOff()
             scalarBar.SetVisibility(False)
         else:
-            FIELD['actor'].SetVisibility(False)
+            FIELD[ActorNames.MAIN.value].SetVisibility(False)
             scalarBar.SetVisibility(False)
     ctrl.view_update()
 
@@ -232,11 +232,11 @@ def change_wireframe_visibility(showWireframe, **kwargs):
     if state.showScalars:
         return
     if showWireframe:
-        FIELD['actor'].GetProperty().SetRepresentationToWireframe()
-        FIELD['actor'].GetMapper().ScalarVisibilityOff()
-        FIELD['actor'].SetVisibility(True)
+        FIELD[ActorNames.MAIN.value].GetProperty().SetRepresentationToWireframe()
+        FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOff()
+        FIELD[ActorNames.MAIN.value].SetVisibility(True)
     else:
-        FIELD['actor'].SetVisibility(False)
+        FIELD[ActorNames.MAIN.value].SetVisibility(False)
     ctrl.view_update()
 
 @state.change("showWells")
@@ -252,7 +252,7 @@ def change_wells_visibility(showWells, **kwargs):
 def change_faults_visibility(showFaults, **kwargs):
     "Set visibility of faults."
     _ = kwargs
-    for name in ['actor_faults', 'faults_links_actor', 'faults_label_actor']:
+    for name in [ActorNames.FAULTS.value, ActorNames.FAULT_LINKS.value, ActorNames.FAULT_LABELS.value]:
         if name in FIELD:
             FIELD[name].SetVisibility(showFaults)
     ctrl.view_update()

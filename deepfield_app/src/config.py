@@ -24,6 +24,10 @@ renderer.SetBackground(1, 1, 1)
 class ActorNames(Enum):
     WELLS = 'wells_actor'
     WELL_LABELS = 'well_labels_actor'
+    MAIN = 'main_actor'
+    FAULTS = 'faults_actor'
+    FAULT_LABELS = 'fault_labels_actor'
+    FAULT_LINKS = 'fault_links_actor'
 
 class DatasetNames(Enum):
     WELLS = 'wells_dataset'

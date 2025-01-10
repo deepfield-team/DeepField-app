@@ -287,13 +287,13 @@ def add_scalars(scales):
     mapper.SetScalarRange(dataset.GetScalarRange())
     actor.SetMapper(mapper)
 
-    for name in ['actor', ActorNames.WELLS.value, 'actor_faults', ActorNames.WELL_LABELS.value,
-        'faults_links_actor', 'faults_label_actor']:
+    for name in [ActorNames.MAIN.value, ActorNames.WELLS.value, ActorNames.FAULTS.value, ActorNames.WELL_LABELS.value,
+        ActorNames.FAULT_LABELS.value, ActorNames.FAULT_LABELS.value]:
         if name in FIELD:
             renderer.RemoveActor(FIELD[name])
 
     renderer.AddActor(actor)
-    FIELD['actor'] = actor
+    FIELD[ActorNames.MAIN.value] = actor
 
 def add_wells(field, scales):
     "Add actor for wells."
@@ -366,12 +366,6 @@ def add_wells(field, scales):
     wells_actor.SetScale(*scales)
     wells_actor.SetMapper(mapper)
     wells_actor.GetProperty().SetLineWidth(3)
-
-    colors = vtk.vtkNamedColors()
-
-    (wells_actor.GetProperty()
-        .SetColor(colors
-            .GetColor3d('White' if state.theme == 'dark' else 'Black')))
 
     renderer.AddActor(wells_actor)
     FIELD[ActorNames.WELLS.value] = wells_actor
@@ -448,7 +442,7 @@ def add_faults(field, scales):
     fault_links_actor.SetMapper(mapper)
     (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Red')))
 
-    FIELD['faults_links_actor'] = fault_links_actor
+    FIELD[ActorNames.FAULT_LABELS.value] = fault_links_actor
     renderer.AddActor(fault_links_actor)
 
     label_polyData = vtk.vtkPolyData()
@@ -462,7 +456,7 @@ def add_faults(field, scales):
     label_actor.SetMapper(label_mapper)
     label_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
 
-    FIELD['faults_label_actor'] = label_actor
+    FIELD[ActorNames.FAULT_LABELS.value] = label_actor
     renderer.AddActor(label_actor)
 
     polygon_polyData = vtk.vtkPolyData()
@@ -478,7 +472,7 @@ def add_faults(field, scales):
     actor_faults.GetProperty().SetColor(colors.GetColor3d('Red'))
 
     renderer.AddActor(actor_faults)
-    FIELD['actor_faults'] = actor_faults
+    FIELD[ActorNames.FAULTS.value] = actor_faults
 
 def make_empty_dataset():
     "Init variables."
@@ -494,7 +488,7 @@ def make_empty_dataset():
     renderer.AddActor(actor)
     renderer.ResetCamera()
 
-    FIELD['actor'] = actor
+    FIELD[ActorNames.MAIN.value] = actor
     FIELD['dataset'] = dataset
 
 def on_keydown(key_code):
