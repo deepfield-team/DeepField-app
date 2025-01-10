@@ -1,4 +1,5 @@
 "App configs."
+from enum import Enum
 from trame.app import get_server
 
 from vtkmodules.vtkIOXML import vtkXMLUnstructuredGridReader
@@ -19,6 +20,13 @@ state.trame__title = "DeepField"
 
 renderer = vtkRenderer()
 renderer.SetBackground(1, 1, 1)
+
+class ActorNames(Enum):
+    WELLS = 'wells_actor'
+    WELL_LABELS = 'well_labels_actor'
+
+class DatasetNames(Enum):
+    WELLS = 'wells_dataset'
 
 FIELD = {"actor": None,
          "dataset": None,

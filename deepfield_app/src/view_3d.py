@@ -9,7 +9,7 @@ from trame.widgets import html, vtk as vtk_widgets, vuetify3 as vuetify
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 
-from .config import state, ctrl, FIELD, renderer
+from .config import DatasetNames, state, ctrl, FIELD, renderer, ActorNames
 
 VTK_VIEW_SETTINGS = {
     "interactive_ratio": 1,
@@ -52,14 +52,10 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(1, 1, 1)
         scalarBar.GetLabelTextProperty().SetColor(0, 0, 0)
         scalarBar.GetTitleTextProperty().SetColor(0, 0, 0)
-        if 'wells_actor' in FIELD:
-            FIELD['wells_actor'].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Black'))
     else:
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
-        if 'wells_actor' in FIELD:
-            FIELD['wells_actor'].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('White'))
     ctrl.view_update()
 
 @state.change("activeField", "activeStep", "modelID")
@@ -91,6 +87,31 @@ def update_field(activeField, activeStep, **kwargs):
 
     update_field_slices_params(activeField)
     update_threshold_slices(state.i_slice, state.j_slice, state.k_slice, state.field_slice)
+
+@state.change('activeStep')
+def update_wells_status(activeStep, **kwargs):
+    active_step = int(activeStep)
+    named_colors = vtk.vtkNamedColors()
+    _ = kwargs
+    field = FIELD['model']
+    if field is None:
+        return
+    well_colors = vtk.vtkUnsignedCharArray()
+    well_colors.SetNumberOfComponents(3)
+    for i, well in enumerate(field.wells):
+        if 'RESULTS' in well.attributes:
+            for col in ('WOPR', 'WWPR', 'WGPR'):
+                if col in well.results.columns and  well.results.loc[active_step, col] > 0:
+                    well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("Green"))
+                    break
+            else:
+                if 'WWIR' in well.results.columns and well.results.loc[active_step, 'WWIR'] > 0:
+                    well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("Blue"))
+                    continue
+                well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("RED"))
+
+    FIELD[DatasetNames.WELLS.value].GetCellData().SetScalars(well_colors)
+    ctrl.view_update()
 
 @state.change('stateDate')
 def update_date(stateDate, **kwargs):
@@ -222,7 +243,7 @@ def change_wireframe_visibility(showWireframe, **kwargs):
 def change_wells_visibility(showWells, **kwargs):
     "Set visibility of wells."
     _ = kwargs
-    for name in ('wells_actor', 'well_labels_actor'):
+    for name in (ActorNames.WELLS, ActorNames.WELL_LABELS):
         if name in FIELD:
             FIELD[name].SetVisibility(showWells)
     ctrl.view_update()
