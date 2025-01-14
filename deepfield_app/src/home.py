@@ -165,7 +165,7 @@ def process_field(field):
     state.wellsAttrs = attrs
 
     attrs = list(field.states.attributes)
-    state.max_timestep = field.states[attrs[0]].shape[0] - 1 if attrs else []
+    state.max_timestep = field.states[attrs[0]].shape[0] - 1 if attrs else 0
     state.statesAttrs = attrs
 
     attrs = field.tables.attributes
@@ -440,9 +440,9 @@ def add_faults(field, scales):
     fault_links_actor = vtk.vtkActor()
     fault_links_actor.SetScale(*scales)
     fault_links_actor.SetMapper(mapper)
-    (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Red')))
+    (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Purple')))
 
-    FIELD[ActorNames.FAULT_LABELS.value] = fault_links_actor
+    FIELD[ActorNames.FAULT_LINKS.value] = fault_links_actor
     renderer.AddActor(fault_links_actor)
 
     label_polyData = vtk.vtkPolyData()
@@ -454,7 +454,7 @@ def add_faults(field, scales):
     label_mapper.SetLabelModeToLabelFieldData()
     label_actor = vtk.vtkActor2D()
     label_actor.SetMapper(label_mapper)
-    label_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
+    label_actor.GetProperty().SetColor(colors.GetColor3d('Purple'))
 
     FIELD[ActorNames.FAULT_LABELS.value] = label_actor
     renderer.AddActor(label_actor)
@@ -469,7 +469,7 @@ def add_faults(field, scales):
     actor_faults = vtk.vtkActor()
     actor_faults.SetScale(*scales)
     actor_faults.SetMapper(mapper)
-    actor_faults.GetProperty().SetColor(colors.GetColor3d('Red'))
+    actor_faults.GetProperty().SetColor(colors.GetColor3d('Purple'))
 
     renderer.AddActor(actor_faults)
     FIELD[ActorNames.FAULTS.value] = actor_faults

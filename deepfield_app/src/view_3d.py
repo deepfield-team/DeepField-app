@@ -73,10 +73,10 @@ def update_field(activeField, activeStep, **kwargs):
             data = data[:, activeStep]
         state.need_time_slider = True
         vtk_array = dsa.numpyTovtkDataArray(data)
-        state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
     else:
         state.need_time_slider = False
         vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
+    state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
 
@@ -109,6 +109,8 @@ def update_wells_status(activeStep, **kwargs):
                     well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("Blue"))
                     continue
                 well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("RED"))
+        else:
+            well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("RED"))
 
     FIELD[DatasetNames.WELLS.value].GetCellData().SetScalars(well_colors)
     ctrl.view_update()
@@ -285,7 +287,7 @@ def render_3d():
                 ctrl.view_update = view.update
                 ctrl.view_reset_camera = view.reset_camera
 
-    with html.Div(v_if='need_time_slider',
+    with html.Div(
         style='position: fixed; width: 100%; bottom: 0; padding-left: 10vw; padding-right: 10vw;'):
         with vuetify.VTextField(
               v_model=("stateDate",),
