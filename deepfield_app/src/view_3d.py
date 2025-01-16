@@ -9,7 +9,7 @@ from trame.widgets import html, vtk as vtk_widgets, vuetify3 as vuetify
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 
-from .config import DatasetNames, state, ctrl, FIELD, renderer, ActorNames
+from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
 
 VTK_VIEW_SETTINGS = {
     "interactive_ratio": 1,
@@ -80,9 +80,9 @@ def update_field(activeField, activeStep, **kwargs):
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
 
-    mapper = FIELD[ActorNames.MAIN.value].GetMapper()
+    mapper = FIELD[actor_names.main].GetMapper()
     mapper.SetScalarRange(dataset.GetScalarRange())
-    FIELD[ActorNames.MAIN.value].SetMapper(mapper)
+    FIELD[actor_names.main].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
 
     update_field_slices_params(activeField)
@@ -112,7 +112,7 @@ def update_wells_status(activeStep, **kwargs):
         else:
             well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("RED"))
 
-    FIELD[DatasetNames.WELLS.value].GetCellData().SetScalars(well_colors)
+    FIELD[dataset_names.wells].GetCellData().SetScalars(well_colors)
     ctrl.view_update()
 
 @state.change('stateDate')
@@ -135,7 +135,7 @@ def update_cmap(colormap, **kwargs):
     _ = kwargs
     if state.showScalars:
         cmap = get_cmap(colormap)
-        table = FIELD[ActorNames.MAIN.value].GetMapper().GetLookupTable()
+        table = FIELD[actor_names.main].GetMapper().GetLookupTable()
         colors = cmap(np.arange(0, cmap.N))
         table.SetNumberOfTableValues(len(colors))
         for i, val in enumerate(colors):
@@ -144,7 +144,7 @@ def update_cmap(colormap, **kwargs):
         scalarWidget.GetScalarBarActor().SetLookupTable(table)
         scalarWidget.On()
     else:
-        FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOff()
+        FIELD[actor_names.main].GetMapper().ScalarVisibilityOff()
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
@@ -183,7 +183,7 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
-    FIELD[ActorNames.MAIN.value].SetMapper(mapper)
+    FIELD[actor_names.main].SetMapper(mapper)
     update_cmap(state.colormap)
 
 def update_field_slices_params(activeField):
@@ -201,7 +201,7 @@ def update_opacity(opacity, **kwargs):
     _ = kwargs
     if opacity is None:
         return
-    FIELD[ActorNames.MAIN.value].GetProperty().SetOpacity(opacity)
+    FIELD[actor_names.main].GetProperty().SetOpacity(opacity)
     ctrl.view_update()
 
 @state.change("showScalars")
@@ -211,17 +211,17 @@ def change_field_visibility(showScalars, **kwargs):
     if showScalars is None:
         return
     if showScalars:
-        FIELD[ActorNames.MAIN.value].GetProperty().SetRepresentationToSurface()
-        FIELD[ActorNames.MAIN.value].SetVisibility(True)
-        FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOn()
+        FIELD[actor_names.main].GetProperty().SetRepresentationToSurface()
+        FIELD[actor_names.main].SetVisibility(True)
+        FIELD[actor_names.main].GetMapper().ScalarVisibilityOn()
         scalarBar.SetVisibility(True)
     else:
         if state.showWireframe:
-            FIELD[ActorNames.MAIN.value].GetProperty().SetRepresentationToWireframe()
-            FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOff()
+            FIELD[actor_names.main].GetProperty().SetRepresentationToWireframe()
+            FIELD[actor_names.main].GetMapper().ScalarVisibilityOff()
             scalarBar.SetVisibility(False)
         else:
-            FIELD[ActorNames.MAIN.value].SetVisibility(False)
+            FIELD[actor_names.main].SetVisibility(False)
             scalarBar.SetVisibility(False)
     ctrl.view_update()
 
@@ -234,18 +234,18 @@ def change_wireframe_visibility(showWireframe, **kwargs):
     if state.showScalars:
         return
     if showWireframe:
-        FIELD[ActorNames.MAIN.value].GetProperty().SetRepresentationToWireframe()
-        FIELD[ActorNames.MAIN.value].GetMapper().ScalarVisibilityOff()
-        FIELD[ActorNames.MAIN.value].SetVisibility(True)
+        FIELD[actor_names.main].GetProperty().SetRepresentationToWireframe()
+        FIELD[actor_names.main].GetMapper().ScalarVisibilityOff()
+        FIELD[actor_names.main].SetVisibility(True)
     else:
-        FIELD[ActorNames.MAIN.value].SetVisibility(False)
+        FIELD[actor_names.main].SetVisibility(False)
     ctrl.view_update()
 
 @state.change("showWells")
 def change_wells_visibility(showWells, **kwargs):
     "Set visibility of wells."
     _ = kwargs
-    for name in (ActorNames.WELLS, ActorNames.WELL_LABELS):
+    for name in (actor_names.wells, actor_names.well_labels):
         if name in FIELD:
             FIELD[name].SetVisibility(showWells)
     ctrl.view_update()
@@ -254,13 +254,13 @@ def change_wells_visibility(showWells, **kwargs):
 def change_faults_visibility(showFaults, **kwargs):
     "Set visibility of faults."
     _ = kwargs
-    for name in [ActorNames.FAULTS.value, ActorNames.FAULT_LINKS.value, ActorNames.FAULT_LABELS.value]:
+    for name in [actor_names.faults, actor_names.fault_links, actor_names.fault_labels]:
         if name in FIELD:
             FIELD[name].SetVisibility(showFaults)
     ctrl.view_update()
 
 def default_view():
-    "Resert 3d view setting to initial state."
+    "Reset 3d view setting to initial state."
     state.i_slice = [1, state.dimens[0]]
     state.j_slice = [1, state.dimens[1]]
     state.k_slice = [1, state.dimens[2]]
