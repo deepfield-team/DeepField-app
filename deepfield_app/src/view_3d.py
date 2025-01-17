@@ -95,7 +95,7 @@ def update_field(activeField, **kwargs):
 
 @state.change("activeStep")
 def update_active_step(activeStep, **kwargs):
-    "Update field in vtk."
+    "Update timestep in vtk."
     _ = kwargs
 
     activeField = state.activeField
