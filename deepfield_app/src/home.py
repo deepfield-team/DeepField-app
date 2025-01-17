@@ -49,9 +49,13 @@ state.i_cells = []
 state.j_cells = []
 state.k_cells = []
 state.i_slice = [0, 0]
+state.i_slice_0 = state.i_slice_1 = 0
 state.j_slice = [0, 0]
+state.j_slice_0 = state.j_slice_1 = 0
 state.k_slice = [0, 0]
+state.k_slice_0 = state.k_slice_1 = 0
 state.field_slice = [0, 0]
+state.field_slice_0 = state.field_slice_1 = 0
 state.field_slice_min = 0
 state.field_slice_max = 0
 state.n_field_steps = 100
@@ -196,9 +200,14 @@ ctrl.load_file = load_file
 
 def prepare_slices(dataset):
     "Get slice data and slice ranges."
-    state.i_slice = [1, state.dimens[0]]
-    state.j_slice = [1, state.dimens[1]]
-    state.k_slice = [1, state.dimens[2]]
+    state.i_slice_0, state.i_slice_1 = 1, state.dimens[0]
+    state.i_slice = [state.i_slice_0, state.i_slice_1]
+
+    state.j_slice_0, state.j_slice_1 = 1, state.dimens[1]
+    state.j_slice = [state.j_slice_0, state.j_slice_1]
+
+    state.k_slice_0, state.k_slice_1 = 1, state.dimens[2]
+    state.k_slice = [state.k_slice_0, state.k_slice_1]
 
     vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
     vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])

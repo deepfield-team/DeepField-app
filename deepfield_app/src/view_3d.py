@@ -58,15 +58,15 @@ def change_vtk_bgr(theme, **kwargs):
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
     ctrl.view_update()
 
-@state.change("activeField", "activeStep", "modelID")
-def update_field(activeField, activeStep, **kwargs):
+@state.change("activeField", "modelID")
+def update_field(activeField, **kwargs):
     "Update field in vtk."
     _ = kwargs
 
     if (activeField is None) or (FIELD['c_data'] is None):
         return
 
-    activeStep = int(activeStep)
+    activeStep = int(state.activeStep) if state.activeStep else 0
     if activeField.split("_")[0].lower() == 'states':
         data = FIELD['c_data'][activeField]
         if data.ndim == 2:
@@ -85,23 +85,61 @@ def update_field(activeField, activeStep, **kwargs):
     FIELD[actor_names.main].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
 
-    update_field_slices_params(activeField)
-    update_threshold_slices(state.i_slice, state.j_slice, state.k_slice, state.field_slice)
+    update_wells_status(activeStep)
 
-@state.change('activeStep')
-def update_wells_status(activeStep, **kwargs):
+    update_field_slices_params(activeField)
+    update_threshold_slices(state.i_slice,
+                            state.j_slice,
+                            state.k_slice,
+                            state.field_slice)
+
+@state.change("activeStep")
+def update_active_step(activeStep, **kwargs):
+    "Update timestep in vtk."
+    _ = kwargs
+
+    activeField = state.activeField
+    if (activeField is None) or (FIELD['c_data'] is None):
+        return
+
+    activeStep = int(activeStep) if activeStep else 0
+    update_wells_status(activeStep)
+
+    if activeField.split("_")[0].lower() != 'states':
+        return
+
+    data = FIELD['c_data'][activeField]
+    if data.ndim != 2:
+        return
+
+    data = data[:, activeStep]
+    vtk_array = dsa.numpyTovtkDataArray(data)
+    state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
+
+    dataset = FIELD['dataset']
+    dataset.GetCellData().SetScalars(vtk_array)
+
+    mapper = FIELD[actor_names.main].GetMapper()
+    mapper.SetScalarRange(dataset.GetScalarRange())
+    FIELD[actor_names.main].SetMapper(mapper)
+
+    update_threshold_slices(state.i_slice,
+                            state.j_slice,
+                            state.k_slice,
+                            state.field_slice)
+
+def update_wells_status(activeStep):
+    "Get wells status."
     active_step = int(activeStep)
     named_colors = vtk.vtkNamedColors()
-    _ = kwargs
     field = FIELD['model']
-    if field is None:
-        return
+
     well_colors = vtk.vtkUnsignedCharArray()
     well_colors.SetNumberOfComponents(3)
-    for i, well in enumerate(field.wells):
+    for well in field.wells:
         if 'RESULTS' in well.attributes:
             for col in ('WOPR', 'WWPR', 'WGPR'):
-                if col in well.results.columns and  well.results.loc[active_step, col] > 0:
+                if col in well.results.columns and well.results.loc[active_step, col] > 0:
                     well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("Green"))
                     break
             else:
@@ -154,6 +192,7 @@ def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None
     if input_threshold:
         threshold.SetInputConnection(input_threshold.GetOutputPort())
     if ijk:
+        slices = [int(slices[0]), int(slices[1])]
         if slices[0] == slices[1]:
             threshold.SetUpperThreshold(slices[1]-0.5)
             threshold.SetLowerThreshold(slices[0]-1)
@@ -161,12 +200,45 @@ def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None
             threshold.SetUpperThreshold(slices[1]-1)
             threshold.SetLowerThreshold(slices[0]-1)
     else:
+        slices = [float(slices[0]), float(slices[1])]
         threshold.SetUpperThreshold(slices[1])
         threshold.SetLowerThreshold(slices[0])
     threshold.SetInputArrayToProcess(0, 0, 0, 1, attr)
     if component:
         threshold.SetSelectedComponent(component)
     return threshold
+
+@state.change("i_slice_0", "i_slice_1")
+def update_i_slice(i_slice_0, i_slice_1, **kwargs):
+    "Update slice ranges."
+    _ = kwargs
+    if (not i_slice_0) or (not i_slice_1):
+        return
+    state.i_slice = [i_slice_0, i_slice_1]
+
+@state.change("j_slice_0", "j_slice_1")
+def update_j_slice(j_slice_0, j_slice_1, **kwargs):
+    "Update slice ranges."
+    _ = kwargs
+    if (not j_slice_0) or (not j_slice_1):
+        return
+    state.j_slice = [j_slice_0, j_slice_1]
+
+@state.change("k_slice_0", "k_slice_1")
+def update_k_slice(k_slice_0, k_slice_1, **kwargs):
+    "Update slice ranges."
+    _ = kwargs
+    if (not k_slice_0) or (not k_slice_1):
+        return
+    state.k_slice = [k_slice_0, k_slice_1]
+
+@state.change("field_slice_0", "field_slice_1")
+def update_field_slice(field_slice_0, field_slice_1, **kwargs):
+    "Update slice ranges."
+    _ = kwargs
+    if (not field_slice_0) or (not field_slice_1):
+        return
+    state.field_slice = [field_slice_0, field_slice_1]
 
 @state.change("i_slice", "j_slice", "k_slice", "field_slice")
 def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
@@ -175,11 +247,17 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     if not FIELD['c_data']:
         return
 
+    state.i_slice_0, state.i_slice_1 = state.i_slice
+    state.j_slice_0, state.j_slice_1 = state.j_slice
+    state.k_slice_0, state.k_slice_1 = state.k_slice
+    state.field_slice_0, state.field_slice_1 = state.field_slice
+
     threshold_i = make_threshold(i_slice, "I", ijk=True)
     threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i, ijk=True)
     threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j, ijk=True)
     threshold_field = make_threshold(field_slice, state.activeField,
-        input_threshold=threshold_k, component=int(state.activeStep))
+        input_threshold=threshold_k,
+        component=int(state.activeStep) if state.activeStep else 0)
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
@@ -192,6 +270,8 @@ def update_field_slices_params(activeField):
         return
     state.field_slice_min = float(FIELD['c_data'][activeField].min())
     state.field_slice_max = float(FIELD['c_data'][activeField].max())
+    state.field_slice_0 = state.field_slice_min
+    state.field_slice_1 = state.field_slice_max
     state.field_slice = [state.field_slice_min, state.field_slice_max]
     state.field_slice_step = (state.field_slice_max - state.field_slice_min) / state.n_field_steps
 
@@ -420,7 +500,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_prepend=True,
                                         properties=[("v_slot_prepend", "v-slot:prepend")],):
                                         vuetify.VTextField(
-                                            v_model="i_slice[0]",
+                                            v_model="i_slice_0",
                                             density="compact",
                                             style="width: 70px",
                                             type="number",
@@ -430,7 +510,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
                                         vuetify.VTextField(
-                                            v_model="i_slice[1]",
+                                            v_model="i_slice_1",
                                             density="compact",
                                             style="width: 70px",
                                             type="number",
@@ -461,7 +541,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_prepend=True,
                                         properties=[("v_slot_prepend", "v-slot:prepend")],):
                                         vuetify.VTextField(
-                                            v_model="j_slice[0]",
+                                            v_model="j_slice_0",
                                             density="compact",
                                             style="width: 70px",
                                             type="number",
@@ -471,7 +551,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
                                         vuetify.VTextField(
-                                            v_model="j_slice[1]",
+                                            v_model="j_slice_1",
                                             density="compact",
                                             style="width: 70px",
                                             type="number",
@@ -502,7 +582,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_prepend=True,
                                         properties=[("v_slot_prepend", "v-slot:prepend")],):
                                         vuetify.VTextField(
-                                            v_model="k_slice[0]",
+                                            v_model="k_slice_0",
                                             density="compact",
                                             style="width: 70px",
                                             type="number",
@@ -512,7 +592,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
                                         vuetify.VTextField(
-                                            v_model="k_slice[1]",
+                                            v_model="k_slice_1",
                                             density="compact",
                                             style="width: 70px",
                                             type="number",
@@ -543,7 +623,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_prepend=True,
                                         properties=[("v_slot_prepend", "v-slot:prepend")],):
                                         vuetify.VTextField(
-                                            v_model="field_slice[0]",
+                                            v_model="field_slice_0",
                                             density="compact",
                                             style="width: 80px;",
                                             type="number",
@@ -553,7 +633,7 @@ def render_3d():
                                     with vuetify.Template(v_slot_append=True,
                                         properties=[("v_slot_append", "v-slot:append")],):
                                         vuetify.VTextField(
-                                            v_model="field_slice[1]",
+                                            v_model="field_slice_1",
                                             density="compact",
                                             style="width: 80px",
                                             type="number",
