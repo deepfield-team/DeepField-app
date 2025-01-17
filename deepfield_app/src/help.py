@@ -35,12 +35,21 @@ def render_help():
         style='max-width: 80vw;'):
         vuetify.VCardTitle("3D view")
         vuetify.VCardText("This tab shows static and dynamic fields available in the\
-        	reservoir model in 3D. Dynamic field are available if the model is\
+        	reservoir model in 3D. Dynamic fields are available if the model is\
         	simulated and contains the RESULTS folder.\
-        	Use the left toolbar to change the displayed data,\
-        	filter data, and control the appearance and visibility of objects.",
+            The color of a well indicates its status. \
+            Green indicates an active producing well, \
+            blue indicates an active injection well, \
+            and red indicates an inactive well.",
         	style="text-wrap: auto",
         	)
+        vuetify.VCardText("Use the left toolbar to change the displayed data,\
+            filter data, and control the appearance and visibility of objects.\
+            Use the timestep slider or calendar to view changes in reservoir dynamics\
+            and well status.",
+            style="text-wrap: auto",
+            classes='pt-1'
+            )
 
     with vuetify.VCard(v_if="activeTab === '2d'",
         classes="pa-2 text-truncate",
