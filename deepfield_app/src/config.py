@@ -1,4 +1,6 @@
 "App configs."
+from enum import Enum
+from types import SimpleNamespace
 from trame.app import get_server
 
 from vtkmodules.vtkIOXML import vtkXMLUnstructuredGridReader
@@ -20,6 +22,18 @@ state.trame__title = "DeepField"
 renderer = vtkRenderer()
 renderer.SetBackground(1, 1, 1)
 
+actor_names = SimpleNamespace(
+    wells='wells_actor',
+    well_labels='well_labels_actor',
+    main='main_actor',
+    faults='faults_actor',
+    fault_labels='fault_labels_actor',
+    fault_links='fault_links_actor'
+)
+
+dataset_names = SimpleNamespace(
+    wells='wells_dataset'
+)
 FIELD = {"actor": None,
          "dataset": None,
          "c_data": None,

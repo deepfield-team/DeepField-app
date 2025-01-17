@@ -15,7 +15,7 @@ from trame.widgets import html, vuetify3 as vuetify
 
 from deepfield import Field
 
-from .config import state, ctrl, FIELD, renderer
+from .config import state, ctrl, FIELD, renderer, dataset_names, actor_names
 from .common import reset_camera
 from .view_3d import update_field_slices_params
 
@@ -165,7 +165,7 @@ def process_field(field):
     state.wellsAttrs = attrs
 
     attrs = list(field.states.attributes)
-    state.max_timestep = field.states[attrs[0]].shape[0] - 1 if attrs else []
+    state.max_timestep = field.states[attrs[0]].shape[0] - 1 if attrs else 0
     state.statesAttrs = attrs
 
     attrs = field.tables.attributes
@@ -287,16 +287,17 @@ def add_scalars(scales):
     mapper.SetScalarRange(dataset.GetScalarRange())
     actor.SetMapper(mapper)
 
-    for name in ['actor', 'wells_actor', 'actor_faults', 'well_labels_actor',
-        'faults_links_actor', 'faults_label_actor']:
+    for name in [actor_names.main, actor_names.wells, actor_names.faults, actor_names.well_labels,
+        actor_names.fault_labels, actor_names.fault_links]:
         if name in FIELD:
             renderer.RemoveActor(FIELD[name])
 
     renderer.AddActor(actor)
-    FIELD['actor'] = actor
+    FIELD[actor_names.main] = actor
 
 def add_wells(field, scales):
     "Add actor for wells."
+    namedColors = vtk.vtkNamedColors()
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
 
@@ -314,6 +315,8 @@ def add_wells(field, scales):
     labels = vtk.vtkStringArray()
     labels.SetNumberOfValues(n_wells)
     labels.SetName("labels")
+    well_colors = vtk.vtkUnsignedCharArray()
+    well_colors.SetNumberOfComponents(3)
 
     for i, well in enumerate(field.wells):
         labels.SetValue(i, well.name)
@@ -330,14 +333,15 @@ def add_wells(field, scales):
 
         point_ids = []
         labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*scales)
-        for line in welltrack_tmp:
-            point_ids.append(points.InsertNextPoint(line[:3]))
+        for row in welltrack_tmp:
+            point_ids.append(points.InsertNextPoint(row[:3]))
 
         polyLine = vtk.vtkPolyLine()
         polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
         for j, id in enumerate(point_ids):
             polyLine.GetPointIds().SetId(j, id)
         cells.InsertNextCell(polyLine)
+        well_colors.InsertNextTypedTuple(namedColors.GetColor3ub("Red"))
 
     label_polyData = vtk.vtkPolyData()
     label_polyData.SetPoints(labeled_points)
@@ -350,26 +354,21 @@ def add_wells(field, scales):
     label_actor.SetMapper(label_mapper)
 
     renderer.AddActor(label_actor)
-    FIELD['well_labels_actor'] = label_actor
+    FIELD[actor_names.well_labels] = label_actor
 
-    polyData = vtk.vtkPolyData()
-    polyData.SetPoints(points)
-    polyData.SetLines(cells)
+    FIELD[dataset_names.wells] = vtk.vtkPolyData()
+    FIELD[dataset_names.wells].SetPoints(points)
+    FIELD[dataset_names.wells].SetLines(cells)
+    FIELD[dataset_names.wells].GetCellData().SetScalars(well_colors)
     mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(polyData)
+    mapper.SetInputData(FIELD[dataset_names.wells])
     wells_actor = vtk.vtkActor()
     wells_actor.SetScale(*scales)
     wells_actor.SetMapper(mapper)
     wells_actor.GetProperty().SetLineWidth(3)
 
-    colors = vtk.vtkNamedColors()
-
-    (wells_actor.GetProperty()
-        .SetColor(colors
-            .GetColor3d('White' if state.theme == 'dark' else 'Black')))
-
     renderer.AddActor(wells_actor)
-    FIELD['wells_actor'] = wells_actor
+    FIELD[actor_names.wells] = wells_actor
 
 def add_faults(field, scales):
     "Add actor for faults."
@@ -441,9 +440,9 @@ def add_faults(field, scales):
     fault_links_actor = vtk.vtkActor()
     fault_links_actor.SetScale(*scales)
     fault_links_actor.SetMapper(mapper)
-    (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Red')))
+    (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Purple')))
 
-    FIELD['faults_links_actor'] = fault_links_actor
+    FIELD[actor_names.fault_links] = fault_links_actor
     renderer.AddActor(fault_links_actor)
 
     label_polyData = vtk.vtkPolyData()
@@ -455,9 +454,9 @@ def add_faults(field, scales):
     label_mapper.SetLabelModeToLabelFieldData()
     label_actor = vtk.vtkActor2D()
     label_actor.SetMapper(label_mapper)
-    label_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
+    label_actor.GetProperty().SetColor(colors.GetColor3d('Purple'))
 
-    FIELD['faults_label_actor'] = label_actor
+    FIELD[actor_names.fault_labels] = label_actor
     renderer.AddActor(label_actor)
 
     polygon_polyData = vtk.vtkPolyData()
@@ -470,10 +469,10 @@ def add_faults(field, scales):
     actor_faults = vtk.vtkActor()
     actor_faults.SetScale(*scales)
     actor_faults.SetMapper(mapper)
-    actor_faults.GetProperty().SetColor(colors.GetColor3d('Red'))
+    actor_faults.GetProperty().SetColor(colors.GetColor3d('Purple'))
 
     renderer.AddActor(actor_faults)
-    FIELD['actor_faults'] = actor_faults
+    FIELD[actor_names.faults] = actor_faults
 
 def make_empty_dataset():
     "Init variables."
@@ -489,7 +488,7 @@ def make_empty_dataset():
     renderer.AddActor(actor)
     renderer.ResetCamera()
 
-    FIELD['actor'] = actor
+    FIELD[actor_names.main] = actor
     FIELD['dataset'] = dataset
 
 def on_keydown(key_code):
