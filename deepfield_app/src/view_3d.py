@@ -58,15 +58,15 @@ def change_vtk_bgr(theme, **kwargs):
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
     ctrl.view_update()
 
-@state.change("activeField", "activeStep", "modelID")
-def update_field(activeField, activeStep, **kwargs):
+@state.change("activeField", "modelID")
+def update_field(activeField, **kwargs):
     "Update field in vtk."
     _ = kwargs
 
     if (activeField is None) or (FIELD['c_data'] is None):
         return
 
-    activeStep = int(activeStep) if activeStep else 0
+    activeStep = int(state.activeStep) if state.activeStep else 0
     if activeField.split("_")[0].lower() == 'states':
         data = FIELD['c_data'][activeField]
         if data.ndim == 2:
@@ -88,7 +88,45 @@ def update_field(activeField, activeStep, **kwargs):
     update_wells_status(activeStep)
 
     update_field_slices_params(activeField)
-    update_threshold_slices(state.i_slice, state.j_slice, state.k_slice, state.field_slice)
+    update_threshold_slices(state.i_slice,
+                            state.j_slice,
+                            state.k_slice,
+                            state.field_slice)
+
+@state.change("activeStep")
+def update_active_step(activeStep, **kwargs):
+    "Update field in vtk."
+    _ = kwargs
+
+    activeField = state.activeField
+    if (activeField is None) or (FIELD['c_data'] is None):
+        return
+
+    activeStep = int(activeStep) if activeStep else 0
+    update_wells_status(activeStep)
+
+    if activeField.split("_")[0].lower() != 'states':
+        return
+
+    data = FIELD['c_data'][activeField]
+    if data.ndim != 2:
+        return
+
+    data = data[:, activeStep]
+    vtk_array = dsa.numpyTovtkDataArray(data)
+    state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
+
+    dataset = FIELD['dataset']
+    dataset.GetCellData().SetScalars(vtk_array)
+
+    mapper = FIELD[actor_names.main].GetMapper()
+    mapper.SetScalarRange(dataset.GetScalarRange())
+    FIELD[actor_names.main].SetMapper(mapper)
+
+    update_threshold_slices(state.i_slice,
+                            state.j_slice,
+                            state.k_slice,
+                            state.field_slice)
 
 def update_wells_status(activeStep):
     "Get wells status."
@@ -113,6 +151,7 @@ def update_wells_status(activeStep):
             well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("RED"))
 
     FIELD[dataset_names.wells].GetCellData().SetScalars(well_colors)
+    ctrl.view_update()
 
 @state.change('stateDate')
 def update_date(stateDate, **kwargs):
