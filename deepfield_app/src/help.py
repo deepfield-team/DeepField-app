@@ -50,6 +50,10 @@ def render_help():
             style="text-wrap: auto",
             classes='pt-1'
             )
+        vuetify.VCardText("Hint: use SHIFT + left mouse button to move the scene on the screen.",
+            style="text-wrap: auto",
+            classes='pt-1'
+            )
 
     with vuetify.VCard(v_if="activeTab === '2d'",
         classes="pa-2 text-truncate",
