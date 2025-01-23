@@ -10,6 +10,7 @@ from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 
 from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
+from .custom_classes import CustomInteractorStyle
 
 VTK_VIEW_SETTINGS = {
     "interactive_ratio": 1,
@@ -28,7 +29,11 @@ render_window.AddRenderer(renderer)
 
 rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
-rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
+rw_style = CustomInteractorStyle(renderer, render_window)
+rw_interactor.SetInteractorStyle(rw_style)
+# rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
+
+
 
 scalarWidget = vtk.vtkScalarBarWidget()
 scalarWidget.SetInteractor(rw_interactor)
