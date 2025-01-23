@@ -4,7 +4,6 @@ from glob import glob
 import numpy as np
 from anytree import PreOrderIter
 import vtk
-import traceback
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import (
