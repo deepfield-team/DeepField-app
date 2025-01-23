@@ -4,6 +4,7 @@ from glob import glob
 import numpy as np
 from anytree import PreOrderIter
 import vtk
+import traceback
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import (
@@ -115,9 +116,11 @@ def load_file(loading, **kwargs):
     if not loading:
         return
 
+    field = Field(state.user_request)
     try:
-        field = Field(state.user_request).load()
+        field.load()
     except Exception as err:
+        field._logger.exception(err)
         state.errMessage = str(err)
         state.loading = False
         state.loadFailed = True
@@ -134,6 +137,7 @@ def load_file(loading, **kwargs):
     try:
         process_field(field)
     except Exception as err:
+        field._logger.exception(err)
         state.errMessage = str(err)
         state.loading = False
         state.loadFailed = True
