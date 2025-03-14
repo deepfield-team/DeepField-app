@@ -14,7 +14,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        "DeepField @ git+https://github.com/deepfield-team/DeepField.git@382a55ee6dd0e75a41b9941190ab921487f07bee",
+        "DeepField @ git+https://github.com/deepfield-team/DeepField.git@a37648d0cc6c9ef3536fca84c2b75a8564ab77c3",
         "trame",
         "trame-vuetify",
         "trame-vtk",
