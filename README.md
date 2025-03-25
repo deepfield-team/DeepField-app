@@ -15,7 +15,7 @@ Main page of the application in a dark theme:
 
 <img src="static/scene0.PNG" width="50%"/>
 
-An example of a reservoir model in 3D view with a filter applied to scalar values:
+An example of a reservoir model in 3D view with indication of well status (producing, injecting, inactive) and filter applied to scalar values:
 
 <img src="static/scene1.PNG" width="50%"/>
 
@@ -23,7 +23,7 @@ An example of a reservoir model in 3D view with a filter applied to scalar value
 
 <img src="static/scene2.PNG" width="50%"/>
 
-Construction of a multiline 1D plot to compare dynamic properties of grid cells and wells:
+Construction of a multiline 1D plot to compare dynamic properties of grid cells and wells and export data to csv file:
 
 <img src="static/scene3.PNG" width="50%"/>
 

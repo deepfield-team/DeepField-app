@@ -115,9 +115,11 @@ def load_file(loading, **kwargs):
     if not loading:
         return
 
+    field = Field(state.user_request)
     try:
-        field = Field(state.user_request).load()
+        field.load()
     except Exception as err:
+        field._logger.exception(err)
         state.errMessage = str(err)
         state.loading = False
         state.loadFailed = True
@@ -134,6 +136,7 @@ def load_file(loading, **kwargs):
     try:
         process_field(field)
     except Exception as err:
+        field._logger.exception(err)
         state.errMessage = str(err)
         state.loading = False
         state.loadFailed = True
@@ -316,7 +319,7 @@ def add_wells(field, scales):
     dz = z.max() - z_min
     z_min = z_min - 0.1*dz
 
-    field.wells.drop_incomplete(logger=field._logger)
+    field.wells.drop_incomplete(logger=field._logger, required=['WELLTRACK'])
     field.wells._get_first_entering_point()
 
     n_wells = len(field.wells.names)
