@@ -355,6 +355,26 @@ def default_view():
 
 ctrl.default_view = default_view
 
+import asyncio
+from trame.app import asynchronous
+
+state.running_jobs = 0
+
+@asynchronous.task
+async def start_animation():
+    with state:
+        state.activeStep = 0
+        state.running_jobs += 1
+    max_step = int(state.max_timestep) if state.max_timestep else 0
+    for step in range(max_step + 1):
+        with state:
+            state.activeStep = step
+        await asyncio.sleep(0.5)
+    with state:
+        state.running_jobs -= 1
+
+ctrl.startAnimation = start_animation
+
 def render_3d():
     "3D view layout."
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
@@ -396,6 +416,14 @@ def render_3d():
                             variant="outlined",
                             bg_color=('bgColor',),
                             hide_details=True)
+                with vuetify.VBtn(
+                    icon=True,
+                    flat=True,
+                    click=ctrl.startAnimation,
+                    style="margin-right: 10px;",
+                    title="Start Animation"
+                ):
+                    vuetify.VIcon("mdi-play")
 
     with vuetify.VCard(
         color=('sideBarColor',),
