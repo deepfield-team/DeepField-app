@@ -11,6 +11,10 @@ from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteract
 
 from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
 
+import asyncio
+from trame.app import asynchronous
+
+
 VTK_VIEW_SETTINGS = {
     "interactive_ratio": 1,
     "interactive_quality": 90,
@@ -22,6 +26,7 @@ state.colormaps = sorted(["cividis", "inferno", "jet",
     'YlGn', 'YlGnBu', 'RdGy', 'RdYlBu', 'BuGn',
     "gray", 'Blues', 'Greens', 'Oranges', 'Reds'], key=str.casefold)
 state.colormap = 'jet'
+state.anim_running = False
 
 render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)
@@ -355,25 +360,29 @@ def default_view():
 
 ctrl.default_view = default_view
 
-import asyncio
-from trame.app import asynchronous
-
-state.running_jobs = 0
 
 @asynchronous.task
 async def start_animation():
+    if state.anim_running:
+        with state:
+            state.anim_running = False
+        return
     with state:
-        state.activeStep = 0
-        state.running_jobs += 1
+        state.anim_running = True
     max_step = int(state.max_timestep) if state.max_timestep else 0
-    for step in range(max_step + 1):
+    start = int(state.activeStep) if state.activeStep is not None else 0
+    for step in range(start, max_step + 1):
+        if not state.anim_running:
+            break
         with state:
             state.activeStep = step
+        ctrl.view_update()
         await asyncio.sleep(0.5)
     with state:
-        state.running_jobs -= 1
+        state.anim_running = False
 
 ctrl.startAnimation = start_animation
+
 
 def render_3d():
     "3D view layout."
