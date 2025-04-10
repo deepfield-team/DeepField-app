@@ -112,7 +112,7 @@ def get_path_variants(user_request, **kwargs):
         state.dirList = [p for p in paths if filter_path(p)]
 
 @state.change("loading")
-def on_loading_change(loading, **kwargs):
+def load_file(loading, **kwargs):
     "Read and process reservoir model data."
     if loading:
         asynchronous.create_task(load_file_async())
