@@ -559,95 +559,96 @@ def on_keydown(key_code):
 
 def render_home():
     "Home page layout."
-    with html.Div(style='position: fixed; left: 50%; top: 50%;\
-    transform: translate(-50%, -50%); width: 80vw; height: 10vh'):
-        with vuetify.VRow(
-            style="height: 10vh; align-items: center; justify-content: center;"
-        ):
-            with vuetify.VCol(classes="pa-0 ma-0 text-center"):
-                vuetify.VProgressCircular(
-                    v_if='loading',
-                    color="primary",
-                    indeterminate=True,
-                    size="60",
-                    width="7"
-                )
-                with vuetify.VCard(v_if='loading', variant='text'):
-                    vuetify.VCardText('Loading data, please wait')
-                with vuetify.VCard(
-                    v_if='loadComplete & !showHistory & !loading & !loadFailed',
-                    variant='text'
-                ):
-                    vuetify.VIcon('mdi-check-bold', color="success")
-                    vuetify.VCardText('Loading completed')
-                with vuetify.VCard(
-                    v_if='loadComplete & !showHistory & !loading & loadFailed',
-                    variant='text'
-                ):
-                    vuetify.VIcon('mdi-close-thick', color="error")
-                    vuetify.VCardText('Loading failed: ' + '{{errMessage}}')
-                with vuetify.VCard(v_if='showHistory & emptyHistory', variant='text'):
-                    vuetify.VCardText('History is empty')
-        with vuetify.VRow(
-            style="height: 10vh; display: flex; align-items: center; justify-content: center;"
-        ):
-            with vuetify.VCol():
-                with vuetify.VTextField(
-                    ref="searchInput",
-                    v_model=("user_request",),
-                    label="Input reservoir model path",
-                    clearable=True,
-                    name="searchInput",
-                    autofocus=True,
-                    keydown=(on_keydown, "[$event.code]"),
-                    __events=["keydown"]
-                ):
-                    with vuetify.Template(
-                        v_slot_append=True,
-                        properties=[("v_slot_append", "v-slot:append")]
+    with html.Div(
+        style='position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80vw; height: 10vh'
+    ):
+        with vuetify.VContainer():
+            with vuetify.VRow():
+                with vuetify.VCol():
+                    with vuetify.VTextField(
+                        ref="searchInput",
+                        v_model=("user_request",),
+                        label="Input reservoir model path",
+                        clearable=True,
+                        name="searchInput",
+                        autofocus=True,
+                        keydown=(on_keydown, "[$event.code]"),
+                        __events=["keydown"]
                     ):
-                        with vuetify.VBtn('Load', click='loading = true'):
-                            vuetify.VTooltip(
-                                text='Start reading data',
-                                activator="parent",
-                                location="top"
-                            )
-                    with vuetify.Template(
-                        v_slot_prepend=True,
-                        properties=[("v_slot_prepend", "v-slot:prepend")]
-                    ):
-                        with vuetify.VBtn(
-                            icon=True,
-                            click='showHistory = !showHistory',
-                            flat=True,
-                            active=('showHistory',),
-                            style="background-color:transparent; backface-visibility:visible;"
+                        with vuetify.Template(
+                            v_slot_append=True,
+                            properties=[("v_slot_append", "v-slot:append")]
                         ):
-                            vuetify.VIcon("mdi-history")
-                            vuetify.VTooltip(
-                                text='Show recent files',
-                                activator="parent",
-                                location="top"
-                            )
-                    with vuetify.Template(
-                        v_slot_loader=True,
-                        properties=[("v_slot_loader", "v-slot:loader")]
-                    ):
-                        with vuetify.VCard(
-                            v_if='(!loading & !loadComplete) | showHistory',
-                            classes="overflow-auto",
-                            max_width="100%",
-                            max_height="30vh"
+                            with vuetify.VBtn('Load', click='loading = true'):
+                                vuetify.VTooltip(
+                                    text='Start reading data',
+                                    activator="parent",
+                                    location="top"
+                                )
+                        with vuetify.Template(
+                            v_slot_prepend=True,
+                            properties=[("v_slot_prepend", "v-slot:prepend")]
                         ):
-                            with vuetify.VList(v_if='!loading & !showHistory & !initalDirList'):
-                                with vuetify.VListItem(
-                                    v_for="item, index in dirList",
-                                    click="user_request = item"
-                                ):
-                                    vuetify.VListItemTitle("{{item}}")
-                            with vuetify.VList(v_if='showHistory'):
-                                with vuetify.VListItem(
-                                    v_for="item, index in recentFiles",
-                                    click="user_request = item"
-                                ):
-                                    vuetify.VListItemTitle("{{item}}")
+                            with vuetify.VBtn(
+                                icon=True,
+                                click='showHistory = !showHistory',
+                                flat=True,
+                                active=('showHistory',),
+                                style="background-color:transparent; backface-visibility:visible;"
+                            ):
+                                vuetify.VIcon("mdi-history")
+                                vuetify.VTooltip(
+                                    text='Show recent files',
+                                    activator="parent",
+                                    location="top"
+                                )
+                        with vuetify.Template(
+                            v_slot_loader=True,
+                            properties=[("v_slot_loader", "v-slot:loader")]
+                        ):
+                            with vuetify.VCard(
+                                v_if='(!loading & !loadComplete) | showHistory',
+                                classes="overflow-auto",
+                                max_width="100%",
+                                max_height="30vh"
+                            ):
+                                with vuetify.VList(v_if='!loading & !showHistory & !initalDirList'):
+                                    with vuetify.VListItem(
+                                        v_for="item, index in dirList",
+                                        click="user_request = item"
+                                    ):
+                                        vuetify.VListItemTitle("{{item}}")
+                                with vuetify.VList(v_if='showHistory'):
+                                    with vuetify.VListItem(
+                                        v_for="item, index in recentFiles",
+                                        click="user_request = item"
+                                    ):
+                                        vuetify.VListItemTitle("{{item}}")
+            with vuetify.VRow(classes="pa-0 ma-0"):
+                with vuetify.VCol(classes="pa-0 ma-0 text-center"):
+                    vuetify.VProgressCircular(
+                        v_if='loading',
+                        color="primary",
+                        indeterminate=True,
+                        size="60",
+                        width="7"
+                    )
+                    with vuetify.VCard(v_if='loading', variant='text'):
+                        vuetify.VCardText('Loading data, please wait')
+                    with vuetify.VCard(
+                        v_if='loadComplete & !showHistory & !loading & !loadFailed',
+                        variant='text'
+                    ):
+                        vuetify.VIcon('mdi-check-bold', color="success")
+                        vuetify.VCardText('Loading completed')
+                    with vuetify.VCard(
+                        v_if='loadComplete & !showHistory & !loading & loadFailed',
+                        variant='text'
+                    ):
+                        vuetify.VIcon('mdi-close-thick', color="error")
+                        vuetify.VCardText('Loading failed: ' + '{{errMessage}}')
+                    with vuetify.VCard(
+                        v_if='showHistory & emptyHistory',
+                        variant='text'
+                    ):
+                        vuetify.VCardText('History is empty')
