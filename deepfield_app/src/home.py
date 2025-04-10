@@ -113,6 +113,7 @@ def get_path_variants(user_request, **kwargs):
 
 @state.change("loading")
 def on_loading_change(loading, **kwargs):
+    "Read and process reservoir model data."
     if loading:
         asynchronous.create_task(load_file_async())
 
