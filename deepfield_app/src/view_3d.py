@@ -432,7 +432,9 @@ def render_3d():
                     style="margin-right: 10px;",
                     title="Start Animation"
                 ):
-                    vuetify.VIcon("mdi-play")
+                    vuetify.VIcon(
+                        children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"]
+                    )
 
     with vuetify.VCard(
         color=('sideBarColor',),
