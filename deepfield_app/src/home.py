@@ -580,7 +580,11 @@ def render_home():
                             v_slot_append=True,
                             properties=[("v_slot_append", "v-slot:append")]
                         ):
-                            with vuetify.VBtn('Load', click='loading = true'):
+                            with vuetify.VBtn(
+                                'Load',
+                                click='loading = true',
+                                disabled=("loading",)
+                            ):
                                 vuetify.VTooltip(
                                     text='Start reading data',
                                     activator="parent",
