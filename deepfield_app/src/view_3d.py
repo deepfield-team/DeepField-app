@@ -27,6 +27,7 @@ state.colormaps = sorted(["cividis", "inferno", "jet",
     "gray", 'Blues', 'Greens', 'Oranges', 'Reds'], key=str.casefold)
 state.colormap = 'jet'
 state.anim_running = False
+state.anim_speed = 0.5
 
 render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)
@@ -377,12 +378,23 @@ async def start_animation():
         with state:
             state.activeStep = step
         ctrl.view_update()
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(state.anim_speed)
     with state:
         state.anim_running = False
 
 ctrl.startAnimation = start_animation
 
+
+def change_speed():
+    "Change animation speed."
+    if state.anim_speed == 0.1:
+        state.anim_speed = 1
+    elif state.anim_speed == 0.5:
+        state.anim_speed = 0.1
+    elif state.anim_speed == 1:
+        state.anim_speed = 0.5
+
+ctrl.changeSpeed = change_speed
 
 def render_3d():
     "3D view layout."
@@ -428,13 +440,27 @@ def render_3d():
                 with vuetify.VBtn(
                     icon=True,
                     flat=True,
-                    click=ctrl.startAnimation,
-                    style="margin-right: 10px;",
-                    title="Start Animation"
+                    click=ctrl.startAnimation
                 ):
                     vuetify.VIcon(
                         children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"]
                     )
+                    vuetify.VTooltip(
+                            text='Start animation',
+                            activator="parent",
+                            location="top")
+                with vuetify.VBtn(
+                    icon=True,
+                    flat=True,
+                    click=ctrl.changeSpeed
+                ):
+                    vuetify.VIcon(
+                        children=["{{anim_speed == 0.5 ? 'mdi-speedometer-medium': anim_speed == 1 ? 'mdi-speedometer-slow' : 'mdi-speedometer'}}"]
+                    )
+                    vuetify.VTooltip(
+                            text='Change animation speed',
+                            activator="parent",
+                            location="top")
 
     with vuetify.VCard(
         color=('sideBarColor',),

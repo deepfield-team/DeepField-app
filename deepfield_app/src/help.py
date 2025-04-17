@@ -12,7 +12,7 @@ def render_help():
         	The application supports reservoir models in the ECLIPSE file format.\
         	To load the model, input the path to the main reseroir model file with .DATA extension.\
         	You can use the up and down arrow keys and the enter key to autocomplete the path you type.\
-        	Click the LOAD button to start reading data. This may take a while.\
+        	Click the LOAD button or press the enter key to start reading data. This may take a while.\
         	Note that not all ECLIPSE keywords are supported.\
         	Read more about supported keywords and file formats here: https://github.com/deepfield-team/DeepField.",
         	style="text-wrap: auto",
@@ -47,6 +47,12 @@ def render_help():
             filter data, and control the appearance and visibility of objects.\
             Use the timestep slider or calendar to view changes in reservoir dynamics\
             and well status.",
+            style="text-wrap: auto",
+            classes='pt-1'
+            )
+        vuetify.VCardText("Press the play icon to start animation of dynamic reservoir\
+            fields. Click the speedometer icon to cyclically change the animation speed:\
+            0.5s, 0.1s, 1s.",
             style="text-wrap: auto",
             classes='pt-1'
             )
