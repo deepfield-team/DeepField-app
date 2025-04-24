@@ -188,12 +188,13 @@ def process_field(field):
     ds = abs(bbox[1] - bbox[0])
     ds_max = ds.max()
     scales = ds_max / ds
+    FIELD['scales'] = scales
 
-    add_scalars(scales)
+    add_scalars()
 
-    add_wells(field, scales)
+    add_wells(field)
 
-    add_faults(field, scales)
+    add_faults(field)
 
     reset_camera()
     ctrl.view_update()
@@ -284,10 +285,10 @@ def get_field_info(field):
     state.startDate = FIELD['dates'][0].strftime('%Y-%m-%d')
     state.lastDate = FIELD['dates'][-1].strftime('%Y-%m-%d')
 
-def add_scalars(scales):
+def add_scalars():
     "Add actor for scalars."
     actor = vtkActor()
-    actor.SetScale(*scales)
+    actor.SetScale(*FIELD['scales'])
 
     vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][state.activeField])
 
@@ -307,7 +308,7 @@ def add_scalars(scales):
     renderer.AddActor(actor)
     FIELD[actor_names.main] = actor
 
-def add_wells(field, scales):
+def add_wells(field):
     "Add actor for wells."
     namedColors = vtk.vtkNamedColors()
     points = vtk.vtkPoints()
@@ -344,7 +345,7 @@ def add_wells(field, scales):
             welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
 
         point_ids = []
-        labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*scales)
+        labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*FIELD['scales'])
         for row in welltrack_tmp:
             point_ids.append(points.InsertNextPoint(row[:3]))
 
@@ -375,14 +376,14 @@ def add_wells(field, scales):
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputData(FIELD[dataset_names.wells])
     wells_actor = vtk.vtkActor()
-    wells_actor.SetScale(*scales)
+    wells_actor.SetScale(*FIELD['scales'])
     wells_actor.SetMapper(mapper)
     wells_actor.GetProperty().SetLineWidth(3)
 
     renderer.AddActor(wells_actor)
     FIELD[actor_names.wells] = wells_actor
 
-def add_faults(field, scales):
+def add_faults(field):
     "Add actor for faults."
     field.faults.get_blocks()
     n_segments = len(field.faults.names)
@@ -417,7 +418,7 @@ def add_faults(field, scales):
         for p in xyz:
             points.InsertNextPoint(*p)
 
-        labeled_points_id = labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*scales)
+        labeled_points_id = labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*FIELD['scales'])
         labels.SetValue(labeled_points_id, segment.name)
         links_points_ids.append(links_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])))
         links_points_ids.append(links_points.InsertNextPoint(*xyz[0]))
@@ -450,7 +451,7 @@ def add_faults(field, scales):
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputData(link_polyData)
     fault_links_actor = vtk.vtkActor()
-    fault_links_actor.SetScale(*scales)
+    fault_links_actor.SetScale(*FIELD['scales'])
     fault_links_actor.SetMapper(mapper)
     (fault_links_actor.GetProperty().SetColor(colors.GetColor3d('Purple')))
 
@@ -479,7 +480,7 @@ def add_faults(field, scales):
     mapper.SetInputData(polygon_polyData)
 
     actor_faults = vtk.vtkActor()
-    actor_faults.SetScale(*scales)
+    actor_faults.SetScale(*FIELD['scales'])
     actor_faults.SetMapper(mapper)
     actor_faults.GetProperty().SetColor(colors.GetColor3d('Purple'))
 

@@ -61,6 +61,7 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
+    rw_style.ChangeTheme(theme)
     ctrl.view_update()
 
 @state.change("activeField", "modelID")
