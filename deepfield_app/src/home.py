@@ -2,8 +2,10 @@
 import os
 from glob import glob
 import numpy as np
+import pandas as pd
 from anytree import PreOrderIter
 import vtk
+from vtk.util.numpy_support import numpy_to_vtk # pylint: disable=no-name-in-module, import-error
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import (
@@ -26,13 +28,14 @@ from trame.app import asynchronous
 USER_DIR = os.path.expanduser("~")
 
 state.user_request = USER_DIR
+state.user_click_request = None
 state.dirList = []
 state.pathIndex = None
 state.updateDirList = True
-state.initalDirList = True
+state.initialDirState = True
+state.showDirList = False
 state.recentFiles = []
 state.loading = False
-state.loadComplete = False
 state.showHistory = False
 state.emptyHistory = True
 state.errMessage = ''
@@ -64,6 +67,7 @@ state.field_slice_min = 0
 state.field_slice_max = 0
 state.n_field_steps = 100
 state.field_slice_step = 0
+state.show_well_blocks = False
 state.total_cells = 0
 state.active_cells = 0
 state.units = 0
@@ -100,77 +104,81 @@ def filter_path(path):
     _, ext = os.path.splitext(path)
     return ext.lower() in ['.data', '.hdf5']
 
+@state.change("user_click_request")
+def handle_user_click_request(user_click_request, **kwargs):
+    if user_click_request is None:
+        return
+    state.updateDirList = True
+    _, ext = os.path.splitext(user_click_request)
+    if ext.lower() in ['.data', '.hdf5']:
+        state.user_request = user_click_request
+        return
+    if os.path.isdir(user_click_request):
+        user_click_request += os.sep
+    state.user_request = user_click_request
+    state.pathIndex = None
+
 @state.change("user_request")
 def get_path_variants(user_request, **kwargs):
     "Collect and filter paths."
     _ = kwargs
     state.loading = False
-    state.loadComplete = False
     state.showHistory = False
+    state.showDirList = not state.initialDirState
     paths = list(glob(user_request + "*")) if user_request is not None else []
     if state.updateDirList:
         state.dirList = [p for p in paths if filter_path(p)]
 
-@state.change("loading")
-def load_file(loading, **kwargs):
-    "Read and process reservoir model data."
-    if loading:
-        asynchronous.create_task(load_file_async())
-
 @asynchronous.task
 async def load_file_async():
     with state:
-        state.loadComplete = False
+        state.loading = True
+        state.showHistory = False
+        state.showDirList = False
 
-    loop = asyncio.get_running_loop()
     field = Field(state.user_request)
+
     try:
-        await loop.run_in_executor(None, run_in_thread, field.load)
+        await asyncio.to_thread(field.load)
     except Exception as err:
         with state:
             state.errMessage = str(err)
             state.loadFailed = True
             state.loading = False
-            state.loadComplete = True
         return
 
-    with state:
-        if state.user_request not in state.recentFiles:
-            state.recentFiles.append(state.user_request)
-            state.emptyHistory = False
-
-    FIELD["model"] = field
+    FIELD['model'] = field
     FIELD["model_copy"] = None
 
-    try:
-        await loop.run_in_executor(None, run_in_thread, process_field, field)
-    except Exception as err:
-        with state:
-            state.errMessage = str(err)
-            state.loadFailed = True
-            state.loading = False
-            state.loadComplete = True
-        return
-
     with state:
+        process_field(field)
+
+        if state.user_request not in state.recentFiles:
+            state.recentFiles = state.recentFiles + [state.user_request]
+            state.emptyHistory = False
         state.loading = False
-        state.loadComplete = True
         state.errMessage = ''
         state.loadFailed = False
         state.modelID += 1
 
-def run_in_thread(func, *args, **kwargs):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return func(*args, **kwargs)
-    finally:
-        loop.close()
-        asyncio.set_event_loop(None)
+ctrl.load_file_async = load_file_async
+
 
 def process_field(field):
     "Prepare field data for visualization."
     dataset = field.get_vtk_dataset()
+
+    ind_i, ind_j, ind_k = np.indices(field.grid.dimens)
+    for name, val in zip(('I', 'J', 'K'), (ind_i, ind_j, ind_k)):
+        array = numpy_to_vtk(val[field.grid.actnum])
+        array.SetName(name)
+        dataset.GetCellData().AddArray(array)
+
+    well_dist = get_well_blocks(field)
+    array = numpy_to_vtk(well_dist[field.grid.actnum])
+    array.SetName('WELL_BLOCKS')
+    dataset.GetCellData().AddArray(array)
+
     FIELD['dataset'] = dataset
 
     py_ds = dsa.WrapDataObject(dataset)
@@ -179,7 +187,7 @@ def process_field(field):
 
     state.dimens = [int(x) for x in field.grid.dimens]
 
-    state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K']]
+    state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K', 'WELL_BLOCKS']]
     state.activeField = ('ROCK_PERMZ' if 'ROCK_PERMZ' in state.field_attrs
         else state.field_attrs[0])
 
@@ -230,14 +238,6 @@ def prepare_slices(dataset):
 
     state.k_slice_0, state.k_slice_1 = 1, state.dimens[2]
     state.k_slice = [state.k_slice_0, state.k_slice_1]
-
-    vtk_array_i = dsa.numpyTovtkDataArray(FIELD['c_data']["I"])
-    vtk_array_j = dsa.numpyTovtkDataArray(FIELD['c_data']["J"])
-    vtk_array_k = dsa.numpyTovtkDataArray(FIELD['c_data']["K"])
-
-    dataset.GetCellData().SetScalars(vtk_array_i)
-    dataset.GetCellData().SetScalars(vtk_array_j)
-    dataset.GetCellData().SetScalars(vtk_array_k)
 
     update_field_slices_params(state.activeField)
 
@@ -297,7 +297,7 @@ def get_field_info(field):
             attrs = list(comp.attributes)
         state.components_attrs[name] = attrs
 
-    FIELD['dates'] = field.result_dates
+    FIELD['dates'] = field.result_dates if len(field.result_dates) else np.array([pd.to_datetime(field.meta['START'])])
 
     state.stateDate = FIELD['dates'][0].strftime('%Y-%m-%d')
     state.startDate = FIELD['dates'][0].strftime('%Y-%m-%d')
@@ -325,6 +325,14 @@ def add_scalars(scales):
 
     renderer.AddActor(actor)
     FIELD[actor_names.main] = actor
+
+def get_well_blocks(field):
+    "Get mask for well blocks."
+    mask = np.full(field.grid.dimens, 0)
+    field.wells.get_blocks()
+    for well in field.wells:
+        mask[*well.blocks.T] = 1
+    return mask
 
 def add_wells(field, scales):
     "Add actor for wells."
@@ -524,7 +532,8 @@ def make_empty_dataset():
 
 def on_keydown(key_code):
     "Autocomplete path input."
-    state.initalDirList = False
+    state.initialDirState = False
+    state.showDirList = True
     if key_code == 'ArrowDown':
         if state.pathIndex is None:
             state.pathIndex = 0
@@ -545,7 +554,7 @@ def on_keydown(key_code):
         state.updateDirList = True
         _, ext = os.path.splitext(state.user_request)
         if ext.lower() in ['.data', '.hdf5']:
-            state.loading = True
+            ctrl.load_file_async()
             return
         if state.pathIndex is None:
             state.pathIndex = 0
@@ -582,7 +591,7 @@ def render_home():
                         ):
                             with vuetify.VBtn(
                                 'Load',
-                                click='loading = true',
+                                click=ctrl.load_file_async,
                                 disabled=("loading",)
                             ):
                                 vuetify.VTooltip(
@@ -612,21 +621,21 @@ def render_home():
                             properties=[("v_slot_loader", "v-slot:loader")]
                         ):
                             with vuetify.VCard(
-                                v_if='(!loading & !loadComplete) | showHistory',
+                                v_if='!loading',
                                 classes="overflow-auto",
                                 max_width="100%",
                                 max_height="30vh"
                             ):
-                                with vuetify.VList(v_if='!loading & !showHistory & !initalDirList'):
+                                with vuetify.VList(v_if='showDirList'):
                                     with vuetify.VListItem(
                                         v_for="item, index in dirList",
-                                        click="user_request = item"
+                                        click="user_click_request = item"
                                     ):
                                         vuetify.VListItemTitle("{{item}}")
                                 with vuetify.VList(v_if='showHistory'):
                                     with vuetify.VListItem(
                                         v_for="item, index in recentFiles",
-                                        click="user_request = item"
+                                        click="user_click_request = item"
                                     ):
                                         vuetify.VListItemTitle("{{item}}")
             with vuetify.VRow(classes="pa-0 ma-0"):
@@ -641,13 +650,13 @@ def render_home():
                     with vuetify.VCard(v_if='loading', variant='text'):
                         vuetify.VCardText('Loading data, please wait')
                     with vuetify.VCard(
-                        v_if='loadComplete & !showHistory & !loading & !loadFailed',
+                        v_if='!showDirList & !showHistory & !loading & !loadFailed & (modelID > 0)',
                         variant='text'
                     ):
                         vuetify.VIcon('mdi-check-bold', color="success")
                         vuetify.VCardText('Loading completed')
                     with vuetify.VCard(
-                        v_if='loadComplete & !showHistory & !loading & loadFailed',
+                        v_if='!showDirList & !showHistory & !loading & loadFailed',
                         variant='text'
                     ):
                         vuetify.VIcon('mdi-close-thick', color="error")
@@ -656,4 +665,4 @@ def render_home():
                         v_if='showHistory & emptyHistory',
                         variant='text'
                     ):
-                        vuetify.VCardText('History is empty')
+                        vuetify.VCardText('History is empty.')

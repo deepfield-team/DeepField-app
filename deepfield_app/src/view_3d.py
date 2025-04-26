@@ -97,7 +97,8 @@ def update_field(activeField, **kwargs):
     update_threshold_slices(state.i_slice,
                             state.j_slice,
                             state.k_slice,
-                            state.field_slice)
+                            state.field_slice,
+                            state.show_well_blocks)
 
 @state.change("activeStep")
 def update_active_step(activeStep, **kwargs):
@@ -132,7 +133,8 @@ def update_active_step(activeStep, **kwargs):
     update_threshold_slices(state.i_slice,
                             state.j_slice,
                             state.k_slice,
-                            state.field_slice)
+                            state.field_slice,
+                            state.show_well_blocks)
 
 def update_wells_status(activeStep):
     "Get wells status."
@@ -246,8 +248,8 @@ def update_field_slice(field_slice_0, field_slice_1, **kwargs):
         return
     state.field_slice = [field_slice_0, field_slice_1]
 
-@state.change("i_slice", "j_slice", "k_slice", "field_slice")
-def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
+@state.change("i_slice", "j_slice", "k_slice", "field_slice", "show_well_blocks")
+def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, show_well_blocks, **kwargs):
     "Filter scalars based on index and values."
     _ = kwargs
     if not FIELD['c_data']:
@@ -261,9 +263,13 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, **kwargs):
     threshold_i = make_threshold(i_slice, "I", ijk=True)
     threshold_j = make_threshold(j_slice, "J", input_threshold=threshold_i, ijk=True)
     threshold_k = make_threshold(k_slice, "K", input_threshold=threshold_j, ijk=True)
-    threshold_field = make_threshold(field_slice, state.activeField,
-        input_threshold=threshold_k,
-        component=int(state.activeStep) if state.activeStep else 0)
+    threshold_r = make_threshold([0.5, 1.5] if show_well_blocks else [-0.5, 1.5],
+                                 "WELL_BLOCKS", 
+                                 input_threshold=threshold_k)
+    threshold_field = make_threshold(field_slice, 
+                                     state.activeField,
+                                     input_threshold=threshold_r,
+                                     component=int(state.activeStep) if state.activeStep else 0)
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputConnection(threshold_field.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
@@ -357,6 +363,7 @@ def default_view():
     state.showWells = True
     state.showFaults = True
     state.activeStep = 0
+    state.show_well_blocks = False
     ctrl.view_reset_camera()
 
 ctrl.default_view = default_view
@@ -664,6 +671,18 @@ def render_3d():
                                             variant="outlined",
                                             bg_color=('bgColor',),
                                             hide_details=True)
+            with vuetify.VRow(classes='pa-0 ma-0'):
+                with vuetify.VCol(classes='pa-0 ma-0'):
+                    with vuetify.VBtn(icon=True,flat=True,
+                        style="background-color:transparent;\
+                               backface-visibility:visible;",
+                        active=('show_well_blocks',),
+                        click='show_well_blocks = !show_well_blocks'):
+                        vuetify.VTooltip(
+                            text='Show only well blocks',
+                            activator="parent",
+                            location="end")
+                        vuetify.VIcon("mdi-alpha-w")
             with vuetify.VRow(classes='pa-0 ma-0'):
                 with vuetify.VCol(classes='pa-0 ma-0'):
                     with vuetify.VBtn(icon=True,flat=True,
