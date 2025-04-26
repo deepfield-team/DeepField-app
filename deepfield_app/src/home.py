@@ -151,7 +151,13 @@ async def load_file_async():
     FIELD["model_copy"] = None
 
     with state:
-        process_field(field)
+        try:
+            process_field(field)
+        except Exception as err:
+            state.errMessage = str(err)
+            state.loadFailed = True
+            state.loading = False
+            return
 
         if state.user_request not in state.recentFiles:
             state.recentFiles = state.recentFiles + [state.user_request]
