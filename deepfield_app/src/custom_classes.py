@@ -52,15 +52,15 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             tprop.SetColor(1, 1, 1)
 
     def _AnnotatePick(self, cellId):
-        if cellId != -1: #cellId < 0:
-            poro = FIELD['c_data']['ROCK_PORO'][cellId]; print(FIELD['c_data']['ROCK_PORO'].shape)
+        if cellId != -1:
+            poro = FIELD['c_data']['ROCK_PORO'][cellId]
             permx = FIELD['c_data']['ROCK_PERMX'][cellId]
             permy = FIELD['c_data']['ROCK_PERMY'][cellId]
             permz = FIELD['c_data']['ROCK_PERMZ'][cellId]
             ntg = FIELD['c_data']['ROCK_NTG'][cellId]
             self.textMapper.SetInput(f'''Cell Id: {cellId}\n\nPORO: {poro:.2f}
-                                \nPERMX: {permx:.2f}\n\nPERMY: {permy:.2f}
-                                \nPERMZ: {permz:.2f}\n\nNTG: {ntg:.2f}''')
+                                     \nPERMX: {permx:.2f}\n\nPERMY: {permy:.2f}
+                                     \nPERMZ: {permz:.2f}\n\nNTG: {ntg:.2f}''')
             self.textActor.VisibilityOn()
             self.renderer.AddActor(self.textActor)
 
@@ -71,7 +71,8 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             self.ids.InsertNextValue(cellId)
             self.selection_node.SetSelectionList(self.ids)
             self.selection.AddNode(self.selection_node)
-            self.extract_selection.SetInputData(0, FIELD['dataset'])
+            dataset = FIELD["main_actor"].GetMapper().GetInput()
+            self.extract_selection.SetInputData(0, dataset)
             self.extract_selection.SetInputData(1, self.selection)
             self.extract_selection.Update()
             self.selected.ShallowCopy(self.extract_selection.GetOutput())
