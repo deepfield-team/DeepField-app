@@ -53,14 +53,12 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def _AnnotatePick(self, cellId):
         if cellId != -1:
-            poro = FIELD['c_data']['ROCK_PORO'][cellId]
-            permx = FIELD['c_data']['ROCK_PERMX'][cellId]
-            permy = FIELD['c_data']['ROCK_PERMY'][cellId]
-            permz = FIELD['c_data']['ROCK_PERMZ'][cellId]
-            ntg = FIELD['c_data']['ROCK_NTG'][cellId]
-            self.textMapper.SetInput(f'''Cell Id: {cellId}\n\nPORO: {poro:.2f}
-                                     \nPERMX: {permx:.2f}\n\nPERMY: {permy:.2f}
-                                     \nPERMZ: {permz:.2f}\n\nNTG: {ntg:.2f}''')
+            info = ""
+            attr_list = FIELD['c_data'].keys()[:-1]
+            for attr in attr_list:
+                value = FIELD['c_data'][attr][cellId]
+                info += f"{attr}: {value:.2f}\n\n"
+            self.textMapper.SetInput(info)
             self.textActor.VisibilityOn()
             self.renderer.AddActor(self.textActor)
 
