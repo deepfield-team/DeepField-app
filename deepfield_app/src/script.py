@@ -40,6 +40,7 @@ def run_script(scriptRunning, **kwargs):
     if success and FIELD['model'] is not None:
         try:
             process_field(FIELD['model'])
+            state.modelID += 1
         except Exception as err:
             res = 'Field update failed: ' + str(err)
     state.scriptOutput = str(res)
