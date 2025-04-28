@@ -27,9 +27,12 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.extract_selection = vtkExtractSelection()
         self.selected_mapper = vtkDataSetMapper()
         self.textMapper = vtk.vtkTextMapper()
+
+        self.currentId = -1
+
         tprop = self.textMapper.GetTextProperty()
         tprop.SetFontFamilyToArial()
-        tprop.SetFontSize(18)
+        tprop.SetFontSize(16)
         tprop.ShadowOn()
 
         if state.theme == 'dark':
@@ -40,7 +43,7 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         tprop.SetVerticalJustificationToBottom()
 
         self.textActor = vtk.vtkActor2D()
-        self.textActor.SetDisplayPosition(90, 50)
+        self.textActor.SetDisplayPosition(90, 60)
         self.textActor.VisibilityOn()
         self.textActor.SetMapper(self.textMapper)
 
@@ -52,37 +55,60 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             tprop.SetColor(1, 1, 1)
 
     def _AnnotatePick(self, cellId):
-        if cellId != -1:
-            info = ""
-            attr_list = FIELD['c_data'].keys()[:-1]
-            for attr in attr_list:
-                value = FIELD['c_data'][attr][cellId]
+        if cellId == -1:
+            return
+
+        if self.currentId == cellId:
+            self.renderer.RemoveActor(self.textActor)
+            return
+        
+        info = ""
+        attr_list = FIELD['c_data'].keys()[:-1]
+        ijk = {}
+        for attr in attr_list:
+            if attr == "WELL_BLOCKS":
+                continue
+            arr = FIELD['c_data'][attr]
+            if arr.ndim == 2:
+                value = arr[:, state.activeStep][cellId]
+            else:
+                value = arr[cellId]
+            if attr in ['I', 'J', 'K']:
+                ijk[attr] = value
+            else:
                 info += f"{attr}: {value:.2f}\n\n"
-            self.textMapper.SetInput(info)
-            self.textActor.VisibilityOn()
-            self.renderer.AddActor(self.textActor)
+        info += f"(I, J, K) = ({ijk['I']+1}, {ijk['J']+1}, {ijk['K']+1})"
+        self.textMapper.SetInput(info)
+        self.textActor.VisibilityOn()
+        self.renderer.AddActor(self.textActor)
 
     def _HighlightCell(self, cellId):
-        if cellId != -1:
-            self.ids = vtkIdTypeArray()
-            self.ids.SetNumberOfComponents(1)
-            self.ids.InsertNextValue(cellId)
-            self.selection_node.SetSelectionList(self.ids)
-            self.selection.AddNode(self.selection_node)
-            dataset = FIELD["main_actor"].GetMapper().GetInput()
-            self.extract_selection.SetInputData(0, dataset)
-            self.extract_selection.SetInputData(1, self.selection)
-            self.extract_selection.Update()
-            self.selected.ShallowCopy(self.extract_selection.GetOutput())
-            self.selected_mapper.SetInputData(self.selected)
-            self.selected_actor = vtk.vtkActor()
-            self.selected_actor.SetMapper(self.selected_mapper)
-            self.selected_actor.SetScale(*FIELD['scales'])
-            self.selected_actor.GetProperty().SetRepresentationToWireframe()
-            self.selected_actor.GetMapper().ScalarVisibilityOff()
-            self.selected_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
-            self.selected_actor.GetProperty().SetLineWidth(4)
-            self.renderer.AddActor(self.selected_actor)
+        if cellId == -1:
+            return
+
+        if self.currentId == cellId:
+            self.renderer.RemoveActor(self.selected_actor)
+            return
+
+        self.ids = vtkIdTypeArray()
+        self.ids.SetNumberOfComponents(1)
+        self.ids.InsertNextValue(cellId)
+        self.selection_node.SetSelectionList(self.ids)
+        self.selection.AddNode(self.selection_node)
+        dataset = FIELD["main_actor"].GetMapper().GetInput()
+        self.extract_selection.SetInputData(0, dataset)
+        self.extract_selection.SetInputData(1, self.selection)
+        self.extract_selection.Update()
+        self.selected.ShallowCopy(self.extract_selection.GetOutput())
+        self.selected_mapper.SetInputData(self.selected)
+        self.selected_actor = vtk.vtkActor()
+        self.selected_actor.SetMapper(self.selected_mapper)
+        self.selected_actor.SetScale(*FIELD['scales'])
+        self.selected_actor.GetProperty().SetRepresentationToWireframe()
+        self.selected_actor.GetMapper().ScalarVisibilityOff()
+        self.selected_actor.GetProperty().SetColor(colors.GetColor3d('Red'))
+        self.selected_actor.GetProperty().SetLineWidth(4)
+        self.renderer.AddActor(self.selected_actor)
 
     def OnLeftButtonRelease(self, obj, eventType):
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonUp(self)
@@ -93,4 +119,5 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         cellId = self.picker.GetCellId()
         self._HighlightCell(cellId)
         self._AnnotatePick(cellId)
+        self.currentId = cellId
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonDown(self)

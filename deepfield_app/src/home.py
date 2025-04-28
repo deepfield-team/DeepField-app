@@ -341,7 +341,7 @@ def get_well_blocks(field):
         mask[*well.blocks.T] = 1
     return mask
 
-def add_wells(field, scales):
+def add_wells(field):
     "Add actor for wells."
     namedColors = vtk.vtkNamedColors()
     points = vtk.vtkPoints()
