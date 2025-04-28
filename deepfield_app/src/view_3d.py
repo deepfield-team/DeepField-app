@@ -37,7 +37,6 @@ rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
 rw_style = CustomInteractorStyle(renderer, render_window)
 rw_interactor.SetInteractorStyle(rw_style)
-# rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
 
 
