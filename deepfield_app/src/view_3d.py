@@ -10,6 +10,7 @@ from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 
 from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
+from .custom_classes import CustomInteractorStyle
 
 import asyncio
 from trame.app import asynchronous
@@ -34,7 +35,10 @@ render_window.AddRenderer(renderer)
 
 rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
-rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
+rw_style = CustomInteractorStyle(renderer, render_window)
+rw_interactor.SetInteractorStyle(rw_style)
+
+
 
 scalarWidget = vtk.vtkScalarBarWidget()
 scalarWidget.SetInteractor(rw_interactor)
@@ -62,6 +66,7 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
+    rw_style.ChangeTheme(theme)
     ctrl.view_update()
 
 @state.change("activeField", "modelID")
