@@ -38,8 +38,6 @@ rw_interactor.SetRenderWindow(render_window)
 rw_style = CustomInteractorStyle(renderer, render_window)
 rw_interactor.SetInteractorStyle(rw_style)
 
-
-
 scalarWidget = vtk.vtkScalarBarWidget()
 scalarWidget.SetInteractor(rw_interactor)
 scalarBar = scalarWidget.GetScalarBarActor()
@@ -69,7 +67,13 @@ def change_vtk_bgr(theme, **kwargs):
     rw_style.ChangeTheme(theme)
     ctrl.view_update()
 
-@state.change("activeField", "modelID")
+@state.change("modelID")
+def update_model(modelID, **kwargs):
+    _ = modelID, kwargs
+    rw_style.Reset()
+    update_field(state.activeField)
+
+@state.change("activeField")
 def update_field(activeField, **kwargs):
     "Update field in vtk."
     _ = kwargs
@@ -115,6 +119,9 @@ def update_active_step(activeStep, **kwargs):
         return
 
     activeStep = int(activeStep) if activeStep else 0
+
+    rw_style._AnnotatePick(rw_style.currentId, update=True)
+
     update_wells_status(activeStep)
 
     if activeField.split("_")[0].lower() != 'states':

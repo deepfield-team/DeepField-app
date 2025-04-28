@@ -4,7 +4,8 @@ from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkCommonDataModel import vtkUnstructuredGrid, vtkSelectionNode, vtkSelection
 from vtkmodules.vtkFiltersExtraction import vtkExtractSelection
 from vtkmodules.vtkRenderingCore import vtkDataSetMapper
-from .config import state, FIELD
+from .config import state, FIELD, actor_names
+import numpy as np
 
 colors = vtkNamedColors()
 
@@ -54,30 +55,32 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         else:
             tprop.SetColor(1, 1, 1)
 
-    def _AnnotatePick(self, cellId):
+    def _AnnotatePick(self, cellId, update=False):
         if cellId == -1:
             return
 
-        if self.currentId == cellId:
+        if (self.currentId == cellId) and not update:
             self.renderer.RemoveActor(self.textActor)
             return
         
-        info = ""
         attr_list = FIELD['c_data'].keys()[:-1]
-        ijk = {}
+        dataset = FIELD[actor_names.main].GetMapper().GetInput()
+
+        ix = dataset.GetCellData().GetArray('I').GetValue(cellId)
+        jx = dataset.GetCellData().GetArray('J').GetValue(cellId)
+        kx = dataset.GetCellData().GetArray('K').GetValue(cellId)
+        n = dataset.GetCellData().GetArray('I').GetSize()
+        info = ""
         for attr in attr_list:
-            if attr == "WELL_BLOCKS":
+            if attr in ["I", "J", "K", "WELL_BLOCKS"]:
                 continue
-            arr = FIELD['c_data'][attr]
-            if arr.ndim == 2:
-                value = arr[:, state.activeStep][cellId]
+            arr = dataset.GetCellData().GetArray(attr)
+            if arr.GetSize() == n:
+                value = arr.GetValue(cellId)
             else:
-                value = arr[cellId]
-            if attr in ['I', 'J', 'K']:
-                ijk[attr] = value
-            else:
-                info += f"{attr}: {value:.2f}\n\n"
-        info += f"(I, J, K) = ({ijk['I']+1}, {ijk['J']+1}, {ijk['K']+1})"
+                value = arr.GetValue(cellId*(state.max_timestep+1) + int(state.activeStep))
+            info += f"{attr}: {value:.2f}\n\n"
+        info += f"(I, J, K) = ({ix+1}, {jx+1}, {kx+1})"
         self.textMapper.SetInput(info)
         self.textActor.VisibilityOn()
         self.renderer.AddActor(self.textActor)
@@ -87,6 +90,7 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             return
 
         if self.currentId == cellId:
+            self.selected_actor.VisibilityOff()
             self.renderer.RemoveActor(self.selected_actor)
             return
 
@@ -95,7 +99,7 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.ids.InsertNextValue(cellId)
         self.selection_node.SetSelectionList(self.ids)
         self.selection.AddNode(self.selection_node)
-        dataset = FIELD["main_actor"].GetMapper().GetInput()
+        dataset = FIELD[actor_names.main].GetMapper().GetInput()
         self.extract_selection.SetInputData(0, dataset)
         self.extract_selection.SetInputData(1, self.selection)
         self.extract_selection.Update()
@@ -121,3 +125,11 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self._AnnotatePick(cellId)
         self.currentId = cellId
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonDown(self)
+
+    def Reset(self):
+        self.currentId = -1
+        self.renderer.RemoveActor(self.textActor)
+        if self.selected_actor is not None:
+            self.selected_actor.VisibilityOff()
+            self.renderer.RemoveActor(self.selected_actor)
+
