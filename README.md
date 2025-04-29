@@ -23,11 +23,11 @@ Indication of well status (producing, injecting, inactive) and filtering of grid
 
 <img src="static/scene1.PNG" width="50%"/>
 
-Cell picking for properties analysis
+Cell picking for properties analysis:
 
 <img src="static/cell_picking.gif" width="50%"/>
 
-Selection of cells along well trajectories
+Selection of cells along well trajectories:
 
 <img src="static/scene_wells.PNG" width="50%"/>
 
