@@ -19,7 +19,7 @@ from deepfield import Field
 
 from .config import state, ctrl, FIELD, renderer, dataset_names, actor_names
 from .common import reset_camera
-from .view_3d import update_field_slices_params
+from .view_3d import update_field_slices_params, rw_style
 
 import asyncio
 from trame.app import asynchronous
@@ -172,7 +172,10 @@ ctrl.load_file_async = load_file_async
 
 def process_field(field):
     "Prepare field data for visualization."
-    renderer.RemoveAllViewProps()
+    for name in actor_names.__dict__.values():
+        if name in FIELD:
+            renderer.RemoveActor(FIELD[name])
+    rw_style.RemoveActors()
     
     dataset = field.get_vtk_dataset()
 
