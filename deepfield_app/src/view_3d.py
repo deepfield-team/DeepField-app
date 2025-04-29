@@ -67,13 +67,7 @@ def change_vtk_bgr(theme, **kwargs):
     rw_style.ChangeTheme(theme)
     ctrl.view_update()
 
-@state.change("modelID")
-def update_model(modelID, **kwargs):
-    _ = modelID, kwargs
-    rw_style.Reset()
-    update_field(state.activeField)
-
-@state.change("activeField")
+@state.change("activeField", "modelID")
 def update_field(activeField, **kwargs):
     "Update field in vtk."
     _ = kwargs

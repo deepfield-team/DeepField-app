@@ -172,6 +172,8 @@ ctrl.load_file_async = load_file_async
 
 def process_field(field):
     "Prepare field data for visualization."
+    renderer.RemoveAllViewProps()
+    
     dataset = field.get_vtk_dataset()
 
     ind_i, ind_j, ind_k = np.indices(field.grid.dimens)
@@ -324,11 +326,6 @@ def add_scalars():
     mapper.SetInputData(dataset)
     mapper.SetScalarRange(dataset.GetScalarRange())
     actor.SetMapper(mapper)
-
-    for name in [actor_names.main, actor_names.wells, actor_names.faults, actor_names.well_labels,
-        actor_names.fault_labels, actor_names.fault_links]:
-        if name in FIELD:
-            renderer.RemoveActor(FIELD[name])
 
     renderer.AddActor(actor)
     FIELD[actor_names.main] = actor

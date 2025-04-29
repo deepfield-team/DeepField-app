@@ -4,8 +4,7 @@ from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkCommonDataModel import vtkUnstructuredGrid, vtkSelectionNode, vtkSelection
 from vtkmodules.vtkFiltersExtraction import vtkExtractSelection
 from vtkmodules.vtkRenderingCore import vtkDataSetMapper
-from .config import state, FIELD, actor_names
-import numpy as np
+from .config import state, ctrl, FIELD, actor_names
 
 colors = vtkNamedColors()
 
@@ -90,10 +89,11 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             return
 
         if self.currentId == cellId:
-            self.selected_actor.VisibilityOff()
             self.renderer.RemoveActor(self.selected_actor)
             return
 
+        if self.selected_actor is not None:
+            self.renderer.RemoveActor(self.selected_actor)
         self.ids = vtkIdTypeArray()
         self.ids.SetNumberOfComponents(1)
         self.ids.InsertNextValue(cellId)
@@ -125,11 +125,3 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self._AnnotatePick(cellId)
         self.currentId = cellId
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonDown(self)
-
-    def Reset(self):
-        self.currentId = -1
-        self.renderer.RemoveActor(self.textActor)
-        if self.selected_actor is not None:
-            self.selected_actor.VisibilityOff()
-            self.renderer.RemoveActor(self.selected_actor)
-
