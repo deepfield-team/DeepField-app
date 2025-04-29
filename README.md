@@ -15,9 +15,21 @@ Main page of the application in a dark theme:
 
 <img src="static/scene0.PNG" width="50%"/>
 
-An example of a reservoir model in 3D view with indication of well status (producing, injecting, inactive) and filter applied to scalar values:
+An example of a reservoir model in 3D view with animation of dynamics:
+
+<img src="static/soil_deepfield.gif" width="50%"/>
+
+Indication of well status (producing, injecting, inactive) and filtering of grid cells based on the selected threshold:
 
 <img src="static/scene1.PNG" width="50%"/>
+
+Cell picking for properties analysis
+
+<img src="static/cell_picking.gif" width="50%"/>
+
+Selection of cells along well trajectories
+
+<img src="static/scene_wells.PNG" width="50%"/>
 
 2D slice view of the reservoir model and colormap options:
 
