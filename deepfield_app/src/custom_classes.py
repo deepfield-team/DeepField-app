@@ -4,7 +4,7 @@ from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkCommonDataModel import vtkUnstructuredGrid, vtkSelectionNode, vtkSelection
 from vtkmodules.vtkFiltersExtraction import vtkExtractSelection
 from vtkmodules.vtkRenderingCore import vtkDataSetMapper
-from .config import state, ctrl, FIELD, actor_names
+from .config import state, FIELD, actor_names
 
 colors = vtkNamedColors()
 
@@ -26,11 +26,11 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         self.extract_selection = vtkExtractSelection()
         self.selected_mapper = vtkDataSetMapper()
-        self.textMapper = vtk.vtkTextMapper()
+        self.text_mapper = vtk.vtkTextMapper()
 
         self.currentId = -1
 
-        tprop = self.textMapper.GetTextProperty()
+        tprop = self.text_mapper.GetTextProperty()
         tprop.SetFontFamilyToArial()
         tprop.SetFontSize(16)
         tprop.ShadowOn()
@@ -42,13 +42,13 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         tprop.SetVerticalJustificationToBottom()
 
-        self.textActor = vtk.vtkActor2D()
-        self.textActor.SetDisplayPosition(90, 60)
-        self.textActor.VisibilityOn()
-        self.textActor.SetMapper(self.textMapper)
+        self.text_actor = vtk.vtkActor2D()
+        self.text_actor.SetDisplayPosition(90, 60)
+        self.text_actor.VisibilityOn()
+        self.text_actor.SetMapper(self.text_mapper)
 
     def ChangeTheme(self, theme):
-        tprop = self.textMapper.GetTextProperty()
+        tprop = self.text_mapper.GetTextProperty()
         if theme == 'light':
             tprop.SetColor(0, 0, 0)
         else:
@@ -59,7 +59,7 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             return
 
         if (self.currentId == cellId) and not update:
-            self.renderer.RemoveActor(self.textActor)
+            self.renderer.RemoveActor(self.text_actor)
             return
         
         attr_list = FIELD['c_data'].keys()[:-1]
@@ -80,9 +80,9 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
                 value = arr.GetValue(cellId*(state.max_timestep+1) + int(state.activeStep))
             info += f"{attr}: {value:.2f}\n\n"
         info += f"(I, J, K) = ({ix+1}, {jx+1}, {kx+1})"
-        self.textMapper.SetInput(info)
-        self.textActor.VisibilityOn()
-        self.renderer.AddActor(self.textActor)
+        self.text_mapper.SetInput(info)
+        self.text_actor.VisibilityOn()
+        self.renderer.AddActor(self.text_actor)
 
     def _HighlightCell(self, cellId):
         if cellId == -1:
@@ -94,6 +94,7 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         if self.selected_actor is not None:
             self.renderer.RemoveActor(self.selected_actor)
+
         self.ids = vtkIdTypeArray()
         self.ids.SetNumberOfComponents(1)
         self.ids.InsertNextValue(cellId)
@@ -125,3 +126,8 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self._AnnotatePick(cellId)
         self.currentId = cellId
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonDown(self)
+
+    def RemoveActors(self):
+        if self.selected_actor is not None:
+            self.renderer.RemoveActor(self.selected_actor)
+        self.renderer.RemoveActor(self.text_actor)
