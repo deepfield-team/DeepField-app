@@ -38,8 +38,6 @@ rw_interactor.SetRenderWindow(render_window)
 rw_style = CustomInteractorStyle(renderer, render_window)
 rw_interactor.SetInteractorStyle(rw_style)
 
-
-
 scalarWidget = vtk.vtkScalarBarWidget()
 scalarWidget.SetInteractor(rw_interactor)
 scalarBar = scalarWidget.GetScalarBarActor()
@@ -115,6 +113,9 @@ def update_active_step(activeStep, **kwargs):
         return
 
     activeStep = int(activeStep) if activeStep else 0
+
+    rw_style._AnnotatePick(rw_style.currentId, update=True)
+
     update_wells_status(activeStep)
 
     if activeField.split("_")[0].lower() != 'states':
