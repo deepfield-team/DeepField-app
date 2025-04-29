@@ -11,7 +11,7 @@ view and explore data in 3D, 2D and 1D, write and execute custom python scripts
 containing reservoir model transformations or calculations, 
 and immediately view the results of these transformations.
 
-Main page of the application in a dark theme:
+Main page of the application:
 
 <img src="static/scene0.PNG" width="50%"/>
 
@@ -43,7 +43,7 @@ Plots obtained from interpolation of PVT or relative permeability tables:
 
 <img src="static/scene4.PNG" width="50%"/>
 
-Description of the reservoir model and a white theme of the application:
+Description of the reservoir model:
 
 <img src="static/scene5.PNG" width="50%"/>
 
