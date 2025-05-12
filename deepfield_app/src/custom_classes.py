@@ -124,7 +124,12 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         cellId = self.picker.GetCellId()
         self._HighlightCell(cellId)
         self._AnnotatePick(cellId)
-        self.currentId = cellId
+
+        if self.currentId == cellId:
+            self.currentId = -1
+        else:
+            self.currentId = cellId
+
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonDown(self)
 
     def RemoveActors(self):
