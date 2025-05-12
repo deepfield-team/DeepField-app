@@ -32,6 +32,7 @@ state.anim_speed = 0.5
 
 render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)
+render_window.ShowWindowOff()
 
 rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
