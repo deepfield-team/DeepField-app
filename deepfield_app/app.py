@@ -96,7 +96,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
 
 
 if __name__ == "__main__":
-    server.start()
+    server.start(timeout=10)
 
 def server_start():
     "Start server."
