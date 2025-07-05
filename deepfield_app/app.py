@@ -11,7 +11,7 @@ except ModuleNotFoundError:
     except:
         raise ModuleNotFoundError("Module deepfield is not found.")
 
-from .src.config import server, state, ctrl
+from .src.config import server, state, ctrl, renderer
 from .src.home import render_home, make_empty_dataset
 from .src.view_3d import render_3d
 from .src.view_2d import render_2d
@@ -42,9 +42,9 @@ def change_theme(*args, **kwargs):
         state.bgColor = 'white'
 ctrl.change_theme = change_theme
 
-
 make_empty_dataset()
 reset_camera()
+
 with VAppLayout(server, theme=('theme',)) as layout:
     style = client.Style("body { background-color: white }")
     ctrl.update_style = style.update
@@ -62,6 +62,16 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 vuetify.VTab('Script', value="script")
 
             vuetify.VSpacer()
+            vuetify.VCheckbox(
+                v_model=("viewMode", "local"), # VtkRemoteLocalView => {namespace}Mode=['local', 'remote']
+                on_icon="mdi-lan-disconnect",
+                off_icon="mdi-lan-connect",
+                true_value="local",
+                false_value="remote",
+                classes="mx-1",
+                hide_details=True,
+                dense=True,
+            )
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
                 vuetify.VTooltip(

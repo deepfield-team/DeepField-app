@@ -13,6 +13,10 @@ from vtkmodules.vtkRenderingCore import (
     vtkDataSetMapper,
 )
 
+from vtkmodules.util import numpy_support
+
+from scipy import ndimage
+
 from trame.widgets import html, vuetify3 as vuetify
 
 from deepfield import Field
@@ -172,11 +176,14 @@ ctrl.load_file_async = load_file_async
 
 def process_field(field):
     "Prepare field data for visualization."
+
     for name in actor_names.__dict__.values():
         if name in FIELD:
             renderer.RemoveActor(FIELD[name])
     rw_style.RemoveActors()
-    
+    reset_camera()
+    ctrl.view_update()
+
     dataset = field.get_vtk_dataset()
 
     ind_i, ind_j, ind_k = np.indices(field.grid.dimens)
@@ -184,7 +191,7 @@ def process_field(field):
         array = numpy_to_vtk(val[field.grid.actnum])
         array.SetName(name)
         dataset.GetCellData().AddArray(array)
-
+    
     well_dist = get_well_blocks(field)
     array = numpy_to_vtk(well_dist[field.grid.actnum])
     array.SetName('WELL_BLOCKS')
@@ -325,8 +332,13 @@ def add_scalars():
     dataset = FIELD['dataset']
     dataset.GetCellData().SetScalars(vtk_array)
 
+    gf = vtk.vtkGeometryFilter()
+    gf.SetInputData(dataset)
+    gf.Update()
+    outer = gf.GetOutput()
+
     mapper = vtkDataSetMapper()
-    mapper.SetInputData(dataset)
+    mapper.SetInputData(outer)
     mapper.SetScalarRange(dataset.GetScalarRange())
     actor.SetMapper(mapper)
 

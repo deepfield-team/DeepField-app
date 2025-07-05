@@ -277,8 +277,13 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, show_well_bl
                                      state.activeField,
                                      input_threshold=threshold_r,
                                      component=int(state.activeStep) if state.activeStep else 0)
+    
+    gf = vtk.vtkGeometryFilter()
+    threshold_field.Update()
+    gf.SetInputData(threshold_field.GetOutput())
+
     mapper = vtk.vtkDataSetMapper()
-    mapper.SetInputConnection(threshold_field.GetOutputPort())
+    mapper.SetInputConnection(gf.GetOutputPort())
     mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
     FIELD[actor_names.main].SetMapper(mapper)
     update_cmap(state.colormap)
@@ -419,8 +424,8 @@ def render_3d():
                     render_window,
                     **VTK_VIEW_SETTINGS
                     )
-                ctrl.view_update = view.update
-                ctrl.view_reset_camera = view.reset_camera
+                ctrl.view_update.add(view.update)
+                ctrl.view_reset_camera.add(view.reset_camera)
 
     with html.Div(
         style='position: fixed; width: 100%; bottom: 0; padding-left: 10vw; padding-right: 10vw;'):
