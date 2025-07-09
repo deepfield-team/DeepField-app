@@ -187,13 +187,14 @@ def process_field(field):
     dataset = field.get_vtk_dataset()
 
     ind_i, ind_j, ind_k = np.indices(field.grid.dimens)
+    actnum = field.grid.actnum.ravel(order='F')
     for name, val in zip(('I', 'J', 'K'), (ind_i, ind_j, ind_k)):
-        array = numpy_to_vtk(val[field.grid.actnum])
+        array = numpy_to_vtk(val.ravel(order='F')[actnum])
         array.SetName(name)
         dataset.GetCellData().AddArray(array)
     
     well_dist = get_well_blocks(field)
-    array = numpy_to_vtk(well_dist[field.grid.actnum])
+    array = numpy_to_vtk(well_dist.ravel(order='F')[actnum])
     array.SetName('WELL_BLOCKS')
     dataset.GetCellData().AddArray(array)
 
@@ -230,7 +231,7 @@ def process_field(field):
     get_field_info(field)
 
     bbox = field.grid.bounding_box
-    ds = abs(bbox[1] - bbox[0])
+    ds = abs(bbox[3:] - bbox[:3])
     ds_max = ds.max()
     scales = ds_max / ds
     FIELD['scales'] = scales
@@ -281,7 +282,7 @@ def get_field_info(field):
     swat = field.states.SWAT[0] if 'SWAT' in field.states else 0
     sgas = field.states.SGAS[0] if 'SGAS' in field.states else 0
 
-    c_vols = field.grid.cell_volumes
+    c_vols = 0#field.grid.cell_volumes
 
     p_vols = field.grid.actnum * field.rock.poro * c_vols
     state.pore_vol = np.round(p_vols.sum(), 2)
@@ -359,39 +360,37 @@ def add_wells(field):
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
 
+    points_links = vtk.vtkPoints()
+    cells_links = vtk.vtkCellArray()
+
     grid = field.grid
-    z = grid.xyz[grid.actnum][..., 2]
-    z_min = z.min()
-    dz = z.max() - z_min
+    z_min = grid.bounding_box[2]
+    dz = grid.bounding_box[-1] - z_min
     z_min = z_min - 0.1*dz
 
     field.wells.drop_incomplete(logger=field._logger, required=['WELLTRACK'])
-    field.wells._get_first_entering_point()
 
     n_wells = len(field.wells.names)
     labeled_points = vtk.vtkPoints()
     labels = vtk.vtkStringArray()
     labels.SetNumberOfValues(n_wells)
     labels.SetName("labels")
+
     well_colors = vtk.vtkUnsignedCharArray()
     well_colors.SetNumberOfComponents(3)
 
     for i, well in enumerate(field.wells):
         labels.SetValue(i, well.name)
 
-        wtrack_idx, first_intersection = well._first_entering_point
         welltrack = well.welltrack[:, :3]
 
-        if first_intersection is not None:
-            welltrack_tmp = np.concatenate([np.array([[first_intersection[0], first_intersection[1], z_min]]),
-                                        np.asarray(first_intersection).reshape(1, -1),
-                                        well.welltrack[wtrack_idx + 1:, :3]])
-        else:
-            welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
+        first_point = welltrack[0, :3].copy()
+        first_point[-1] = z_min
+
+        labeled_points.InsertNextPoint(first_point*FIELD['scales'])
 
         point_ids = []
-        labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*FIELD['scales'])
-        for row in welltrack_tmp:
+        for row in welltrack:
             point_ids.append(points.InsertNextPoint(row[:3]))
 
         polyLine = vtk.vtkPolyLine()
@@ -400,6 +399,16 @@ def add_wells(field):
             polyLine.GetPointIds().SetId(j, id)
         cells.InsertNextCell(polyLine)
         well_colors.InsertNextTypedTuple(namedColors.GetColor3ub("Red"))
+
+        point_ids = []
+        for row in [first_point, welltrack[0, :3]]:
+            point_ids.append(points_links.InsertNextPoint(row))
+
+        polyLine = vtk.vtkPolyLine()
+        polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
+        for j, id in enumerate(point_ids):
+            polyLine.GetPointIds().SetId(j, id)
+        cells_links.InsertNextCell(polyLine)
 
     label_polyData = vtk.vtkPolyData()
     label_polyData.SetPoints(labeled_points)
@@ -428,6 +437,19 @@ def add_wells(field):
     renderer.AddActor(wells_actor)
     FIELD[actor_names.wells] = wells_actor
 
+    well_links_poly = vtk.vtkPolyData()
+    well_links_poly.SetPoints(points_links)
+    well_links_poly.SetLines(cells_links)
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(well_links_poly)
+    well_links_actor = vtk.vtkActor()
+    well_links_actor.SetScale(*FIELD['scales'])
+    well_links_actor.SetMapper(mapper)
+    well_links_actor.GetProperty().SetLineWidth(2)
+
+    renderer.AddActor(well_links_actor)
+    FIELD[actor_names.well_links] = well_links_actor
+
 def add_faults(field):
     "Add actor for faults."
     field.faults.get_blocks()
@@ -438,9 +460,8 @@ def add_faults(field):
     labels.SetName("labels")
 
     grid = field.grid
-    z = grid.xyz[grid.actnum][..., 2]
-    z_min = z.min()
-    dz = z.max() - z_min
+    z_min = grid.bounding_box[2]
+    dz = grid.bounding_box[-1] - z_min
     z_min = z_min - 0.05*dz
 
     points = vtk.vtkPoints()
@@ -452,9 +473,9 @@ def add_faults(field):
     link_cells = vtk.vtkCellArray()
 
     size = 0
-    for i, segment in enumerate(field.faults):
-        blocks = segment.blocks
-        xyz = segment.faces_verts
+    for i, fault in enumerate(field.faults):
+        blocks = fault.blocks
+        xyz = fault.faces_verts
         active = field.grid.actnum[blocks[:, 0], blocks[:, 1], blocks[:, 2]]
         xyz = xyz[active].reshape(-1, 3)
         if len(xyz) == 0:

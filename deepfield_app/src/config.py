@@ -24,6 +24,7 @@ renderer.SetBackground(1, 1, 1)
 
 actor_names = SimpleNamespace(
     wells='wells_actor',
+    well_links='well_links_actor',
     well_labels='well_labels_actor',
     main='main_actor',
     faults='faults_actor',

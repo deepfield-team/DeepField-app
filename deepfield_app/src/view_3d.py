@@ -349,7 +349,7 @@ def change_wireframe_visibility(showWireframe, **kwargs):
 def change_wells_visibility(showWells, **kwargs):
     "Set visibility of wells."
     _ = kwargs
-    for name in (actor_names.wells, actor_names.well_labels):
+    for name in (actor_names.wells, actor_names.well_links, actor_names.well_labels):
         if name in FIELD:
             FIELD[name].SetVisibility(showWells)
     ctrl.view_update()
