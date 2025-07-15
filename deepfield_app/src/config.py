@@ -37,8 +37,7 @@ dataset_names = SimpleNamespace(
 )
 
 FIELD = {"actor": None,
-         "dataset": None,
-         "c_data": None,
+         "grid": None,
          "data1d": {'states': [], 'wells': [], 'tables': []},
          "model": None,
          "model_copy": None}

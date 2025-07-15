@@ -11,6 +11,7 @@ from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteract
 
 from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
 from .custom_classes import CustomInteractorStyle
+from .common import set_active_scalars
 
 import asyncio
 from trame.app import asynchronous
@@ -73,31 +74,26 @@ def update_field(activeField, **kwargs):
     "Update field in vtk."
     _ = kwargs
 
-    if (activeField is None) or (FIELD['c_data'] is None):
+    if activeField is None:
         return
 
+    set_active_scalars(update_range=True)
+
+    comp, _ = activeField.lower().split('_')
     activeStep = int(state.activeStep) if state.activeStep else 0
-    if activeField.split("_")[0].lower() == 'states':
-        data = FIELD['c_data'][activeField]
-        if data.ndim == 2:
-            data = data[:, activeStep]
+    if comp == 'states':
+        state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
         state.need_time_slider = True
-        vtk_array = dsa.numpyTovtkDataArray(data)
     else:
         state.need_time_slider = False
-        vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][activeField])
-    state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
-    dataset = FIELD['dataset']
-    dataset.GetCellData().SetScalars(vtk_array)
 
     mapper = FIELD[actor_names.main].GetMapper()
-    mapper.SetScalarRange(dataset.GetScalarRange())
+    mapper.SetScalarRange(FIELD['grid'].GetScalarRange())
     FIELD[actor_names.main].SetMapper(mapper)
     scalarBar.SetTitle(activeField.split('_')[1])
 
     update_wells_status(activeStep)
 
-    update_field_slices_params(activeField)
     update_threshold_slices(state.i_slice,
                             state.j_slice,
                             state.k_slice,
@@ -110,7 +106,7 @@ def update_active_step(activeStep, **kwargs):
     _ = kwargs
 
     activeField = state.activeField
-    if (activeField is None) or (FIELD['c_data'] is None):
+    if activeField is None:
         return
 
     activeStep = int(activeStep) if activeStep else 0
@@ -122,19 +118,14 @@ def update_active_step(activeStep, **kwargs):
     if activeField.split("_")[0].lower() != 'states':
         return
 
-    data = FIELD['c_data'][activeField]
-    if data.ndim != 2:
-        return
+    set_active_scalars(update_range=False)
 
-    data = data[:, activeStep]
-    vtk_array = dsa.numpyTovtkDataArray(data)
     state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
 
-    dataset = FIELD['dataset']
-    dataset.GetCellData().SetScalars(vtk_array)
+    vtk_grid = FIELD['grid']
 
     mapper = FIELD[actor_names.main].GetMapper()
-    mapper.SetScalarRange(dataset.GetScalarRange())
+    mapper.SetScalarRange(vtk_grid.GetScalarRange())
     FIELD[actor_names.main].SetMapper(mapper)
 
     update_threshold_slices(state.i_slice,
@@ -203,7 +194,7 @@ def update_cmap(colormap, **kwargs):
 def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
     "Set threshold filter limits."
     threshold = vtk.vtkThreshold()
-    threshold.SetInputData(FIELD['dataset'])
+    threshold.SetInputData(FIELD['grid'])
     if input_threshold:
         threshold.SetInputConnection(input_threshold.GetOutputPort())
     if ijk:
@@ -219,8 +210,6 @@ def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None
         threshold.SetUpperThreshold(slices[1])
         threshold.SetLowerThreshold(slices[0])
     threshold.SetInputArrayToProcess(0, 0, 0, 1, attr)
-    if component:
-        threshold.SetSelectedComponent(component)
     return threshold
 
 @state.change("i_slice_0", "i_slice_1")
@@ -259,8 +248,6 @@ def update_field_slice(field_slice_0, field_slice_1, **kwargs):
 def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, show_well_blocks, **kwargs):
     "Filter scalars based on index and values."
     _ = kwargs
-    if not FIELD['c_data']:
-        return
 
     state.i_slice_0, state.i_slice_1 = state.i_slice
     state.j_slice_0, state.j_slice_1 = state.j_slice
@@ -274,9 +261,8 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, show_well_bl
                                  "WELL_BLOCKS", 
                                  input_threshold=threshold_k)
     threshold_field = make_threshold(field_slice, 
-                                     state.activeField,
-                                     input_threshold=threshold_r,
-                                     component=int(state.activeStep) if state.activeStep else 0)
+                                     'ActiveScalars',
+                                     input_threshold=threshold_r)
     
     gf = vtk.vtkGeometryFilter()
     threshold_field.Update()
@@ -284,20 +270,9 @@ def update_threshold_slices(i_slice, j_slice, k_slice, field_slice, show_well_bl
 
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputConnection(gf.GetOutputPort())
-    mapper.SetScalarRange(FIELD['dataset'].GetScalarRange())
+    mapper.SetScalarRange(FIELD['grid'].GetScalarRange())
     FIELD[actor_names.main].SetMapper(mapper)
     update_cmap(state.colormap)
-
-def update_field_slices_params(activeField):
-    "Init filter limits."
-    if activeField is None:
-        return
-    state.field_slice_min = float(FIELD['c_data'][activeField].min())
-    state.field_slice_max = float(FIELD['c_data'][activeField].max())
-    state.field_slice_0 = state.field_slice_min
-    state.field_slice_1 = state.field_slice_max
-    state.field_slice = [state.field_slice_min, state.field_slice_max]
-    state.field_slice_step = (state.field_slice_max - state.field_slice_min) / state.n_field_steps
 
 @state.change("opacity")
 def update_opacity(opacity, **kwargs):

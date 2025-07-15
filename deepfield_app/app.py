@@ -12,9 +12,9 @@ except ModuleNotFoundError:
         raise ModuleNotFoundError("Module deepfield is not found.")
 
 from .src.config import server, state, ctrl, renderer
-from .src.home import render_home, make_empty_dataset
+from .src.home import render_home, make_empty_grid
 from .src.view_3d import render_3d
-from .src.view_2d import render_2d
+# from .src.view_2d import render_2d
 from .src.view_1d import render_ts, render_pvt
 from .src.common import reset_camera
 from .src.info import render_info
@@ -42,7 +42,7 @@ def change_theme(*args, **kwargs):
         state.bgColor = 'white'
 ctrl.change_theme = change_theme
 
-make_empty_dataset()
+make_empty_grid()
 reset_camera()
 
 with VAppLayout(server, theme=('theme',)) as layout:
@@ -93,8 +93,8 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 render_home()
             with html.Div(v_if="activeTab === '3d'", classes="fill-height"):
                 render_3d()
-            with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
-                render_2d()
+            # with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
+            #     render_2d()
             with html.Div(v_if="activeTab === 'ts'", classes="fill-height"):
                 render_ts()
             with html.Div(v_if="activeTab === 'pvt'", classes="fill-height"):

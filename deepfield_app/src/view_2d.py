@@ -80,8 +80,7 @@ def get_data_limits(component, attr, activeStep):
         data = data[activeStep]
 
     data = data[FIELD['model'].grid.actnum]
-    vmax = data.max()
-    vmin = data.min()
+    vmin, vmax = data.min(), data.max()
     if vmax == vmin:
         vmax = 1.01 * vmax
         vmin = 0.99 * vmin

@@ -7,7 +7,6 @@ from anytree import PreOrderIter
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk # pylint: disable=no-name-in-module, import-error
 
-from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkDataSetMapper,
@@ -22,8 +21,8 @@ from trame.widgets import html, vuetify3 as vuetify
 from deepfield import Field
 
 from .config import state, ctrl, FIELD, renderer, dataset_names, actor_names
-from .common import reset_camera
-from .view_3d import update_field_slices_params, rw_style
+from .common import reset_camera, set_active_scalars
+from .view_3d import rw_style
 
 import asyncio
 from trame.app import asynchronous
@@ -184,29 +183,27 @@ def process_field(field):
     reset_camera()
     ctrl.view_update()
 
-    dataset = field.get_vtk_dataset()
+    vtk_grid = field.grid.vtk_grid
 
-    ind_i, ind_j, ind_k = np.indices(field.grid.dimens)
-    actnum = field.grid.actnum.ravel(order='F')
+    ind_i, ind_j, ind_k = np.unravel_index(field.grid.actnum_ids, field.grid.dimens)
     for name, val in zip(('I', 'J', 'K'), (ind_i, ind_j, ind_k)):
-        array = numpy_to_vtk(val.ravel(order='F')[actnum])
+        array = numpy_to_vtk(val)
         array.SetName(name)
-        dataset.GetCellData().AddArray(array)
-    
+        vtk_grid.GetCellData().AddArray(array)
+
     well_dist = get_well_blocks(field)
-    array = numpy_to_vtk(well_dist.ravel(order='F')[actnum])
+    array = numpy_to_vtk(well_dist.ravel()[field.grid.actnum_ids])
     array.SetName('WELL_BLOCKS')
-    dataset.GetCellData().AddArray(array)
+    vtk_grid.GetCellData().AddArray(array)
 
-    FIELD['dataset'] = dataset
-
-    py_ds = dsa.WrapDataObject(dataset)
-    c_data = py_ds.CellData
-    FIELD['c_data'] = c_data
+    FIELD['grid'] = vtk_grid
 
     state.dimens = [int(x) for x in field.grid.dimens]
 
-    state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K', 'WELL_BLOCKS']]
+    rock_attrs = ['ROCK_'+attr.upper() for attr in FIELD['model'].rock.attributes]
+    state_attrs = ['STATES_'+attr.upper() for attr in FIELD['model'].states.attributes]
+
+    state.field_attrs = rock_attrs + state_attrs
     state.activeField = ('ROCK_PERMZ' if 'ROCK_PERMZ' in state.field_attrs
         else state.field_attrs[0])
 
@@ -226,8 +223,6 @@ def process_field(field):
 
     state.data1d = state.statesAttrs + state.wellsAttrs
 
-    prepare_slices(dataset)
-
     get_field_info(field)
 
     bbox = field.grid.bounding_box
@@ -237,6 +232,8 @@ def process_field(field):
     FIELD['scales'] = scales
 
     add_scalars()
+
+    prepare_slices()
 
     add_wells(field)
 
@@ -248,7 +245,7 @@ def process_field(field):
 
 ctrl.load_file = load_file_async
 
-def prepare_slices(dataset):
+def prepare_slices():
     "Get slice data and slice ranges."
     state.i_slice_0, state.i_slice_1 = 1, state.dimens[0]
     state.i_slice = [state.i_slice_0, state.i_slice_1]
@@ -258,8 +255,6 @@ def prepare_slices(dataset):
 
     state.k_slice_0, state.k_slice_1 = 1, state.dimens[2]
     state.k_slice = [state.k_slice_0, state.k_slice_1]
-
-    update_field_slices_params(state.activeField)
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
@@ -276,15 +271,18 @@ def prepare_slices(dataset):
 def get_field_info(field):
     "Collect field info."
     state.total_cells = int(np.prod(field.grid.dimens))
-    state.active_cells = int(np.sum(field.grid.actnum))
+    state.active_cells = len(field.grid.actnum_ids)
 
-    soil = field.states.SOIL[0] if 'SOIL' in field.states else 0
-    swat = field.states.SWAT[0] if 'SWAT' in field.states else 0
-    sgas = field.states.SGAS[0] if 'SGAS' in field.states else 0
+    actnum = field.grid.actnum
 
-    c_vols = 0#field.grid.cell_volumes
+    soil = field.states.SOIL[0][actnum] if 'SOIL' in field.states else 0
+    swat = field.states.SWAT[0][actnum] if 'SWAT' in field.states else 0
+    sgas = field.states.SGAS[0][actnum] if 'SGAS' in field.states else 0
 
-    p_vols = field.grid.actnum * field.rock.poro * c_vols
+    c_vols = field.grid.cell_volumes
+
+    p_vols = field.rock.poro[actnum] * c_vols
+
     state.pore_vol = np.round(p_vols.sum(), 2)
     state.oil_vol = np.round((p_vols * soil).sum(), 2)
     state.wat_vol = np.round((p_vols * swat).sum(), 2)
@@ -328,19 +326,18 @@ def add_scalars():
     actor = vtkActor()
     actor.SetScale(*FIELD['scales'])
 
-    vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][state.activeField])
+    set_active_scalars(update_range=True)
 
-    dataset = FIELD['dataset']
-    dataset.GetCellData().SetScalars(vtk_array)
+    vtk_grid = FIELD['grid']
 
     gf = vtk.vtkGeometryFilter()
-    gf.SetInputData(dataset)
+    gf.SetInputData(vtk_grid)
     gf.Update()
     outer = gf.GetOutput()
 
     mapper = vtkDataSetMapper()
     mapper.SetInputData(outer)
-    mapper.SetScalarRange(dataset.GetScalarRange())
+    mapper.SetScalarRange(vtk_grid.GetScalarRange())
     actor.SetMapper(mapper)
 
     renderer.AddActor(actor)
@@ -553,12 +550,12 @@ def add_faults(field):
     renderer.AddActor(actor_faults)
     FIELD[actor_names.faults] = actor_faults
 
-def make_empty_dataset():
+def make_empty_grid():
     "Init variables."
-    dataset = vtk.vtkUnstructuredGrid()
+    grid = vtk.vtkUnstructuredGrid()
 
     mapper = vtkDataSetMapper()
-    mapper.SetInputData(dataset)
+    mapper.SetInputData(grid)
     mapper.SetScalarRange(0, 1)
 
     actor = vtkActor()
@@ -568,7 +565,7 @@ def make_empty_dataset():
     renderer.ResetCamera()
 
     FIELD[actor_names.main] = actor
-    FIELD['dataset'] = dataset
+    FIELD['grid'] = grid
 
 def on_keydown(key_code):
     "Autocomplete path input."
