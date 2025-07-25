@@ -376,6 +376,8 @@ def add_wells(field):
     well_colors = vtk.vtkUnsignedCharArray()
     well_colors.SetNumberOfComponents(3)
 
+    colors = vtk.vtkNamedColors()
+
     for i, well in enumerate(field.wells):
         labels.SetValue(i, well.name)
 
@@ -443,6 +445,7 @@ def add_wells(field):
     well_links_actor.SetScale(*FIELD['scales'])
     well_links_actor.SetMapper(mapper)
     well_links_actor.GetProperty().SetLineWidth(2)
+    well_links_actor.GetProperty().SetColor(colors.GetColor3d('Green'))
 
     renderer.AddActor(well_links_actor)
     FIELD[actor_names.well_links] = well_links_actor
@@ -482,7 +485,7 @@ def add_faults(field):
             points.InsertNextPoint(*p)
 
         labeled_points_id = labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*FIELD['scales'])
-        labels.SetValue(labeled_points_id, segment.name)
+        labels.SetValue(labeled_points_id, fault.name)
         links_points_ids.append(links_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])))
         links_points_ids.append(links_points.InsertNextPoint(*xyz[0]))
 

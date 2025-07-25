@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 from .src.config import server, state, ctrl, renderer
 from .src.home import render_home, make_empty_grid
 from .src.view_3d import render_3d
-# from .src.view_2d import render_2d
+from .src.view_2d import render_2d
 from .src.view_1d import render_ts, render_pvt
 from .src.common import reset_camera
 from .src.info import render_info
@@ -62,16 +62,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 vuetify.VTab('Script', value="script")
 
             vuetify.VSpacer()
-            vuetify.VCheckbox(
-                v_model=("viewMode", "local"), # VtkRemoteLocalView => {namespace}Mode=['local', 'remote']
-                on_icon="mdi-lan-disconnect",
-                off_icon="mdi-lan-connect",
-                true_value="local",
-                false_value="remote",
-                classes="mx-1",
-                hide_details=True,
-                dense=True,
-            )
+
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
                 vuetify.VIcon("mdi-lightbulb-multiple-outline")
                 vuetify.VTooltip(
@@ -93,8 +84,8 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 render_home()
             with html.Div(v_if="activeTab === '3d'", classes="fill-height"):
                 render_3d()
-            # with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
-            #     render_2d()
+            with html.Div(v_if="activeTab === '2d'", classes="fill-height"):
+                render_2d()
             with html.Div(v_if="activeTab === 'ts'", classes="fill-height"):
                 render_ts()
             with html.Div(v_if="activeTab === 'pvt'", classes="fill-height"):
