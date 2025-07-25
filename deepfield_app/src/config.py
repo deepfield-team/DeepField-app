@@ -24,6 +24,7 @@ renderer.SetBackground(1, 1, 1)
 
 actor_names = SimpleNamespace(
     wells='wells_actor',
+    well_links='well_links_actor',
     well_labels='well_labels_actor',
     main='main_actor',
     faults='faults_actor',
@@ -34,9 +35,9 @@ actor_names = SimpleNamespace(
 dataset_names = SimpleNamespace(
     wells='wells_dataset'
 )
+
 FIELD = {"actor": None,
-         "dataset": None,
-         "c_data": None,
+         "grid": None,
          "data1d": {'states': [], 'wells': [], 'tables': []},
          "model": None,
          "model_copy": None}

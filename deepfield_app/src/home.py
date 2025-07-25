@@ -7,19 +7,22 @@ from anytree import PreOrderIter
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk # pylint: disable=no-name-in-module, import-error
 
-from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkDataSetMapper,
 )
+
+from vtkmodules.util import numpy_support
+
+from scipy import ndimage
 
 from trame.widgets import html, vuetify3 as vuetify
 
 from deepfield import Field
 
 from .config import state, ctrl, FIELD, renderer, dataset_names, actor_names
-from .common import reset_camera
-from .view_3d import update_field_slices_params, rw_style
+from .common import reset_camera, set_active_scalars
+from .view_3d import rw_style
 
 import asyncio
 from trame.app import asynchronous
@@ -172,33 +175,35 @@ ctrl.load_file_async = load_file_async
 
 def process_field(field):
     "Prepare field data for visualization."
+
     for name in actor_names.__dict__.values():
         if name in FIELD:
             renderer.RemoveActor(FIELD[name])
     rw_style.RemoveActors()
-    
-    dataset = field.get_vtk_dataset()
+    reset_camera()
+    ctrl.view_update()
 
-    ind_i, ind_j, ind_k = np.indices(field.grid.dimens)
+    vtk_grid = field.grid.vtk_grid
+
+    ind_i, ind_j, ind_k = np.unravel_index(field.grid.actnum_ids, field.grid.dimens)
     for name, val in zip(('I', 'J', 'K'), (ind_i, ind_j, ind_k)):
-        array = numpy_to_vtk(val[field.grid.actnum])
+        array = numpy_to_vtk(val)
         array.SetName(name)
-        dataset.GetCellData().AddArray(array)
+        vtk_grid.GetCellData().AddArray(array)
 
     well_dist = get_well_blocks(field)
-    array = numpy_to_vtk(well_dist[field.grid.actnum])
+    array = numpy_to_vtk(well_dist.ravel()[field.grid.actnum_ids])
     array.SetName('WELL_BLOCKS')
-    dataset.GetCellData().AddArray(array)
+    vtk_grid.GetCellData().AddArray(array)
 
-    FIELD['dataset'] = dataset
-
-    py_ds = dsa.WrapDataObject(dataset)
-    c_data = py_ds.CellData
-    FIELD['c_data'] = c_data
+    FIELD['grid'] = vtk_grid
 
     state.dimens = [int(x) for x in field.grid.dimens]
 
-    state.field_attrs = [k for k in c_data.keys() if k not in ['I', 'J', 'K', 'WELL_BLOCKS']]
+    rock_attrs = ['ROCK_'+attr.upper() for attr in FIELD['model'].rock.attributes]
+    state_attrs = ['STATES_'+attr.upper() for attr in FIELD['model'].states.attributes]
+
+    state.field_attrs = rock_attrs + state_attrs
     state.activeField = ('ROCK_PERMZ' if 'ROCK_PERMZ' in state.field_attrs
         else state.field_attrs[0])
 
@@ -218,17 +223,17 @@ def process_field(field):
 
     state.data1d = state.statesAttrs + state.wellsAttrs
 
-    prepare_slices(dataset)
-
     get_field_info(field)
 
     bbox = field.grid.bounding_box
-    ds = abs(bbox[1] - bbox[0])
+    ds = abs(bbox[3:] - bbox[:3])
     ds_max = ds.max()
     scales = ds_max / ds
     FIELD['scales'] = scales
 
     add_scalars()
+
+    prepare_slices()
 
     add_wells(field)
 
@@ -240,7 +245,7 @@ def process_field(field):
 
 ctrl.load_file = load_file_async
 
-def prepare_slices(dataset):
+def prepare_slices():
     "Get slice data and slice ranges."
     state.i_slice_0, state.i_slice_1 = 1, state.dimens[0]
     state.i_slice = [state.i_slice_0, state.i_slice_1]
@@ -250,8 +255,6 @@ def prepare_slices(dataset):
 
     state.k_slice_0, state.k_slice_1 = 1, state.dimens[2]
     state.k_slice = [state.k_slice_0, state.k_slice_1]
-
-    update_field_slices_params(state.activeField)
 
     state.i_cells = ['Average'] + list(range(1, state.dimens[0]+1))
     state.j_cells = ['Average'] + list(range(1, state.dimens[1]+1))
@@ -268,15 +271,18 @@ def prepare_slices(dataset):
 def get_field_info(field):
     "Collect field info."
     state.total_cells = int(np.prod(field.grid.dimens))
-    state.active_cells = int(np.sum(field.grid.actnum))
+    state.active_cells = len(field.grid.actnum_ids)
 
-    soil = field.states.SOIL[0] if 'SOIL' in field.states else 0
-    swat = field.states.SWAT[0] if 'SWAT' in field.states else 0
-    sgas = field.states.SGAS[0] if 'SGAS' in field.states else 0
+    actnum = field.grid.actnum
+
+    soil = field.states.SOIL[0][actnum] if 'SOIL' in field.states else 0
+    swat = field.states.SWAT[0][actnum] if 'SWAT' in field.states else 0
+    sgas = field.states.SGAS[0][actnum] if 'SGAS' in field.states else 0
 
     c_vols = field.grid.cell_volumes
 
-    p_vols = field.grid.actnum * field.rock.poro * c_vols
+    p_vols = field.rock.poro[actnum] * c_vols
+
     state.pore_vol = np.round(p_vols.sum(), 2)
     state.oil_vol = np.round((p_vols * soil).sum(), 2)
     state.wat_vol = np.round((p_vols * swat).sum(), 2)
@@ -320,14 +326,18 @@ def add_scalars():
     actor = vtkActor()
     actor.SetScale(*FIELD['scales'])
 
-    vtk_array = dsa.numpyTovtkDataArray(FIELD['c_data'][state.activeField])
+    set_active_scalars(update_range=True)
 
-    dataset = FIELD['dataset']
-    dataset.GetCellData().SetScalars(vtk_array)
+    vtk_grid = FIELD['grid']
+
+    gf = vtk.vtkGeometryFilter()
+    gf.SetInputData(vtk_grid)
+    gf.Update()
+    outer = gf.GetOutput()
 
     mapper = vtkDataSetMapper()
-    mapper.SetInputData(dataset)
-    mapper.SetScalarRange(dataset.GetScalarRange())
+    mapper.SetInputData(outer)
+    mapper.SetScalarRange(vtk_grid.GetScalarRange())
     actor.SetMapper(mapper)
 
     renderer.AddActor(actor)
@@ -347,39 +357,39 @@ def add_wells(field):
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
 
+    points_links = vtk.vtkPoints()
+    cells_links = vtk.vtkCellArray()
+
     grid = field.grid
-    z = grid.xyz[grid.actnum][..., 2]
-    z_min = z.min()
-    dz = z.max() - z_min
+    z_min = grid.bounding_box[2]
+    dz = grid.bounding_box[-1] - z_min
     z_min = z_min - 0.1*dz
 
     field.wells.drop_incomplete(logger=field._logger, required=['WELLTRACK'])
-    field.wells._get_first_entering_point()
 
     n_wells = len(field.wells.names)
     labeled_points = vtk.vtkPoints()
     labels = vtk.vtkStringArray()
     labels.SetNumberOfValues(n_wells)
     labels.SetName("labels")
+
     well_colors = vtk.vtkUnsignedCharArray()
     well_colors.SetNumberOfComponents(3)
+
+    colors = vtk.vtkNamedColors()
 
     for i, well in enumerate(field.wells):
         labels.SetValue(i, well.name)
 
-        wtrack_idx, first_intersection = well._first_entering_point
         welltrack = well.welltrack[:, :3]
 
-        if first_intersection is not None:
-            welltrack_tmp = np.concatenate([np.array([[first_intersection[0], first_intersection[1], z_min]]),
-                                        np.asarray(first_intersection).reshape(1, -1),
-                                        well.welltrack[wtrack_idx + 1:, :3]])
-        else:
-            welltrack_tmp = np.concatenate([np.array([[welltrack[0, 0], welltrack[0, 1], z_min]]), welltrack[:]])
+        first_point = welltrack[0, :3].copy()
+        first_point[-1] = z_min
+
+        labeled_points.InsertNextPoint(first_point*FIELD['scales'])
 
         point_ids = []
-        labeled_points.InsertNextPoint(welltrack_tmp[0, :3]*FIELD['scales'])
-        for row in welltrack_tmp:
+        for row in welltrack:
             point_ids.append(points.InsertNextPoint(row[:3]))
 
         polyLine = vtk.vtkPolyLine()
@@ -388,6 +398,16 @@ def add_wells(field):
             polyLine.GetPointIds().SetId(j, id)
         cells.InsertNextCell(polyLine)
         well_colors.InsertNextTypedTuple(namedColors.GetColor3ub("Red"))
+
+        point_ids = []
+        for row in [first_point, welltrack[0, :3]]:
+            point_ids.append(points_links.InsertNextPoint(row))
+
+        polyLine = vtk.vtkPolyLine()
+        polyLine.GetPointIds().SetNumberOfIds(len(point_ids))
+        for j, id in enumerate(point_ids):
+            polyLine.GetPointIds().SetId(j, id)
+        cells_links.InsertNextCell(polyLine)
 
     label_polyData = vtk.vtkPolyData()
     label_polyData.SetPoints(labeled_points)
@@ -416,6 +436,20 @@ def add_wells(field):
     renderer.AddActor(wells_actor)
     FIELD[actor_names.wells] = wells_actor
 
+    well_links_poly = vtk.vtkPolyData()
+    well_links_poly.SetPoints(points_links)
+    well_links_poly.SetLines(cells_links)
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(well_links_poly)
+    well_links_actor = vtk.vtkActor()
+    well_links_actor.SetScale(*FIELD['scales'])
+    well_links_actor.SetMapper(mapper)
+    well_links_actor.GetProperty().SetLineWidth(2)
+    well_links_actor.GetProperty().SetColor(colors.GetColor3d('Green'))
+
+    renderer.AddActor(well_links_actor)
+    FIELD[actor_names.well_links] = well_links_actor
+
 def add_faults(field):
     "Add actor for faults."
     field.faults.get_blocks()
@@ -426,9 +460,8 @@ def add_faults(field):
     labels.SetName("labels")
 
     grid = field.grid
-    z = grid.xyz[grid.actnum][..., 2]
-    z_min = z.min()
-    dz = z.max() - z_min
+    z_min = grid.bounding_box[2]
+    dz = grid.bounding_box[-1] - z_min
     z_min = z_min - 0.05*dz
 
     points = vtk.vtkPoints()
@@ -440,9 +473,9 @@ def add_faults(field):
     link_cells = vtk.vtkCellArray()
 
     size = 0
-    for i, segment in enumerate(field.faults):
-        blocks = segment.blocks
-        xyz = segment.faces_verts
+    for i, fault in enumerate(field.faults):
+        blocks = fault.blocks
+        xyz = fault.faces_verts
         active = field.grid.actnum[blocks[:, 0], blocks[:, 1], blocks[:, 2]]
         xyz = xyz[active].reshape(-1, 3)
         if len(xyz) == 0:
@@ -452,7 +485,7 @@ def add_faults(field):
             points.InsertNextPoint(*p)
 
         labeled_points_id = labeled_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])*FIELD['scales'])
-        labels.SetValue(labeled_points_id, segment.name)
+        labels.SetValue(labeled_points_id, fault.name)
         links_points_ids.append(links_points.InsertNextPoint(np.array([*xyz[0, :2], z_min])))
         links_points_ids.append(links_points.InsertNextPoint(*xyz[0]))
 
@@ -520,12 +553,12 @@ def add_faults(field):
     renderer.AddActor(actor_faults)
     FIELD[actor_names.faults] = actor_faults
 
-def make_empty_dataset():
+def make_empty_grid():
     "Init variables."
-    dataset = vtk.vtkUnstructuredGrid()
+    grid = vtk.vtkUnstructuredGrid()
 
     mapper = vtkDataSetMapper()
-    mapper.SetInputData(dataset)
+    mapper.SetInputData(grid)
     mapper.SetScalarRange(0, 1)
 
     actor = vtkActor()
@@ -535,7 +568,7 @@ def make_empty_dataset():
     renderer.ResetCamera()
 
     FIELD[actor_names.main] = actor
-    FIELD['dataset'] = dataset
+    FIELD['grid'] = grid
 
 def on_keydown(key_code):
     "Autocomplete path input."

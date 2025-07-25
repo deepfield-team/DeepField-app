@@ -80,8 +80,7 @@ def get_data_limits(component, attr, activeStep):
         data = data[activeStep]
 
     data = data[FIELD['model'].grid.actnum]
-    vmax = data.max()
-    vmin = data.min()
+    vmin, vmax = data.min(), data.max()
     if vmax == vmin:
         vmax = 1.01 * vmax
         vmin = 0.99 * vmin
@@ -91,7 +90,7 @@ def get_data_limits(component, attr, activeStep):
 def create_slice(component, att, i, j, k, t, range_x, range_y,
                  xaxis_name, yaxis_name, width,  height, colormap):
     "Create slice plot."
-    x, y, triangles, data, indices = get_slice_trisurf(component, att, i, j, k, t)
+    x, y, triangles, data, indices, _ = get_slice_trisurf(component, att, i, j, k, t)
     if triangles is None:
         x = np.zeros(0)
         y = np.zeros(0)
@@ -103,7 +102,7 @@ def create_slice(component, att, i, j, k, t, range_x, range_y,
         centroids = triangle_centroids(x, y, triangles)
 
     indices = indices + 1
-    custom_data = np.hstack((centroids, indices))
+    custom_data = np.hstack((centroids, np.tile(indices, (2,1))))
     z = np.zeros(x.shape)
     fig = go.Figure(data=[
         go.Mesh3d(
@@ -163,7 +162,7 @@ def update_slices(figure_size, activeSlice,
         return
     activeStep = int(activeStep)
     grid = FIELD['model'].grid
-    xyz = grid.xyz
+    bounding_box = grid.bounding_box
     bounds = figure_size.get("size", {})
     width = bounds.get("width", 300)
     height = bounds.get("height", 300)
@@ -171,8 +170,8 @@ def update_slices(figure_size, activeSlice,
     comp_name = comp_name.lower()
     component = getattr(FIELD['model'], comp_name)
     if activeSlice == 'i':
-        range_x = (xyz[grid.actnum][..., 1].min(), xyz[grid.actnum][..., 1].max())
-        range_y = (xyz[grid.actnum][..., 2].min(), xyz[grid.actnum][..., 2].max())
+        range_x = (bounding_box[1], bounding_box[4])
+        range_y = (bounding_box[2], bounding_box[5])
         ctrl.update_slice(
             create_slice(component=component,
                         att=attr, i=int(xslice)-1,
@@ -188,8 +187,8 @@ def update_slices(figure_size, activeSlice,
                         colormap=colormap))
 
     if activeSlice == 'j':
-        range_x = (xyz[grid.actnum][..., 0].min(), xyz[grid.actnum][..., 0].max())
-        range_y = (xyz[grid.actnum][..., 2].min(), xyz[grid.actnum][..., 2].max())
+        range_x = (bounding_box[0], bounding_box[3])
+        range_y = (bounding_box[2], bounding_box[5])
         ctrl.update_slice(
             create_slice(component=component,
                         att=attr,
@@ -206,8 +205,8 @@ def update_slices(figure_size, activeSlice,
                         colormap=colormap))
 
     if activeSlice == 'k':
-        range_x = (xyz[grid.actnum][..., 0].min(), xyz[grid.actnum][..., 0].max())
-        range_y = (xyz[grid.actnum][..., 1].min(), xyz[grid.actnum][..., 1].max())
+        range_x = (bounding_box[0], bounding_box[3])
+        range_y = (bounding_box[1], bounding_box[4])
         ctrl.update_slice(
             create_slice(
                 component=component,
