@@ -4,7 +4,7 @@ import pandas as pd
 from matplotlib.pyplot import get_cmap
 import vtk
 
-from trame.widgets import html, vtk as vtk_widgets, vuetify3 as vuetify
+from trame.widgets import html, vtklocal, vtk as vtk_widgets, vuetify3 as vuetify
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
@@ -67,6 +67,7 @@ def change_vtk_bgr(theme, **kwargs):
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
     rw_style.ChangeTheme(theme)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("activeField", "modelID")
@@ -157,6 +158,7 @@ def update_wells_status(activeStep):
             well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("RED"))
 
     FIELD[dataset_names.wells].GetCellData().SetScalars(well_colors)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change('stateDate')
@@ -189,6 +191,7 @@ def update_cmap(colormap, **kwargs):
         scalarWidget.On()
     else:
         FIELD[actor_names.main].GetMapper().ScalarVisibilityOff()
+    render_window.Render()
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
@@ -281,6 +284,7 @@ def update_opacity(opacity, **kwargs):
     if opacity is None:
         return
     FIELD[actor_names.main].GetProperty().SetOpacity(opacity)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showScalars")
@@ -302,6 +306,7 @@ def change_field_visibility(showScalars, **kwargs):
         else:
             FIELD[actor_names.main].SetVisibility(False)
             scalarBar.SetVisibility(False)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showWireframe")
@@ -318,6 +323,7 @@ def change_wireframe_visibility(showWireframe, **kwargs):
         FIELD[actor_names.main].SetVisibility(True)
     else:
         FIELD[actor_names.main].SetVisibility(False)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showWells")
@@ -327,6 +333,7 @@ def change_wells_visibility(showWells, **kwargs):
     for name in (actor_names.wells, actor_names.well_links, actor_names.well_labels):
         if name in FIELD:
             FIELD[name].SetVisibility(showWells)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showFaults")
@@ -336,6 +343,7 @@ def change_faults_visibility(showFaults, **kwargs):
     for name in [actor_names.faults, actor_names.fault_links, actor_names.fault_labels]:
         if name in FIELD:
             FIELD[name].SetVisibility(showFaults)
+    render_window.Render()
     ctrl.view_update()
 
 def default_view():
@@ -371,6 +379,7 @@ async def start_animation():
             break
         with state:
             state.activeStep = step
+        render_window.Render()
         ctrl.view_update()
         await asyncio.sleep(state.anim_speed)
     with state:
@@ -395,10 +404,11 @@ def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="height: 100%; width: 100%", classes='pa-0 ma-0'):
             with vuetify.VCol(classes="pa-0"):
-                view = vtk_widgets.VtkRemoteView(
+                view = vtklocal.LocalView(render_window)
+                '''vtk_widgets.VtkRemoteView(
                     render_window,
                     **VTK_VIEW_SETTINGS
-                    )
+                    )'''
                 ctrl.view_update.add(view.update)
                 ctrl.view_reset_camera.add(view.reset_camera)
 

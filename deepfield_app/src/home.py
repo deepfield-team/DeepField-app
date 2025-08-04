@@ -22,7 +22,7 @@ from deepfield import Field
 
 from .config import state, ctrl, FIELD, renderer, dataset_names, actor_names
 from .common import reset_camera, set_active_scalars
-from .view_3d import rw_style
+from .view_3d import rw_style, render_window
 
 import asyncio
 from trame.app import asynchronous
@@ -180,6 +180,7 @@ def process_field(field):
         if name in FIELD:
             renderer.RemoveActor(FIELD[name])
     rw_style.RemoveActors()
+    render_window.Render()
     reset_camera()
     ctrl.view_update()
 
@@ -238,7 +239,8 @@ def process_field(field):
     add_wells(field)
 
     add_faults(field)
-
+    
+    render_window.Render()
     reset_camera()
     ctrl.view_update()
     ctrl.default_view()
