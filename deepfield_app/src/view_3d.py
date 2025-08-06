@@ -37,8 +37,9 @@ render_window.ShowWindowOff()
 
 rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
-rw_style = CustomInteractorStyle(renderer, render_window)
+rw_style = vtk.vtkInteractorStyleTrackballCamera()#renderer, render_window) #CustomInteractorStyle(renderer, render_window)
 rw_interactor.SetInteractorStyle(rw_style)
+#rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
 scalarWidget = vtk.vtkScalarBarWidget()
 scalarWidget.SetInteractor(rw_interactor)
@@ -66,7 +67,7 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
-    rw_style.ChangeTheme(theme)
+    #rw_style.ChangeTheme(theme)
     render_window.Render()
     ctrl.view_update()
 
@@ -82,16 +83,16 @@ def update_field(activeField, **kwargs):
 
     comp, _ = activeField.lower().split('_')
     activeStep = int(state.activeStep) if state.activeStep else 0
-    if comp == 'states':
+    '''if comp == 'states':
         state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
         state.need_time_slider = True
     else:
-        state.need_time_slider = False
+        state.need_time_slider = False'''
 
     mapper = FIELD[actor_names.main].GetMapper()
     mapper.SetScalarRange(FIELD['grid'].GetScalarRange())
     FIELD[actor_names.main].SetMapper(mapper)
-    scalarBar.SetTitle(activeField.split('_')[1])
+    '''scalarBar.SetTitle(activeField.split('_')[1])
 
     update_wells_status(activeStep)
 
@@ -99,7 +100,7 @@ def update_field(activeField, **kwargs):
                             state.j_slice,
                             state.k_slice,
                             state.field_slice,
-                            state.show_well_blocks)
+                            state.show_well_blocks)'''
 
 @state.change("activeStep")
 def update_active_step(activeStep, **kwargs):
@@ -112,7 +113,7 @@ def update_active_step(activeStep, **kwargs):
 
     activeStep = int(activeStep) if activeStep else 0
 
-    rw_style._AnnotatePick(rw_style.currentId, update=True)
+    #rw_style._AnnotatePick(rw_style.currentId, update=True)
 
     update_wells_status(activeStep)
 
@@ -409,7 +410,7 @@ def render_3d():
                     render_window,
                     **VTK_VIEW_SETTINGS
                     )'''
-                ctrl.view_update.add(view.update)
+                ctrl.view_update.add(view.update_throttle)
                 ctrl.view_reset_camera.add(view.reset_camera)
 
     with html.Div(
@@ -420,7 +421,7 @@ def render_3d():
               hide_details=True,
               density='compact',
               type="date"):
-            with vuetify.Template(v_slot_append=True,
+            '''with vuetify.Template(v_slot_append=True,
                 properties=[("v_slot_append", "v-slot:append")],):
                 with vuetify.VSlider(
                     min=0,
@@ -440,8 +441,8 @@ def render_3d():
                             type="number",
                             variant="outlined",
                             bg_color=('bgColor',),
-                            hide_details=True)
-                with vuetify.VBtn(
+                            hide_details=True)'''
+            with vuetify.VBtn(
                     icon=True,
                     flat=True,
                     click=ctrl.startAnimation
