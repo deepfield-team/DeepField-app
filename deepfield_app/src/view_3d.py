@@ -454,7 +454,7 @@ def render_3d():
                             text='Start animation',
                             activator="parent",
                             location="top")
-                with vuetify.VBtn(
+            with vuetify.VBtn(
                     icon=True,
                     flat=True,
                     click=ctrl.changeSpeed
@@ -764,4 +764,4 @@ def render_3d():
                             location="end")
                         vuetify.VIcon("mdi-fit-to-page-outline")
 
-ctrl.on_server_ready.add(ctrl.view_update)
+#ctrl.on_server_ready.add(ctrl.view_update)
