@@ -37,7 +37,8 @@ render_window.ShowWindowOff()
 
 rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
-rw_style = vtk.vtkInteractorStyleTrackballCamera()#renderer, render_window) #CustomInteractorStyle(renderer, render_window)
+#rw_style = CustomInteractorStyle(renderer, render_window)
+rw_style = vtk.vtkInteractorStyleTrackballCamera()#renderer, render_window) 
 rw_interactor.SetInteractorStyle(rw_style)
 #rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
@@ -83,16 +84,16 @@ def update_field(activeField, **kwargs):
 
     comp, _ = activeField.lower().split('_')
     activeStep = int(state.activeStep) if state.activeStep else 0
-    '''if comp == 'states':
+    if comp == 'states':
         state.stateDate = FIELD['dates'][activeStep].strftime('%Y-%m-%d')
         state.need_time_slider = True
     else:
-        state.need_time_slider = False'''
+        state.need_time_slider = False
 
     mapper = FIELD[actor_names.main].GetMapper()
     mapper.SetScalarRange(FIELD['grid'].GetScalarRange())
     FIELD[actor_names.main].SetMapper(mapper)
-    '''scalarBar.SetTitle(activeField.split('_')[1])
+    scalarBar.SetTitle(activeField.split('_')[1])
 
     update_wells_status(activeStep)
 
@@ -100,7 +101,7 @@ def update_field(activeField, **kwargs):
                             state.j_slice,
                             state.k_slice,
                             state.field_slice,
-                            state.show_well_blocks)'''
+                            state.show_well_blocks)
 
 @state.change("activeStep")
 def update_active_step(activeStep, **kwargs):
@@ -763,5 +764,3 @@ def render_3d():
                             activator="parent",
                             location="end")
                         vuetify.VIcon("mdi-fit-to-page-outline")
-
-#ctrl.on_server_ready.add(ctrl.view_update)
