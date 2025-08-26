@@ -37,10 +37,13 @@ render_window.ShowWindowOff()
 
 rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
-#rw_style = CustomInteractorStyle(renderer, render_window)
-rw_style = vtk.vtkInteractorStyleTrackballCamera()#renderer, render_window) 
+
+if state.vtk_remote:
+    rw_style = CustomInteractorStyle(renderer, render_window)
+else:
+    rw_style = vtk.vtkInteractorStyleTrackballCamera()
+
 rw_interactor.SetInteractorStyle(rw_style)
-#rw_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
 scalarWidget = vtk.vtkScalarBarWidget()
 scalarWidget.SetInteractor(rw_interactor)
@@ -68,7 +71,8 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
-    #rw_style.ChangeTheme(theme)
+    if state.vtk_remote:
+        rw_style.ChangeTheme(theme)
     render_window.Render()
     ctrl.view_update()
 
@@ -114,7 +118,8 @@ def update_active_step(activeStep, **kwargs):
 
     activeStep = int(activeStep) if activeStep else 0
 
-    #rw_style._AnnotatePick(rw_style.currentId, update=True)
+    if state.vtk_remote:
+        rw_style._AnnotatePick(rw_style.currentId, update=True)
 
     update_wells_status(activeStep)
 
@@ -406,12 +411,18 @@ def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="height: 100%; width: 100%", classes='pa-0 ma-0'):
             with vuetify.VCol(classes="pa-0"):
-                view = vtklocal.LocalView(render_window)
-                '''vtk_widgets.VtkRemoteView(
-                    render_window,
-                    **VTK_VIEW_SETTINGS
-                    )'''
-                ctrl.view_update.add(view.update_throttle)
+                if state.vtk_remote:
+                    view = vtk_widgets.VtkRemoteView(
+                                render_window,
+                                **VTK_VIEW_SETTINGS
+                            )
+                else:
+                    view = vtklocal.LocalView(
+                                render_window,
+                                **VTK_VIEW_SETTINGS
+                            )
+
+                ctrl.view_update.add(view.update)
                 ctrl.view_reset_camera.add(view.reset_camera)
 
     with html.Div(
@@ -422,7 +433,7 @@ def render_3d():
               hide_details=True,
               density='compact',
               type="date"):
-            '''with vuetify.Template(v_slot_append=True,
+            with vuetify.Template(v_slot_append=True,
                 properties=[("v_slot_append", "v-slot:append")],):
                 with vuetify.VSlider(
                     min=0,
@@ -442,7 +453,7 @@ def render_3d():
                             type="number",
                             variant="outlined",
                             bg_color=('bgColor',),
-                            hide_details=True)'''
+                            hide_details=True)
             with vuetify.VBtn(
                     icon=True,
                     flat=True,

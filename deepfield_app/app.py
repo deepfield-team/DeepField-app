@@ -21,11 +21,11 @@ from .src.info import render_info
 from .src.script import render_script
 from .src.help import render_help
 
-
 state.theme = 'light'
 state.sideBarColor = "grey-lighten-4"
 state.plotlyTheme = 'plotly'
 state.bgColor = 'white'
+
 
 def change_theme(*args, **kwargs):
     "Change app theme."
