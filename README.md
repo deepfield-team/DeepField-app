@@ -123,6 +123,11 @@ and see
 [examples](https://github.com/deepfield-team/DeepField/blob/main/tutorials) 
 in the `DeepField` repository to prepare a script.
 
+## Rendering options
+
+By default, rendering is performed locally in the user's browser using vtk webassembly functionality.
+To enable vtk remote rendering backend, use option `-vr` or `--vtk_remote`
+
 ## Next releases
 
 The project is developing. We are preparing new releases with new features.
