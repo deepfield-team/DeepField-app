@@ -8,6 +8,7 @@ from trame.widgets import html, vtklocal, vtk as vtk_widgets, vuetify3 as vuetif
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
+from vtkmodules.vtkCommonCore import vtkLookupTable
 
 from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
 from .custom_classes import CustomInteractorStyle
@@ -186,18 +187,22 @@ def update_date(stateDate, **kwargs):
 def update_cmap(colormap, **kwargs):
     "Update colormap."
     _ = kwargs
+    
+    mapper = FIELD[actor_names.main].GetMapper()
     if state.showScalars:
         cmap = get_cmap(colormap)
-        table = FIELD[actor_names.main].GetMapper().GetLookupTable()
+        table = vtkLookupTable()
         colors = cmap(np.arange(0, cmap.N))
         table.SetNumberOfTableValues(len(colors))
         for i, val in enumerate(colors):
             table.SetTableValue(i, val[0], val[1], val[2])
         table.Build()
+        mapper.SetLookupTable(table)
         scalarWidget.GetScalarBarActor().SetLookupTable(table)
         scalarWidget.On()
     else:
-        FIELD[actor_names.main].GetMapper().ScalarVisibilityOff()
+        mapper.ScalarVisibilityOff()
+
     render_window.Render()
     ctrl.view_update()
 
@@ -454,30 +459,30 @@ def render_3d():
                             variant="outlined",
                             bg_color=('bgColor',),
                             hide_details=True)
-            with vuetify.VBtn(
-                    icon=True,
-                    flat=True,
-                    click=ctrl.startAnimation
-                ):
-                    vuetify.VIcon(
-                        children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"]
-                    )
-                    vuetify.VTooltip(
-                            text='Start animation',
-                            activator="parent",
-                            location="top")
-            with vuetify.VBtn(
-                    icon=True,
-                    flat=True,
-                    click=ctrl.changeSpeed
-                ):
-                    vuetify.VIcon(
-                        children=["{{anim_speed == 0.5 ? 'mdi-speedometer-medium': anim_speed == 1 ? 'mdi-speedometer-slow' : 'mdi-speedometer'}}"]
-                    )
-                    vuetify.VTooltip(
-                            text='Change animation speed',
-                            activator="parent",
-                            location="top")
+                with vuetify.VBtn(
+                        icon=True,
+                        flat=True,
+                        click=ctrl.startAnimation
+                    ):
+                        vuetify.VIcon(
+                            children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"]
+                        )
+                        vuetify.VTooltip(
+                                text='Start animation',
+                                activator="parent",
+                                location="top")
+                with vuetify.VBtn(
+                        icon=True,
+                        flat=True,
+                        click=ctrl.changeSpeed
+                    ):
+                        vuetify.VIcon(
+                            children=["{{anim_speed == 0.5 ? 'mdi-speedometer-medium': anim_speed == 1 ? 'mdi-speedometer-slow' : 'mdi-speedometer'}}"]
+                        )
+                        vuetify.VTooltip(
+                                text='Change animation speed',
+                                activator="parent",
+                                location="top")
 
     with vuetify.VCard(
         color=('sideBarColor',),

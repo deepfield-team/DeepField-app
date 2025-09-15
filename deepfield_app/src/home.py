@@ -179,7 +179,7 @@ def process_field(field):
     for name in actor_names.__dict__.values():
         if name in FIELD:
             renderer.RemoveActor(FIELD[name])
-    #rw_style.RemoveActors()
+
     render_window.Render()
     reset_camera()
     ctrl.view_update()
