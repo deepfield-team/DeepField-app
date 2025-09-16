@@ -106,6 +106,11 @@ Then navigate to the directory DeepField-app and run in the terminal
 
 to start the application.
 
+## Rendering options
+
+By default, rendering is performed locally in the user's browser using vtk webassembly functionality.
+To enable vtk remote rendering, use the `-vr` or `--vtk_remote` option when starting the application. 
+Note that the functionality of the application is slightly different between local and remote rendering.
 
 ## Open-source reservoir models
 

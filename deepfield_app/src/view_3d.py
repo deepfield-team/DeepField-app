@@ -4,10 +4,11 @@ import pandas as pd
 from matplotlib.pyplot import get_cmap
 import vtk
 
-from trame.widgets import html, vtk as vtk_widgets, vuetify3 as vuetify
+from trame.widgets import html, vtklocal, vtk as vtk_widgets, vuetify3 as vuetify
 
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
+from vtkmodules.vtkCommonCore import vtkLookupTable
 
 from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
 from .custom_classes import CustomInteractorStyle
@@ -37,7 +38,12 @@ render_window.ShowWindowOff()
 
 rw_interactor = vtkRenderWindowInteractor()
 rw_interactor.SetRenderWindow(render_window)
-rw_style = CustomInteractorStyle(renderer, render_window)
+
+if state.vtk_remote:
+    rw_style = CustomInteractorStyle(renderer, render_window)
+else:
+    rw_style = vtk.vtkInteractorStyleTrackballCamera()
+
 rw_interactor.SetInteractorStyle(rw_style)
 
 scalarWidget = vtk.vtkScalarBarWidget()
@@ -66,7 +72,9 @@ def change_vtk_bgr(theme, **kwargs):
         renderer.SetBackground(0, 0, 0)
         scalarBar.GetLabelTextProperty().SetColor(1, 1, 1)
         scalarBar.GetTitleTextProperty().SetColor(1, 1, 1)
-    rw_style.ChangeTheme(theme)
+    if state.vtk_remote:
+        rw_style.ChangeTheme(theme)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("activeField", "modelID")
@@ -111,7 +119,8 @@ def update_active_step(activeStep, **kwargs):
 
     activeStep = int(activeStep) if activeStep else 0
 
-    rw_style._AnnotatePick(rw_style.currentId, update=True)
+    if state.vtk_remote:
+        rw_style._AnnotatePick(rw_style.currentId, update=True)
 
     update_wells_status(activeStep)
 
@@ -157,6 +166,7 @@ def update_wells_status(activeStep):
             well_colors.InsertNextTypedTuple(named_colors.GetColor3ub("RED"))
 
     FIELD[dataset_names.wells].GetCellData().SetScalars(well_colors)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change('stateDate')
@@ -177,18 +187,23 @@ def update_date(stateDate, **kwargs):
 def update_cmap(colormap, **kwargs):
     "Update colormap."
     _ = kwargs
+    
+    mapper = FIELD[actor_names.main].GetMapper()
     if state.showScalars:
         cmap = get_cmap(colormap)
-        table = FIELD[actor_names.main].GetMapper().GetLookupTable()
+        table = vtkLookupTable()
         colors = cmap(np.arange(0, cmap.N))
         table.SetNumberOfTableValues(len(colors))
         for i, val in enumerate(colors):
             table.SetTableValue(i, val[0], val[1], val[2])
         table.Build()
+        mapper.SetLookupTable(table)
         scalarWidget.GetScalarBarActor().SetLookupTable(table)
         scalarWidget.On()
     else:
-        FIELD[actor_names.main].GetMapper().ScalarVisibilityOff()
+        mapper.ScalarVisibilityOff()
+
+    render_window.Render()
     ctrl.view_update()
 
 def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
@@ -281,6 +296,7 @@ def update_opacity(opacity, **kwargs):
     if opacity is None:
         return
     FIELD[actor_names.main].GetProperty().SetOpacity(opacity)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showScalars")
@@ -302,6 +318,7 @@ def change_field_visibility(showScalars, **kwargs):
         else:
             FIELD[actor_names.main].SetVisibility(False)
             scalarBar.SetVisibility(False)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showWireframe")
@@ -318,6 +335,7 @@ def change_wireframe_visibility(showWireframe, **kwargs):
         FIELD[actor_names.main].SetVisibility(True)
     else:
         FIELD[actor_names.main].SetVisibility(False)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showWells")
@@ -327,6 +345,7 @@ def change_wells_visibility(showWells, **kwargs):
     for name in (actor_names.wells, actor_names.well_links, actor_names.well_labels):
         if name in FIELD:
             FIELD[name].SetVisibility(showWells)
+    render_window.Render()
     ctrl.view_update()
 
 @state.change("showFaults")
@@ -336,6 +355,7 @@ def change_faults_visibility(showFaults, **kwargs):
     for name in [actor_names.faults, actor_names.fault_links, actor_names.fault_labels]:
         if name in FIELD:
             FIELD[name].SetVisibility(showFaults)
+    render_window.Render()
     ctrl.view_update()
 
 def default_view():
@@ -371,6 +391,7 @@ async def start_animation():
             break
         with state:
             state.activeStep = step
+        render_window.Render()
         ctrl.view_update()
         await asyncio.sleep(state.anim_speed)
     with state:
@@ -395,10 +416,17 @@ def render_3d():
     with vuetify.VContainer(fluid=True, style='align-items: start', classes="fill-height pa-0 ma-0"):
         with vuetify.VRow(style="height: 100%; width: 100%", classes='pa-0 ma-0'):
             with vuetify.VCol(classes="pa-0"):
-                view = vtk_widgets.VtkRemoteView(
-                    render_window,
-                    **VTK_VIEW_SETTINGS
-                    )
+                if state.vtk_remote:
+                    view = vtk_widgets.VtkRemoteView(
+                                render_window,
+                                **VTK_VIEW_SETTINGS
+                            )
+                else:
+                    view = vtklocal.LocalView(
+                                render_window,
+                                **VTK_VIEW_SETTINGS
+                            )
+
                 ctrl.view_update.add(view.update)
                 ctrl.view_reset_camera.add(view.reset_camera)
 
@@ -432,29 +460,29 @@ def render_3d():
                             bg_color=('bgColor',),
                             hide_details=True)
                 with vuetify.VBtn(
-                    icon=True,
-                    flat=True,
-                    click=ctrl.startAnimation
-                ):
-                    vuetify.VIcon(
-                        children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"]
-                    )
-                    vuetify.VTooltip(
-                            text='Start animation',
-                            activator="parent",
-                            location="top")
+                        icon=True,
+                        flat=True,
+                        click=ctrl.startAnimation
+                    ):
+                        vuetify.VIcon(
+                            children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"]
+                        )
+                        vuetify.VTooltip(
+                                text='Start animation',
+                                activator="parent",
+                                location="top")
                 with vuetify.VBtn(
-                    icon=True,
-                    flat=True,
-                    click=ctrl.changeSpeed
-                ):
-                    vuetify.VIcon(
-                        children=["{{anim_speed == 0.5 ? 'mdi-speedometer-medium': anim_speed == 1 ? 'mdi-speedometer-slow' : 'mdi-speedometer'}}"]
-                    )
-                    vuetify.VTooltip(
-                            text='Change animation speed',
-                            activator="parent",
-                            location="top")
+                        icon=True,
+                        flat=True,
+                        click=ctrl.changeSpeed
+                    ):
+                        vuetify.VIcon(
+                            children=["{{anim_speed == 0.5 ? 'mdi-speedometer-medium': anim_speed == 1 ? 'mdi-speedometer-slow' : 'mdi-speedometer'}}"]
+                        )
+                        vuetify.VTooltip(
+                                text='Change animation speed',
+                                activator="parent",
+                                location="top")
 
     with vuetify.VCard(
         color=('sideBarColor',),
@@ -752,5 +780,3 @@ def render_3d():
                             activator="parent",
                             location="end")
                         vuetify.VIcon("mdi-fit-to-page-outline")
-
-ctrl.on_server_ready.add(ctrl.view_update)

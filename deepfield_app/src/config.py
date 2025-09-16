@@ -19,6 +19,11 @@ state, ctrl = server.state, server.controller
 
 state.trame__title = "DeepField"
 
+server.cli.add_argument("-vr", "--vtk_remote", action="store_true", help="choosing vtk remote rendering")
+args = server.cli.parse_args()
+
+state.vtk_remote = True if args.vtk_remote else False
+
 renderer = vtkRenderer()
 renderer.SetBackground(1, 1, 1)
 
