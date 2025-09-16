@@ -62,7 +62,6 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             self.renderer.RemoveActor(self.text_actor)
             return
         
-        # attr_list = FIELD['c_data'].keys()[:-1]
         dataset = FIELD[actor_names.main].GetMapper().GetInput()
 
         ix = dataset.GetCellData().GetArray('I').GetValue(cellId)
@@ -70,15 +69,9 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         kx = dataset.GetCellData().GetArray('K').GetValue(cellId)
         n = dataset.GetCellData().GetArray('I').GetSize()
         info = ""
-        # for attr in attr_list:
-        #     if attr in ["I", "J", "K", "WELL_BLOCKS"]:
-        #         continue
-        # arr = dataset.GetCellData().GetArray(state.activeField)
-        # if arr.GetSize() == n:
-        #     value = arr.GetValue(cellId)
-        # else:
-        #     value = arr.GetValue(cellId*(state.max_timestep+1) + int(state.activeStep))
-        # info += f"{attr}: {value:.2f}\n\n"
+        arr = dataset.GetCellData().GetArray('ActiveScalars')
+        value = arr.GetValue(cellId)
+        info += f"{state.activeField}: {value:.2f}\n\n"
         info += f"(I, J, K) = ({ix+1}, {jx+1}, {kx+1})"
         self.text_mapper.SetInput(info)
         self.text_actor.VisibilityOn()
