@@ -1,6 +1,6 @@
 # DeepField-app
 
-Web application for visualization and exploration of reservoir models in 3D, 2D, and 1D.
+Web application for visualization and exploration of reservoir models with millions of grid cells in 3D, 2D, and 1D.
 
 Lightweight. Modern. Open source.
 
@@ -55,6 +55,15 @@ Script writing
 
 <img src="static/scene7.PNG" width="50%"/>
 
+## Performance
+
+Loading time and memory usage for benchmark models in the [benchmarks](https://github.com/deepfield-team/DeepField-app/benchmarks) directory measured on a PC with Intel Core Ultra 7, 3.9GHz, 64Gb CPU:
+
+| Number of cells | Loading time | Memory usage |
+|-------|---------|---------|
+| 1M | 23s | 0.5Gb |
+| 10M | 3m 49s | 2.6Gb |
+| 50M | 19m 26s | 10.3Gb |
 
 ## Installation as a package
 
