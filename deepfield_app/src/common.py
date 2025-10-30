@@ -28,7 +28,7 @@ def update_field_slices_params(fmin, fmax):
     state.field_slice_step = (state.field_slice_max - state.field_slice_min) / state.n_field_steps
 
 def set_active_scalars(update_range):
-
+	"Set active scalars."
 	comp, attr = state.activeField.lower().split('_')
 	field = FIELD['model']
 	data = getattr(field, comp)[attr]
@@ -36,6 +36,8 @@ def set_active_scalars(update_range):
 
 	if comp == 'states':
 		activeStep = int(state.activeStep) if state.activeStep else 0
+		if activeStep >= len(data):
+			return
 		if update_range:
 			data = data.reshape(len(data), -1)[:, actnum]
 			fmin, fmax = data.min(), data.max()

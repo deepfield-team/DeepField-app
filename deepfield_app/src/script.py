@@ -27,7 +27,7 @@ def run_script(scriptRunning, **kwargs):
     success = False
     res = ''
 
-    if FIELD['model_copy'] is None:
+    if FIELD['model_copy'] is None and FIELD['model'] is not None:
         FIELD['model_copy'] = FIELD['model'].copy()
 
     if 'f' in local_vars:
