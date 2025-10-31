@@ -1,3 +1,4 @@
+"Common utils."
 import numpy as np
 from vtk.util.numpy_support import numpy_to_vtk # pylint: disable=no-name-in-module, import-error
 
@@ -9,14 +10,15 @@ state.activeStep = 0
 
 
 def reset_camera():
-    renderer.ResetCamera()
-    camera = renderer.GetActiveCamera()
-    x, y, z = camera.GetPosition()
-    fx, fy, fz = camera.GetFocalPoint()
-    dist = np.linalg.norm(np.array([x, y, z]) - np.array([fx, fy, fz]))
-    camera.SetPosition(fx-dist/np.sqrt(3), fy-dist/np.sqrt(3), fz-dist/np.sqrt(3))
-    camera.SetViewUp(0, 0, -1)
-    renderer.ResetCamera()
+	"Reset camera."
+	renderer.ResetCamera()
+	camera = renderer.GetActiveCamera()
+	x, y, z = camera.GetPosition()
+	fx, fy, fz = camera.GetFocalPoint()
+	dist = np.linalg.norm(np.array([x, y, z]) - np.array([fx, fy, fz]))
+	camera.SetPosition(fx-dist/np.sqrt(3), fy-dist/np.sqrt(3), fz-dist/np.sqrt(3))
+	camera.SetViewUp(0, 0, -1)
+	renderer.ResetCamera()
 
 def update_field_slices_params(fmin, fmax):
     "Init filter limits."
@@ -37,7 +39,7 @@ def set_active_scalars(update_range):
 	if comp == 'states':
 		activeStep = int(state.activeStep) if state.activeStep else 0
 		if activeStep >= len(data):
-			return
+			activeStep = len(data) - 1
 		if update_range:
 			data = data.reshape(len(data), -1)[:, actnum]
 			fmin, fmax = data.min(), data.max()

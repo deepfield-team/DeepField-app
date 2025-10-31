@@ -2,8 +2,7 @@
 import os
 from glob import glob
 from uuid import uuid4
-import numpy as np
-import pandas as pd
+import asyncio
 import vtk
 
 from vtkmodules.vtkRenderingCore import (
@@ -12,18 +11,16 @@ from vtkmodules.vtkRenderingCore import (
 )
 
 from trame.widgets import html, vuetify3 as vuetify
+from trame.app import asynchronous
 
 from deepfield import Field
 
-from .config import state, ctrl, FIELD, renderer, dataset_names, actor_names, jserver
+from .config import state, ctrl, FIELD, renderer, actor_names, jserver
 from .common import reset_camera
-from .view_3d import rw_style, render_window
+from .view_3d import render_window
 from .processing import (process_grid, prepare_slices, get_field_attributes,
                          get_field_meta, compute_initial_content, compute_total_rates,
                          get_simulation_dates, add_scalars, add_wells, add_faults)
-
-import asyncio
-from trame.app import asynchronous
 
 
 USER_DIR = os.path.expanduser("~")
@@ -109,6 +106,7 @@ def filter_path(path):
 
 @state.change("user_click_request")
 def handle_user_click_request(user_click_request, **kwargs):
+    "Handle user click."
     if user_click_request is None:
         return
     state.updateDirList = True
@@ -134,6 +132,7 @@ def get_path_variants(user_request, **kwargs):
 
 @asynchronous.task
 async def load_file_async():
+    "Load file async."
     with state:
         state.loading = True
         state.showHistory = False
@@ -174,7 +173,6 @@ ctrl.load_file_async = load_file_async
 
 def process_field(field):
     "Prepare field data for visualization."
-
     for name in actor_names.__dict__.values():
         if name in FIELD:
             renderer.RemoveActor(FIELD[name])
@@ -276,6 +274,7 @@ async def submit_sumulation_task(queue, results, path):
 
 @asynchronous.task
 async def simulate_async():
+    "Simulate async."
     with state:
         state.simulating = True
 
@@ -290,9 +289,14 @@ async def simulate_async():
         field.states.pressure = results['pressure']
         field.states.soil = results['saturations'][:, 1, :]
         field.states.swat = results['saturations'][:, 0, :]
+        for k in field.states.attributes:
+            if k.upper() not in ['PRESSURE', 'SOIL', 'SWAT']:
+                delattr(field.states, k)
         field.states.to_spatial()
         
         field.wells.update(results['welldata'])
+
+        field.states.dates = field.result_dates
 
         update_dynamics(field)
 
@@ -313,6 +317,8 @@ ctrl.simulate_async = simulate_async
 
 def render_home():
     "Home page layout."
+    text_style = "font-size: 16px;"
+
     with html.Div(
         style='position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80vw; height: 10vh;'
     ):
@@ -345,6 +351,7 @@ def render_home():
                                 )
                             with vuetify.VBtn(
                                 'Simulate',
+                                color=("(loading | simulating | (modelID == 0)) ? '' : '#51b03c'",),
                                 click=ctrl.simulate_async,
                                 disabled=("loading | simulating | (modelID == 0)",)
                             ):
@@ -402,23 +409,23 @@ def render_home():
                         width="7"
                     )
                     with vuetify.VCard(v_if='loading', variant='text'):
-                        vuetify.VCardText('Loading data, please wait')
+                        vuetify.VCardText('Loading data, please wait', style=text_style)
                     with vuetify.VCard(v_if='simulating', variant='text'):
-                        vuetify.VCardText('Simulating model, please wait')
+                        vuetify.VCardText('Simulating model, please wait', style=text_style)
                     with vuetify.VCard(
                         v_if='!showDirList & !showHistory & !loading & !simulating & !loadFailed & !simulationFailed & (modelID > 0)',
                         variant='text'
                     ):
-                        vuetify.VIcon('mdi-check-bold', color="success")
-                        vuetify.VCardText('Completed')
+                        vuetify.VIcon('mdi-check-bold', color='#51b03c', size='large')
+                        vuetify.VCardText('Completed', style=text_style)
                     with vuetify.VCard(
                         v_if='!showDirList & !showHistory & !loading & loadFailed',
                         variant='text'
                     ):
-                        vuetify.VIcon('mdi-close-thick', color="error")
-                        vuetify.VCardText('Failed: ' + '{{errMessage}}')
+                        vuetify.VIcon('mdi-close-thick', color="error", size='large')
+                        vuetify.VCardText('Failed: ' + '{{errMessage}}', style=text_style)
                     with vuetify.VCard(
                         v_if='showHistory & emptyHistory',
                         variant='text'
                     ):
-                        vuetify.VCardText('History is empty.')
+                        vuetify.VCardText('History is empty.', style=text_style)

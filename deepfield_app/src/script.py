@@ -45,7 +45,6 @@ def run_script(scriptRunning, **kwargs):
             res = 'Field update failed: ' + str(err)
     state.scriptOutput = str(res)
     state.scriptRunning = False
-    state.scriptFinished = True
 
 @state.change("fieldRestoring")
 def restore_field(fieldRestoring, **kwargs):
@@ -66,6 +65,7 @@ def render_script():
     	label="Type function to be executed")
     with vuetify.VBtn('Execute',
         click='scriptRunning = true',
+        color='#51b03c',
         loading=('scriptRunning',)):
         vuetify.VTooltip(
             text='Run the script',

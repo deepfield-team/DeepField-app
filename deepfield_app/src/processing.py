@@ -299,7 +299,7 @@ def add_faults(field):
     link_cells = vtk.vtkCellArray()
 
     size = 0
-    for i, fault in enumerate(field.faults):
+    for _, fault in enumerate(field.faults):
         blocks = fault.blocks
         xyz = fault.faces_verts
         active = field.grid.actnum[blocks[:, 0], blocks[:, 1], blocks[:, 2]]

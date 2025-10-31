@@ -21,7 +21,6 @@ from .src.view_1d import render_ts, render_pvt
 from .src.common import reset_camera
 from .src.info import render_info
 from .src.script import render_script
-# from .src.run import render_run
 from .src.help import render_help
 from .src.simulation import simulate
 
@@ -98,8 +97,6 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 render_info()
             with html.Div(v_if="activeTab === 'script'"):
                 render_script()
-            # with html.Div(v_if="activeTab === 'run'"):
-            #     render_run()
 
 
 if __name__ == "__main__":

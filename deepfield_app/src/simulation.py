@@ -1,23 +1,25 @@
 """JutulDarcy simulation utils."""
 import importlib
-import pandas as pd
-import numpy as np
 from datetime import timedelta
 from queue import Empty
+import pandas as pd
+import numpy as np
 
-from .config import state, FIELD
 
 def jd_load(path):
+    "JutulDarcy load."
     jd = importlib.import_module('jutuldarcy')
 
     return jd.setup_case_from_data_file(path)
 
 def jd_simulate(path):
+    "JutulDarcy simulate."
     jd = importlib.import_module('jutuldarcy')
 
     return jd.simulate_data_file(path, convert=True)
 
 def well_states(well, dates, start_date):
+    "Create dataframe with well results."
     states_df = pd.concat([dates, pd.DataFrame(well)], axis=1)
     record0 = pd.DataFrame([[start_date] + [0.0]*(len(well.columns))],
                            columns=states_df.columns)
@@ -25,7 +27,7 @@ def well_states(well, dates, start_date):
     return states_df
 
 def convert_results(case, res, output):
-    jd = importlib.import_module('jutuldarcy')
+    "Convert from JutulDarcy to numpy."
     jl = importlib.import_module('juliacall').Main
     
     state0_pressure = np.array(
@@ -58,6 +60,7 @@ def convert_results(case, res, output):
     output['welldata'] = welldata
 
 def simulate(queue, results, timeout=1):
+    "Simulation pipeline."
     while True:
         try:
             task_id, path = queue.get(timeout=timeout)
@@ -65,16 +68,6 @@ def simulate(queue, results, timeout=1):
                 case = jd_load(path)
                 res = jd_simulate(path)
                 convert_results(case, res, results)
-
-                field = FIELD['model']
-                field.states.pressure = results['pressure']
-                field.states.soil = results['saturations'][:, 1, :]
-                field.states.swat = results['saturations'][:, 0, :]
-                field.states.to_spatial()
-                
-                field.wells.update(results['welldata'])
-                state.modelID += 1
-
                 results[task_id] = 'Done'
             except:
                 results[task_id] = 'Failed'
