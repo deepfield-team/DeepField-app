@@ -286,12 +286,12 @@ async def simulate_async():
         field = FIELD['model']
         results = jserver['results']
 
-        field.states.pressure = results['pressure']
-        field.states.soil = results['saturations'][:, 1, :]
-        field.states.swat = results['saturations'][:, 0, :]
         for k in field.states.attributes:
-            if k.upper() not in ['PRESSURE', 'SOIL', 'SWAT']:
-                delattr(field.states, k)
+            delattr(field.states, k)
+
+        field.states['PRESSURE'] = results['pressure']
+        for k, v in results['saturations'].items():
+            field.states[k] = v
         field.states.to_spatial()
         
         field.wells.update(results['welldata'])

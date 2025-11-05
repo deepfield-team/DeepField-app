@@ -43,7 +43,13 @@ def convert_results(case, res, output):
     jd_pressure = np.vstack([state0_pressure, jd_pressure])
     jd_sats = np.vstack([state0_sats, jd_sats])
 
-    output['saturations'] = jd_sats
+    sat_map = {'JutulDarcy.AqueousPhase()': 'SWAT',
+               'JutulDarcy.LiquidPhase()': 'SOIL',
+               'JutulDarcy.VaporPhase()': 'SGAS'}
+
+    sat_names = [sat_map[str(k)] for k in case.model.models.Reservoir.system.phases]
+    output['saturations'] = dict(zip(sat_names, np.moveaxis(jd_sats, 1, 0)))
+
     output['pressure'] = jd_pressure
 
     n_timestamps = len(res["DAYS"])
