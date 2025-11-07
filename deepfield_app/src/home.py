@@ -39,6 +39,7 @@ state.showHistory = False
 state.emptyHistory = True
 state.errMessage = ''
 state.loadFailed = False
+state.loadedModelPath = None
 state.simulationFailed = False
 state.modelID = 0
 
@@ -123,9 +124,15 @@ def handle_user_click_request(user_click_request, **kwargs):
 def get_path_variants(user_request, **kwargs):
     "Collect and filter paths."
     _ = kwargs
-    state.loading = False
+    if state.loading or state.simulating:
+        return
     state.showHistory = False
-    state.showDirList = not state.initialDirState
+    if user_request is not None:
+        _, ext = os.path.splitext(user_request)
+        arrived = ext.lower() in ['.data', '.hdf5']
+    else:
+        arrived = False
+    state.showDirList = (not state.initialDirState) & (not arrived)
     paths = list(glob(user_request + "*")) if user_request is not None else []
     if state.updateDirList:
         state.dirList = [p for p in paths if filter_path(p)]
@@ -137,6 +144,7 @@ async def load_file_async():
         state.loading = True
         state.showHistory = False
         state.showDirList = False
+        state.simulationFailed = False
 
     field = Field(state.user_request)
 
@@ -146,6 +154,7 @@ async def load_file_async():
         with state:
             state.errMessage = str(err)
             state.loadFailed = True
+            state.loadedModelPath = None
             state.loading = False
         return
 
@@ -158,6 +167,7 @@ async def load_file_async():
         except Exception as err:
             state.errMessage = str(err)
             state.loadFailed = True
+            state.loadedModelPath = None
             state.loading = False
             return
 
@@ -168,6 +178,7 @@ async def load_file_async():
         state.errMessage = ''
         state.loadFailed = False
         state.modelID += 1
+        state.loadedModelPath = state.user_request
 
 ctrl.load_file_async = load_file_async
 
@@ -270,7 +281,6 @@ async def submit_sumulation_task(queue, results, path):
     while task_id not in results:
         await asyncio.sleep(1)
 
-    del results[task_id]
 
 @asynchronous.task
 async def simulate_async():
@@ -279,12 +289,19 @@ async def simulate_async():
         state.simulating = True
 
     try:
+        if state.loadedModelPath is None:
+            raise ValueError('Model is not loaded.')
+
         await submit_sumulation_task(jserver['queue'],
                                      jserver['results'],
-                                     state.user_request)
+                                     state.loadedModelPath)
     
-        field = FIELD['model']
         results = jserver['results']
+
+        if results['status'] is not None:
+            raise ValueError(results['status'])
+
+        field = FIELD['model']
 
         for k in field.states.attributes:
             delattr(field.states, k)
@@ -303,8 +320,8 @@ async def simulate_async():
     except Exception as err:
         with state:
             state.errMessage = str(err)
-            state.simulating = False
             state.simulationFailed = True
+            state.simulating = False
         return
 
     with state:
@@ -353,7 +370,7 @@ def render_home():
                                 'Simulate',
                                 color=("(loading | simulating | (modelID == 0)) ? '' : '#51b03c'",),
                                 click=ctrl.simulate_async,
-                                disabled=("loading | simulating | (modelID == 0)",)
+                                disabled=("loading | loadFailed | simulating | (modelID == 0)",)
                             ):
                                 vuetify.VTooltip(
                                     text='Start model simulation',
@@ -419,7 +436,7 @@ def render_home():
                         vuetify.VIcon('mdi-check-bold', color='#51b03c', size='large')
                         vuetify.VCardText('Completed', style=text_style)
                     with vuetify.VCard(
-                        v_if='!showDirList & !showHistory & !loading & loadFailed',
+                        v_if='!showDirList & !showHistory & !loading & !simulating & (loadFailed | simulationFailed)',
                         variant='text'
                     ):
                         vuetify.VIcon('mdi-close-thick', color="error", size='large')

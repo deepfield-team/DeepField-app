@@ -4,6 +4,7 @@ from datetime import timedelta
 from queue import Empty
 import pandas as pd
 import numpy as np
+import time
 
 
 def jd_load(path):
@@ -68,16 +69,12 @@ def convert_results(case, res, output):
 def simulate(queue, results, timeout=1):
     "Simulation pipeline."
     while True:
+        task_id, path = queue.get()
         try:
-            task_id, path = queue.get(timeout=timeout)
-            try:
-                case = jd_load(path)
-                res = jd_simulate(path)
-                convert_results(case, res, results)
-                results[task_id] = 'Done'
-            except:
-                results[task_id] = 'Failed'
-        except Empty:
-            continue
+            case = jd_load(path)
+            res = jd_simulate(path)
+            convert_results(case, res, results)
+            results['status'] = None
         except Exception as err:
-            break
+            results['status'] = str(err)
+        results[task_id] = None

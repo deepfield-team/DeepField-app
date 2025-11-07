@@ -105,6 +105,7 @@ if __name__ == "__main__":
     jserver['results'] = manager.dict()
     process = multiprocessing.Process(target=simulate,
                                       args=[jserver['queue'], jserver['results']])
+    process.daemon = True
     process.start()
 
     server.start(timeout=100)
