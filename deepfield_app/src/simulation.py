@@ -7,18 +7,6 @@ import numpy as np
 import time
 
 
-def jd_load(path):
-    "JutulDarcy load."
-    jd = importlib.import_module('jutuldarcy')
-
-    return jd.setup_case_from_data_file(path)
-
-def jd_simulate(path):
-    "JutulDarcy simulate."
-    jd = importlib.import_module('jutuldarcy')
-
-    return jd.simulate_data_file(path, convert=True)
-
 def well_states(well, dates, start_date):
     "Create dataframe with well results."
     states_df = pd.concat([dates, pd.DataFrame(well)], axis=1)
@@ -27,8 +15,8 @@ def well_states(well, dates, start_date):
     states_df = pd.concat([record0, states_df])
     return states_df
 
-def convert_results(case, res, output):
-    "Convert from JutulDarcy to numpy."
+def results2field(case, res, output):
+    "Convert from JutulDarcy to Field data."
     jl = importlib.import_module('juliacall').Main
     
     state0_pressure = np.array(
@@ -71,9 +59,11 @@ def simulate(queue, results, timeout=1):
     while True:
         task_id, path = queue.get()
         try:
-            case = jd_load(path)
-            res = jd_simulate(path)
-            convert_results(case, res, results)
+            jd = importlib.import_module('jutuldarcy')
+            case = jd.setup_case_from_data_file(path)
+            sim = jd.simulate_reservoir(case)
+            pydict = jd.convert_to_pydict(sim, case=case)
+            results2field(case, pydict, results)
             results['status'] = None
         except Exception as err:
             results['status'] = str(err)
