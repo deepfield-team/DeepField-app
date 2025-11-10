@@ -1,13 +1,12 @@
 # DeepField-app
 
-Web application for visualization and exploration of reservoir models with millions of grid cells in 3D, 2D, and 1D.
+Web application for simulation and visualization of reservoir models.
 
 Lightweight. Modern. Open source.
 
 ## Features
 
-The application allows you to read reservoir models in ECLIPSE file format,
-view and explore data in 3D, 2D and 1D, write and execute custom python scripts 
+The application allows you to read reservoir models in ECLIPSE file format, simulate models using JutulDarcy simulator, view and explore data in 3D, 2D and 1D, write and execute custom python scripts 
 containing reservoir model transformations or calculations, 
 and immediately view the results of these transformations.
 
@@ -15,31 +14,27 @@ Main page of the application:
 
 <img src="static/scene0.PNG" width="50%"/>
 
-An example of a reservoir model in 3D view with animation of dynamics:
+Simulated reservoir dynamics in 3D:
 
 <img src="static/soil_deepfield.gif" width="50%"/>
 
-Indication of well status (producing, injecting, inactive) and filtering of grid cells based on the selected threshold:
+Filtering of grid cells and indication of well status (producing, injecting, inactive):
 
 <img src="static/scene1.PNG" width="50%"/>
-
-Cell picking for properties analysis:
-
-<img src="static/cell_picking.gif" width="50%"/>
 
 Selection of cells along well trajectories:
 
 <img src="static/scene_wells.PNG" width="50%"/>
 
-2D slice view of the reservoir model and colormap options:
+2D slice view:
 
 <img src="static/scene2.PNG" width="50%"/>
 
-Construction of a multiline 1D plot to compare dynamic properties of grid cells and wells and export data to csv file:
+Construction of a multiline 1D plot to compare dynamic properties:
 
 <img src="static/scene3.PNG" width="50%"/>
 
-Plots obtained from interpolation of PVT or relative permeability tables:
+Visualization of PVT and relative permeability tables:
 
 <img src="static/scene4.PNG" width="50%"/>
 
@@ -95,6 +90,9 @@ the upper right corner to read a brief description of the page.
 Hover over buttons and icons to see a tooltip with textual information
 about them.
 
+ > [!NOTE]
+ > The installation of JutulDarcy simulator will be done automatically at the very first launch of the application. It may take some time.
+
 ## Installation from source code
 
 Another option to run the application is to clone the entire repository:
@@ -114,6 +112,10 @@ Then navigate to the directory DeepField-app and run in the terminal
 	python -m deepfield_app.app
 
 to start the application.
+
+ > [!NOTE]
+ > The installation of JutulDarcy simulator will be done automatically at the very first launch of the application. It may take some time.
+
 
 ## Rendering options
 
@@ -147,6 +149,7 @@ Your suggestions and issues reports will help to make the application even bette
 We use
 * [trame](https://github.com/Kitware/trame) to build the web application
 * [DeepField](https://github.com/deepfield-team/DeepField) to read and process reservoir models
+* [JutulDarcy](https://github.com/sintefmath/JutulDarcy.jl) for reservoir simulation
 
 ## Citing
 
