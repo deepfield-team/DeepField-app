@@ -6,9 +6,12 @@ Lightweight. Modern. Open source.
 
 ## Features
 
-The application allows you to read reservoir models in ECLIPSE file format, simulate models using JutulDarcy simulator, view and explore data in 3D, 2D and 1D, write and execute custom python scripts 
-containing reservoir model transformations or calculations, 
-and immediately view the results of these transformations.
+Use the application to
+* read reservoir models given in ECLIPSE file format;
+* simulate models using JutulDarcy simulator;
+* view and explore static and dynamic data in 3D, 2D, and 1D;
+* write and execute custom python scripts for reservoir transformations and calculations;
+* work locally or on a remote server.
 
 Main page of the application:
 
@@ -42,7 +45,7 @@ Description of the reservoir model:
 
 <img src="static/scene5.PNG" width="50%"/>
 
-Script writing
+Script writing:
 
 <img src="static/scene6.PNG" width="50%"/>
 
