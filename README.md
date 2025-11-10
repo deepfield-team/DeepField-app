@@ -10,6 +10,7 @@ Use the application to
 * read reservoir models given in ECLIPSE file format;
 * simulate models using JutulDarcy simulator;
 * view and explore static and dynamic data in 3D, 2D, and 1D;
+* export simulated data in ECLIPSE and CSV formats;
 * write and execute custom python scripts for reservoir transformations and calculations;
 * work locally or on a remote server.
 
