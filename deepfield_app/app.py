@@ -1,5 +1,7 @@
 "App layout."
 import sys
+import pandas as pd
+import multiprocessing
 from trame.widgets import html, client, vuetify3 as vuetify
 from trame.ui.vuetify3 import VAppLayout
 
@@ -11,7 +13,7 @@ except ModuleNotFoundError:
     except:
         raise ModuleNotFoundError("Module deepfield is not found.")
 
-from .src.config import server, state, ctrl, renderer
+from .src.config import server, state, ctrl, renderer, jserver
 from .src.home import render_home, make_empty_grid
 from .src.view_3d import render_3d
 from .src.view_2d import render_2d
@@ -20,6 +22,7 @@ from .src.common import reset_camera
 from .src.info import render_info
 from .src.script import render_script
 from .src.help import render_help
+from .src.simulation import simulate
 
 state.theme = 'light'
 state.sideBarColor = "grey-lighten-4"
@@ -60,7 +63,7 @@ with VAppLayout(server, theme=('theme',)) as layout:
                 vuetify.VTab('PVT/RP', value="pvt")
                 vuetify.VTab('Info', value="info")
                 vuetify.VTab('Script', value="script")
-
+                # vuetify.VTab('Run', value="run")
             vuetify.VSpacer()
 
             with vuetify.VBtn(icon=True, click=ctrl.change_theme):
@@ -97,8 +100,12 @@ with VAppLayout(server, theme=('theme',)) as layout:
 
 
 if __name__ == "__main__":
-    server.start(timeout=10)
+    manager = multiprocessing.Manager()
+    jserver['queue'] = manager.Queue()
+    jserver['results'] = manager.dict()
+    process = multiprocessing.Process(target=simulate,
+                                      args=[jserver['queue'], jserver['results']])
+    process.daemon = True
+    process.start()
 
-def server_start():
-    "Start server."
-    server.start()
+    server.start(timeout=100)

@@ -17,6 +17,8 @@ import vtkmodules.vtkRenderingOpenGL2  # noqa
 server = get_server(client_type="vue3")
 state, ctrl = server.state, server.controller
 
+jserver = dict(queue=None, results=None)
+
 state.trame__title = "DeepField"
 
 server.cli.add_argument("-vr", "--vtk_remote", action="store_true", help="choosing vtk remote rendering")

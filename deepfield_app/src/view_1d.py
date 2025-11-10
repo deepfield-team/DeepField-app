@@ -381,9 +381,11 @@ def render_ts():
                     ctrl.update_ts_plot = plotly.Figure(**CHART_STYLE).update
                     update_ts_plot(state.figure_size_1d)
 
-    with html.Div(style='position: fixed; bottom: 0; right: 0;'):
+    with html.Div(style='position: fixed; bottom: 3px; right: 0;'):
         with vuetify.VBtn("Export",
-            click="utils.download('data.csv', plot_content, 'text/csv')",):
+            click="utils.download('data.csv', plot_content, 'text/csv')",
+            color=("max_timestep == 0 ? '' : '#51b03c'",),
+            disabled=('max_timestep == 0',)):
             vuetify.VTooltip(
                 text='Export plot data to csv',
                 activator="parent",

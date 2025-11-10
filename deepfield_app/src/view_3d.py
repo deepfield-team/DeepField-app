@@ -1,21 +1,19 @@
 "3D view page."
+import asyncio
 import numpy as np
 import pandas as pd
 from matplotlib.pyplot import get_cmap
 import vtk
 
+from trame.app import asynchronous
 from trame.widgets import html, vtklocal, vtk as vtk_widgets, vuetify3 as vuetify
 
-from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor
 from vtkmodules.vtkCommonCore import vtkLookupTable
 
 from .config import dataset_names, state, ctrl, FIELD, renderer, actor_names
 from .custom_classes import CustomInteractorStyle
 from .common import set_active_scalars
-
-import asyncio
-from trame.app import asynchronous
 
 
 VTK_VIEW_SETTINGS = {
@@ -31,6 +29,8 @@ state.colormaps = sorted(["cividis", "inferno", "jet",
 state.colormap = 'jet'
 state.anim_running = False
 state.anim_speed = 0.5
+
+state.exportingData = False
 
 render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)
@@ -206,7 +206,7 @@ def update_cmap(colormap, **kwargs):
     render_window.Render()
     ctrl.view_update()
 
-def make_threshold(slices, attr, input_threshold=None, ijk=False, component=None):
+def make_threshold(slices, attr, input_threshold=None, ijk=False):
     "Set threshold filter limits."
     threshold = vtk.vtkThreshold()
     threshold.SetInputData(FIELD['grid'])
@@ -375,9 +375,9 @@ def default_view():
 
 ctrl.default_view = default_view
 
-
 @asynchronous.task
 async def start_animation():
+    "Start animation."
     if state.anim_running:
         with state:
             state.anim_running = False
@@ -399,7 +399,6 @@ async def start_animation():
 
 ctrl.startAnimation = start_animation
 
-
 def change_speed():
     "Change animation speed."
     if state.anim_speed == 0.1:
@@ -410,6 +409,21 @@ def change_speed():
         state.anim_speed = 0.5
 
 ctrl.changeSpeed = change_speed
+
+@state.change("exportingData")
+def dump_results(exportingData, **kwargs):
+    "Export data."
+    _ = kwargs
+
+    if not exportingData:
+        return
+
+    field = FIELD['model']
+    title = field.meta.get('TITLE', 'Untitled')
+    dir_path = str(field._path.parent)
+    field._dump_binary_results(dir_path, mode='w', title=title)
+
+    state.exportingData = False
 
 def render_3d():
     "3D view layout."
@@ -459,30 +473,22 @@ def render_3d():
                             variant="outlined",
                             bg_color=('bgColor',),
                             hide_details=True)
-                with vuetify.VBtn(
-                        icon=True,
-                        flat=True,
-                        click=ctrl.startAnimation
-                    ):
-                        vuetify.VIcon(
-                            children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"]
-                        )
-                        vuetify.VTooltip(
-                                text='Start animation',
-                                activator="parent",
-                                location="top")
-                with vuetify.VBtn(
-                        icon=True,
-                        flat=True,
-                        click=ctrl.changeSpeed
-                    ):
-                        vuetify.VIcon(
-                            children=["{{anim_speed == 0.5 ? 'mdi-speedometer-medium': anim_speed == 1 ? 'mdi-speedometer-slow' : 'mdi-speedometer'}}"]
-                        )
-                        vuetify.VTooltip(
-                                text='Change animation speed',
-                                activator="parent",
-                                location="top")
+                with vuetify.VBtn(icon=True,
+                                  flat=True,
+                                  click=ctrl.startAnimation):
+                    vuetify.VIcon(children=["{{ anim_running ? 'mdi-stop' : 'mdi-play' }}"])
+                    vuetify.VTooltip(text='Start animation',
+                                     activator="parent",
+                                     location="top")
+                with vuetify.VBtn(icon=True,
+                                  flat=True,
+                                  click=ctrl.changeSpeed):
+                    vuetify.VIcon(
+                        children=["{{anim_speed == 0.5 ? 'mdi-speedometer-medium': anim_speed == 1 ? 'mdi-speedometer-slow' : 'mdi-speedometer'}}"]
+                    )
+                    vuetify.VTooltip(text='Change animation speed',
+                                     activator="parent",
+                                     location="top")
 
     with vuetify.VCard(
         color=('sideBarColor',),
@@ -780,3 +786,14 @@ def render_3d():
                             activator="parent",
                             location="end")
                         vuetify.VIcon("mdi-fit-to-page-outline")
+
+    with html.Div(style='position: fixed; bottom: 3px; right: 0;'):
+        with vuetify.VBtn("Export",
+            disabled=('max_timestep == 0',),
+            color=("max_timestep == 0 ? '' : '#51b03c'",),
+            click='exportingData = true',
+            loading=('exportingData',)):
+            vuetify.VTooltip(
+                text='Export simulated data',
+                activator="parent",
+                location="left")

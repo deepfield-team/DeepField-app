@@ -1,3 +1,4 @@
+"Custom classes."
 import vtk
 from vtkmodules.vtkCommonCore import vtkIdTypeArray
 from vtkmodules.vtkCommonColor import vtkNamedColors
@@ -9,6 +10,7 @@ from .config import state, FIELD, actor_names
 colors = vtkNamedColors()
 
 class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
+    "CustomInteractorStyle class."
     def __init__(self, renderer, renderWindow):
 
         self.AddObserver('LeftButtonPressEvent', self.OnLeftButtonDown)
@@ -48,6 +50,7 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.text_actor.SetMapper(self.text_mapper)
 
     def ChangeTheme(self, theme):
+        "Change theme."
         tprop = self.text_mapper.GetTextProperty()
         if theme == 'light':
             tprop.SetColor(0, 0, 0)
@@ -67,7 +70,6 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         ix = dataset.GetCellData().GetArray('I').GetValue(cellId)
         jx = dataset.GetCellData().GetArray('J').GetValue(cellId)
         kx = dataset.GetCellData().GetArray('K').GetValue(cellId)
-        n = dataset.GetCellData().GetArray('I').GetSize()
         info = ""
         arr = dataset.GetCellData().GetArray('ActiveScalars')
         value = arr.GetValue(cellId)
@@ -109,9 +111,13 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.renderer.AddActor(self.selected_actor)
 
     def OnLeftButtonRelease(self, obj, eventType):
+        "OnLeftButtonRelease."
+        _ = obj, eventType
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonUp(self)
 
     def OnLeftButtonDown(self, obj, eventType):
+        "OnLeftButtonDown."
+        _ = obj, eventType
         clickPos = self.GetInteractor().GetEventPosition()
         self.picker.Pick(clickPos[0], clickPos[1], 0, self.renderer)
         cellId = self.picker.GetCellId()
@@ -126,6 +132,7 @@ class CustomInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonDown(self)
 
     def RemoveActors(self):
+        "RemoveActors."
         if self.selected_actor is not None:
             self.renderer.RemoveActor(self.selected_actor)
         self.renderer.RemoveActor(self.text_actor)
