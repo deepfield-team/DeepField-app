@@ -44,10 +44,20 @@ server.cli.add_argument(
     metavar="URL",
     help="local or OpenAI-compatible endpoint override for GeoAgent",
 )
+server.cli.add_argument(
+    "--agent-graph",
+    choices=("agent", "supervisor"),
+    default="agent",
+    help="LangGraph assistant exposed in the GeoView chat",
+)
 args = server.cli.parse_args()
 
 state.vtk_remote = True if args.vtk_remote else False
 agent_enabled = bool(args.agent)
+AGENT_GRAPH = args.agent_graph
+AGENT_ASSISTANT_ID = (
+    "GeoAgentSupervisor" if AGENT_GRAPH == "supervisor" else "GeoAgent"
+)
 
 # GeoView side of the agent artifact contract. The agent writes requests and results
 # here; app.py passes the path to the agent process, agent_chat.py watches it.

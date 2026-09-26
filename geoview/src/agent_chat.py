@@ -8,11 +8,12 @@ results and routes them to a display handler; ``field_states`` results are appli
 the loaded model so the 3D view updates automatically.
 """
 import asyncio
-import json
-import pickle
+import logging
 
-from trame.widgets import html, vuetify3 as vuetify
+import numpy as np
 from trame.app import asynchronous
+from trame.widgets import html
+from trame.widgets import vuetify3 as vuetify
 
 try:
     from langgraph_sdk import get_client
@@ -23,12 +24,34 @@ except ModuleNotFoundError:
 # AGENT_PROFILE picks which agent is on the other end of the socket, and with it
 # which preamble to send: the public one states GeoView's state as facts, the pro
 # one names GeoAgentPro's bridge tool explicitly. Both are kept below.
+from .agent_results import (
+    DuplicateAgentResultError,
+    InvalidAgentResultError,
+    SourceModelMismatchError,
+    TransientAgentResultError,
+    apply_staged_field_states,
+    build_model_snapshot,
+    load_field_states,
+    load_optimization_result,
+    read_latest_run_id,
+    read_run_manifest,
+    to_spatial_states,
+)
 from .config import (
-    AGENT_PROFILE, AGENT_RESULT_DIR, state, ctrl, FIELD, agent_enabled)
+    AGENT_ASSISTANT_ID,
+    AGENT_GRAPH,
+    AGENT_PROFILE,
+    AGENT_RESULT_DIR,
+    FIELD,
+    agent_enabled,
+    ctrl,
+    state,
+)
+
+logger = logging.getLogger(__name__)
 
 # GeoAgent langgraph server (started by app.py with --agent).
 AGENT_URL = "http://127.0.0.1:2024"
-AGENT_ASSISTANT_ID = "GeoAgent"
 
 (AGENT_RESULT_DIR / "results").mkdir(parents=True, exist_ok=True)
 
@@ -141,6 +164,33 @@ def _extract_ai_text(part):
     return ""
 
 
+def _extract_supervisor_text(part):
+    """Return only the final user-facing message from the Supervisor graph."""
+    event = getattr(part, "event", "") or ""
+    data = getattr(part, "data", None)
+    if not event.startswith("updates") or not isinstance(data, dict):
+        return ""
+    update = data.get("answer") or data.get("finish")
+    if not isinstance(update, dict):
+        return ""
+    messages = update.get("messages") or []
+    if not messages or not isinstance(messages[-1], dict):
+        return ""
+    content = messages[-1].get("content", "")
+    return content if isinstance(content, str) else ""
+
+
+def _extract_workflow_status(part):
+    event = getattr(part, "event", "") or ""
+    data = getattr(part, "data", None)
+    if not event.startswith("custom") or not isinstance(data, dict):
+        return ""
+    if data.get("type") != "workflow_started":
+        return ""
+    title = data.get("title")
+    return f"Запускаю сценарий «{title}»…" if isinstance(title, str) else ""
+
+
 # Tool call -> the line shown in the chat while it runs. Anything not listed here
 # passes silently; the agent narrates it in its own reply.
 _TOOL_NOTICES = {
@@ -182,43 +232,64 @@ def _append_message(role, text):
 
 def _model_summary():
     "Describe the loaded model from the values the Info tab already computes."
-    if FIELD.get("model") is None or not state.loadedModelPath:
+    snapshot = _structured_model_snapshot()
+    if snapshot is None:
         return "Модель не загружена."
 
-    lines = [f"Загруженная модель: {state.loadedModelPath}"]
-    if state.dimens and any(state.dimens):
-        nx, ny, nz = state.dimens
+    lines = [f"Загруженная модель: {snapshot['model_name']}"]
+    if snapshot["grid_dimensions"]:
+        nx, ny, nz = snapshot["grid_dimensions"]
         lines.append(
-            f"Сетка: {nx}x{ny}x{nz}, ячеек всего {state.total_cells}, "
-            f"активных {state.active_cells}"
+            f"Сетка: {nx}x{ny}x{nz}, ячеек всего {snapshot['total_cells']}, "
+            f"активных {snapshot['active_cells']}"
         )
-    if state.fluids:
-        lines.append(f"Фазы: {', '.join(state.fluids)}")
-    if state.startDate and state.lastDate:
+    if snapshot["phases"]:
+        lines.append(f"Фазы: {', '.join(snapshot['phases'])}")
+    if snapshot["start_date"] and snapshot["end_date"]:
         lines.append(
-            f"Даты: с {state.startDate} по {state.lastDate}, "
-            f"шагов {state.max_timestep}"
+            f"Даты: с {snapshot['start_date']} по {snapshot['end_date']}, "
+            f"шагов {snapshot['time_steps']}"
         )
-
-    try:
-        names = list(FIELD["model"].wells.names)
-    except Exception:  # noqa: BLE001 - the summary must never break the chat
-        names = []
+    names = snapshot["well_names"]
     if names:
         shown = ", ".join(names[:12]) + (" …" if len(names) > 12 else "")
         lines.append(f"Скважин: {len(names)} ({shown})")
     elif state.num_wells:
         lines.append(f"Скважин: {state.num_wells}")
-
-    try:
-        attributes = list(FIELD["model"].states.attributes)
-    except Exception:  # noqa: BLE001
-        attributes = []
+    attributes = snapshot["state_attributes"]
     lines.append(
         f"Результаты расчёта: есть ({', '.join(attributes)})" if attributes
         else "Результаты расчёта: модель ещё не считалась"
     )
     return "\n".join(lines)
+
+
+def _structured_model_snapshot():
+    """Return compact model facts without exposing the trusted deck path."""
+    field = FIELD.get("model")
+    if field is None or not state.loadedModelPath:
+        return None
+    try:
+        well_names = list(field.wells.names)
+    except (AttributeError, TypeError):
+        well_names = []
+    try:
+        state_attributes = list(field.states.attributes)
+    except (AttributeError, TypeError):
+        state_attributes = []
+    return build_model_snapshot(
+        loaded_model_path=state.loadedModelPath,
+        grid_dimensions=state.dimens if state.dimens and any(state.dimens) else None,
+        total_cells=state.total_cells,
+        active_cells=state.active_cells,
+        phases=state.fluids or (),
+        start_date=state.startDate,
+        end_date=state.lastDate,
+        time_steps=state.max_timestep,
+        well_names=well_names,
+        available_properties=state.field_attrs or (),
+        state_attributes=state_attributes,
+    )
 
 
 def _pro_preamble():
@@ -253,6 +324,31 @@ def _preamble():
     return _pro_preamble() if AGENT_PROFILE == "pro" else _public_preamble()
 
 
+def _graph_input(text):
+    if AGENT_GRAPH != "supervisor":
+        text = _preamble() + f"\n\nСообщение пользователя: {text}"
+        return {"messages": [{"role": "user", "content": text}]}
+
+    trusted_inputs = {}
+    if state.loadedModelPath:
+        trusted_inputs["deck_path"] = state.loadedModelPath
+    model_snapshot = _structured_model_snapshot()
+    active_result = state.agent_active_result
+    if not isinstance(active_result, dict) or (
+        model_snapshot is None
+        or active_result.get("source_model_id") != model_snapshot["source_model_id"]
+    ):
+        active_result = None
+    return {
+        "messages": [{"role": "user", "content": text}],
+        "runtime_context": {
+            "trusted_inputs": trusted_inputs,
+            "model_snapshot": model_snapshot,
+            "active_result": active_result,
+        },
+    }
+
+
 async def _consume(client, **stream_kwargs):
     """Stream one run to the panel; stop early if the graph asks for approval.
 
@@ -263,10 +359,15 @@ async def _consume(client, **stream_kwargs):
     assistant_idx = None
     announced = set()
 
+    stream_mode = (
+        ["custom", "updates"]
+        if AGENT_GRAPH == "supervisor"
+        else ["messages-tuple", "updates"]
+    )
     async for part in client.runs.stream(
         _thread_id,
         AGENT_ASSISTANT_ID,
-        stream_mode=["messages-tuple", "updates"],
+        stream_mode=stream_mode,
         **stream_kwargs,
     ):
         request = _extract_interrupt(part)
@@ -275,6 +376,12 @@ async def _consume(client, **stream_kwargs):
                 state.pending_approval = _build_approval(request)
                 _append_message("system", "⏸ Требуется ваше подтверждение.")
             return
+
+        status = _extract_workflow_status(part)
+        if status:
+            with state:
+                _append_message("system", status)
+            continue
 
         notice = _tool_notice(part)
         if notice and notice not in announced:
@@ -286,7 +393,11 @@ async def _consume(client, **stream_kwargs):
                 _append_message("system", notice)
             continue
 
-        delta = _extract_ai_text(part)
+        delta = (
+            _extract_supervisor_text(part)
+            if AGENT_GRAPH == "supervisor"
+            else _extract_ai_text(part)
+        )
         if not delta:
             continue
         assistant_text += delta
@@ -338,16 +449,12 @@ async def chat_send(**kwargs):
         state.chat_input = ""
         state.chat_busy = True
 
-    context = _preamble() + f"\n\nСообщение пользователя: {text}"
-
     try:
         client = get_client(url=AGENT_URL)
         if _thread_id is None:
             thread = await client.threads.create()
             _thread_id = thread["thread_id"]
-        await _consume(
-            client, input={"messages": [{"role": "user", "content": context}]}
-        )
+        await _consume(client, input=_graph_input(text))
     except Exception as err:  # noqa: BLE001 - surface any transport error in chat
         with state:
             _append_message("system", f"⚠ Не удалось связаться с агентом: {err}")
@@ -435,26 +542,100 @@ def _apply_field_states(result):
         )
         return
 
-    run_dir = AGENT_RESULT_DIR / "results" / result["run_id"]
-    with open(run_dir / result["artifacts"]["states"], "rb") as f:
-        states = pickle.load(f)
-
     field = FIELD["model"]
-    field.states.pressure = states["pressure"]
-    for key, value in states["saturations"].items():
-        setattr(field.states, key, value)
+    dimensions = tuple(
+        int(value) for value in np.asarray(field.grid.dimens.values).reshape(-1)
+    )
+    try:
+        current_well_names = list(field.wells.names)
+    except (AttributeError, TypeError):
+        current_well_names = []
+    try:
+        validated = load_field_states(
+            AGENT_RESULT_DIR / "results",
+            result,
+            loaded_model_path=state.loadedModelPath,
+            grid_dimensions=dimensions,
+            actnum=field.grid.actnum,
+            current_well_names=current_well_names,
+        )
+        staged = to_spatial_states(
+            validated,
+            grid_dimensions=dimensions,
+            actnum=field.grid.actnum,
+        )
+    except SourceModelMismatchError:
+        _append_message(
+            "system",
+            "⚠ Расчёт относится к другой модели и не был применён.",
+        )
+        return
+    except InvalidAgentResultError as err:
+        logger.warning("Rejected GeoAgent field states: %s", err)
+        _append_message(
+            "system",
+            "⚠ Результат расчёта не прошёл проверку и не был применён.",
+        )
+        return
 
-    new_attrs = ["PRESSURE"] + list(states["saturations"].keys())
-    for key in list(field.states.attributes):
-        if key not in new_attrs:
-            delattr(field.states, key)
+    # Validation and spatial expansion are complete before the first mutation.
+    apply_staged_field_states(field, staged, update_dynamics)
 
-    field.states.to_spatial()
-    field.wells.results = states["welldata"]
-    update_dynamics(field)
-
+    state.agent_active_result = staged.active_result_reference
     state.modelID += 1
     _append_message("system", "✓ Расчёт подхватился во вкладке 3D view.")
+
+
+def _apply_optimization_result(result):
+    """Validate and display an optimization result without changing the field."""
+    if FIELD.get("model") is None or state.loadedModelPath is None:
+        _append_message(
+            "system",
+            "⚠ Оптимизация готова, но в GeoView не загружена исходная модель.",
+        )
+        return None
+    try:
+        current_well_names = list(FIELD["model"].wells.names)
+    except (AttributeError, TypeError):
+        current_well_names = []
+    try:
+        validated = load_optimization_result(
+            AGENT_RESULT_DIR / "results",
+            result,
+            loaded_model_path=state.loadedModelPath,
+            current_well_names=current_well_names,
+            active_result_reference=state.agent_active_result,
+        )
+        from .optimization import (
+            apply_staged_agent_optimization,
+            stage_agent_optimization_result,
+        )
+
+        staged = stage_agent_optimization_result(validated)
+    except DuplicateAgentResultError:
+        logger.info("Ignored duplicate GeoAgent optimization run %s", result.get("run_id"))
+        return None
+    except SourceModelMismatchError:
+        _append_message(
+            "system",
+            "⚠ Результат оптимизации относится к другой модели и отклонён.",
+        )
+        return None
+    except InvalidAgentResultError as err:
+        logger.warning("Rejected GeoAgent optimization result: %s", err)
+        _append_message(
+            "system",
+            "⚠ Результат оптимизации не прошёл проверку и не был показан.",
+        )
+        return None
+
+    apply_staged_agent_optimization(staged)
+    _append_message(
+        "system",
+        "✓ Проверенный результат оптимизации показан во вкладке Optimization; "
+        "управления не применялись к модели.",
+    )
+    return None
 
 
 # ── Commands from the agent ───────────────────────────────────────────────
@@ -542,6 +723,7 @@ def apply_result(result):
     handlers = {
         # Computed elsewhere and handed over (GeoAgentPro).
         "field_states": _apply_field_states,
+        "optimization_result": _apply_optimization_result,
         # Asked of GeoView (GeoAgent).
         "load_model": _apply_load_model,
         "run_simulation": _apply_run_simulation,
@@ -560,26 +742,48 @@ def apply_result(result):
 async def watch_agent_results(**kwargs):
     "Poll latest.json; apply new results as they appear."
     _ = kwargs
-    latest = AGENT_RESULT_DIR / "results" / "latest.json"
+    results_root = AGENT_RESULT_DIR / "results"
+    latest = results_root / "latest.json"
     # Ignore any result left over from a previous session.
-    last_seen = latest.stat().st_mtime if latest.exists() else None
+    try:
+        last_seen_run_id = read_latest_run_id(latest) if latest.exists() else None
+    except (TransientAgentResultError, InvalidAgentResultError):
+        last_seen_run_id = None
+    invalid_pointer_reported = False
 
     while True:
+        run_id = None
         try:
             if latest.exists():
-                mtime = latest.stat().st_mtime
-                if mtime != last_seen:
-                    last_seen = mtime
-                    run_id = json.loads(latest.read_text(encoding="utf-8"))["run_id"]
-                    manifest_path = AGENT_RESULT_DIR / "results" / run_id / "result.json"
-                    result = json.loads(manifest_path.read_text(encoding="utf-8"))
+                run_id = read_latest_run_id(latest)
+                invalid_pointer_reported = False
+                if run_id != last_seen_run_id:
+                    result = read_run_manifest(results_root, run_id)
                     with state:
                         followup = apply_result(result)
                     # Outside the lock: these controllers acquire state themselves.
                     if followup is not None:
                         followup()
-        except Exception:  # noqa: BLE001 - never let the watcher die
+                    last_seen_run_id = run_id
+        except TransientAgentResultError:
+            # Pointer/manifest/artifact may be temporarily unreadable. Do not
+            # mark run_id as handled; the next poll retries the same run.
             pass
+        except InvalidAgentResultError as err:
+            if run_id is not None:
+                last_seen_run_id = run_id
+            if not invalid_pointer_reported:
+                logger.warning("Rejected GeoAgent result pointer: %s", err)
+                with state:
+                    _append_message(
+                        "system",
+                        "⚠ Опубликованный результат агента имеет неверный формат.",
+                    )
+            invalid_pointer_reported = run_id is None
+        except Exception:  # noqa: BLE001 - never let the watcher die
+            if run_id is not None:
+                last_seen_run_id = run_id
+            logger.exception("Could not apply GeoAgent result")
         await asyncio.sleep(1.0)
 
 
