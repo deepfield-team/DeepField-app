@@ -585,14 +585,16 @@ def render_approval_card():
         v_if="pending_approval",
         variant="tonal",
         color="warning",
-        classes="ma-2 pa-2",
-        style="max-height: 260px; overflow-y: auto;",
+        classes="ma-2 pa-3",
+        # flex-shrink: 0 keeps a long conversation above from squeezing the card
+        # down to its headline: what is being approved must stay readable.
+        style="flex-shrink: 0; max-height: 45%; overflow-y: auto;",
     ):
         with html.Div(classes="d-flex align-center mb-1"):
             vuetify.VIcon("mdi-shield-alert-outline", size="small", classes="mr-2")
             html.Span(
                 "{{ pending_approval.headline }}",
-                style="font-weight: 600; font-size: 13px;",
+                style="font-weight: 600; font-size: 15px;",
             )
 
         with html.Div(v_for="f, i in pending_approval.fields", key="i", classes="mb-1"):
@@ -604,10 +606,10 @@ def render_approval_card():
                 "{{ f.value }}",
                 style=(
                     "f.code "
-                    "? 'font-family: monospace; font-size: 12px; white-space: pre-wrap; "
-                    "word-break: break-all; background: rgba(0,0,0,0.06); padding: 6px; "
-                    "border-radius: 4px; max-height: 120px; overflow-y: auto;' "
-                    ": 'font-size: 12px; word-break: break-all;'",
+                    "? 'font-family: monospace; font-size: 13px; white-space: pre-wrap; "
+                    "word-break: break-all; background: rgba(0,0,0,0.06); padding: 8px; "
+                    "border-radius: 4px; max-height: 32vh; overflow-y: auto;' "
+                    ": 'font-size: 13px; word-break: break-all;'",
                 ),
             )
 
@@ -644,12 +646,12 @@ def render_chat_panel():
         v_if="showChat",
         style=(
             "position: fixed; right: 24px; bottom: 96px; z-index: 2000; "
-            "width: 420px; max-width: 90vw;"
+            "width: 640px; max-width: 95vw;"
         ),
     ):
         with vuetify.VCard(
             elevation=12,
-            style="height: 600px; max-height: 70vh;",
+            style="height: 80vh; max-height: calc(100vh - 120px);",
             classes="d-flex flex-column",
         ):
             with vuetify.VToolbar(density="compact", color="primary"):
@@ -660,7 +662,7 @@ def render_chat_panel():
 
             with vuetify.VCardText(
                 classes="flex-grow-1 overflow-auto pa-3",
-                style="background-color: rgba(0,0,0,0.02);",
+                style="background-color: rgba(0,0,0,0.02); min-height: 0;",
             ):
                 with html.Div(
                     v_if="chat_messages.length === 0",
@@ -676,8 +678,10 @@ def render_chat_panel():
                         "'justify-content: flex-start'",
                     ),
                 ):
-                    html.Div(
-                        "{{ msg.text }}",
+                    # Agent replies quote the recipe's result table in ``` fences;
+                    # odd parts of the split are those blocks and get a monospace
+                    # box so the columns line up. Plain interpolation, no v-html.
+                    with html.Div(
                         style=(
                             "msg.role === 'user' "
                             "? 'white-space: pre-wrap; max-width: 85%; padding: 8px 12px; "
@@ -685,10 +689,25 @@ def render_chat_panel():
                             ": (msg.role === 'system' "
                             "? 'white-space: pre-wrap; max-width: 100%; font-size: 12px; "
                             "font-style: italic; color:#666; text-align:center; width:100%' "
-                            ": 'white-space: pre-wrap; max-width: 85%; padding: 8px 12px; "
+                            ": 'white-space: pre-wrap; max-width: 92%; min-width: 0; padding: 8px 12px; "
                             "border-radius: 12px; background:#eceff1; color:#111;')",
                         ),
-                    )
+                    ):
+                        html.Div(
+                            "{{ j % 2 ? part.replace(/^[A-Za-z]*\\r?\\n/, '').replace(/\\s+$/, '') "
+                            ": part.replace(/^\\s+|\\s+$/g, '').replace(/\\*\\*|`/g, '') }}",
+                            v_for="part, j in (msg.role === 'assistant' ? msg.text.split('```') : [msg.text])",
+                            key="j",
+                            v_show="j % 2 || part.trim()",
+                            style=(
+                                "j % 2 "
+                                "? 'white-space: pre-wrap; overflow-wrap: anywhere; font-family: Consolas, "
+                                "monospace; font-size: 12.5px; line-height: 1.35; "
+                                "background: #fff; border: 1px solid #d5d9dc; border-radius: 6px; "
+                                "padding: 6px 8px; margin: 6px 0;' "
+                                ": 'white-space: pre-wrap;'",
+                            ),
+                        )
 
             render_approval_card()
 

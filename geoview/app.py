@@ -75,7 +75,10 @@ def _load_agent_env():
 
 
 def _agent_langgraph(agent_dir):
-    """Return the langgraph CLI executable from GeoAgent's virtual environment."""
+    """Return the configured langgraph CLI executable."""
+    override = os.environ.get("GEOVIEW_AGENT_LANGGRAPH")
+    if override:
+        return Path(override)
     if os.name == "nt":
         return agent_dir / ".venv" / "Scripts" / "langgraph.exe"
     return agent_dir / ".venv" / "bin" / "langgraph"
