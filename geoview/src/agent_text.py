@@ -23,6 +23,9 @@ EN = {
         "simulate_reservoir_for_geoview":
             "🔧 Starting the JutulDarcy run — the first one may take a few minutes…",
     },
+    # With the Pro agent every other tool call is announced by name, so the chat
+    # shows what the agent is doing (the public profile keeps the list above only).
+    "tool_notice_generic": "🔧 {name}…",
     # arg key -> (plain-language headline, field label, render as a code block)
     "approval_args": {
         "Command": ("GeoAgent wants to run a terminal command", "Command", True),
@@ -107,6 +110,7 @@ RU = {
         "simulate_reservoir_for_geoview":
             "🔧 Запускаю расчёт JutulDarcy — первый прогон может занять несколько минут…",
     },
+    "tool_notice_generic": "🔧 {name}…",
     "approval_args": {
         "Command": ("GeoAgent хочет выполнить команду в терминале", "Команда", True),
         "Code": ("GeoAgent хочет выполнить Julia-код", "Код", True),

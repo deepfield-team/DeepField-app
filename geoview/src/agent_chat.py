@@ -24,7 +24,7 @@ except ModuleNotFoundError:
 # which preamble to send: the public one states GeoView's state as facts, the pro
 # one names GeoAgentPro's bridge tool explicitly. Both are kept below.
 from .config import (
-    AGENT_PROFILE, AGENT_RESULT_DIR, state, ctrl, FIELD, agent_enabled)
+    AGENT_PROFILE, AGENT_RESULT_DIR, CHAT_LANG, state, ctrl, FIELD, agent_enabled)
 # Every user-visible string, in English and in Russian; --ru picks the language.
 from .agent_text import TEXT
 
@@ -136,18 +136,33 @@ def _extract_ai_text(part):
 
 
 def _tool_notice(part):
-    """Return the status line for a tool call in this chunk, or '' if there is none."""
+    """Return ``(tool_call_id, status line)`` for a tool call in this chunk, else None.
+
+    The four GeoView-operating tools have their own wording. With the Pro agent
+    every other tool call is announced by name as well, so the chat shows what
+    the agent is doing; the public profile keeps the silent default. The id lets
+    the caller announce a repeated call of the same tool again.
+    """
     data = getattr(part, "data", None)
     if not isinstance(data, (list, tuple)) or not data:
-        return ""
+        return None
     msg = data[0]
     if not isinstance(msg, dict):
-        return ""
+        return None
     notices = TEXT["tool_notices"]
     for call in msg.get("tool_calls") or []:
-        if isinstance(call, dict) and call.get("name") in notices:
-            return notices[call["name"]]
-    return ""
+        if not isinstance(call, dict):
+            continue
+        name = call.get("name")
+        if not name:
+            continue
+        call_id = call.get("id") or name
+        if name in notices:
+            return call_id, notices[name]
+        if AGENT_PROFILE == "pro":
+            return call_id, TEXT["tool_notice_generic"].format(name=name)
+    return None
+
 
 
 def _append_message(role, text):
@@ -209,17 +224,37 @@ def _model_summary():
 def _pro_preamble():
     """The preamble GeoAgentPro expects.
 
-    Its Russian wording (--ru) is the pre-split text kept verbatim: Pro's bridge
-    tool takes data_file and output_dir from this text, and its flow assumes it may
-    act without asking. The English wording says the same things in the same order.
+    Facts only: the loaded model, the results directory, the answer language, and
+    (when a model is loaded) the same summary the public profile sends, so "what is
+    loaded?" costs the Pro agent no tool call either. The Russian wording of the
+    first sentences is kept as it was; the summary is appended after them.
     """
     model_path = state.loadedModelPath or state.user_request or ""
-    return (
+    text = (
         TEXT["pro_header"]
         + (TEXT["pro_model"].format(path=model_path) if model_path
            else TEXT["pro_no_model"])
         + TEXT["pro_instructions"].format(directory=state.agent_result_dir)
     )
+    if FIELD.get("model") is not None and state.loadedModelPath:
+        text += "\n" + _model_summary()
+    return text
+
+
+def _app_context():
+    """GeoView's state as a structured object, for the Pro agent's graph input.
+
+    The agent reads the deck path and the results directory from here, never
+    from the prose preamble, so a path the model makes up cannot replace them.
+    ``user_text`` is the raw typed message, before the preamble is prepended.
+    """
+    return {
+        "loaded_model_path": state.loadedModelPath or "",
+        "results_dir": state.agent_result_dir,
+        "language": CHAT_LANG,
+        "user_text": (state.chat_input or "").strip(),
+        "model_summary": _model_summary()[:600],
+    }
 
 
 def _public_preamble():
@@ -261,13 +296,15 @@ async def _consume(client, **stream_kwargs):
             return
 
         notice = _tool_notice(part)
-        if notice and notice not in announced:
-            announced.add(notice)
-            # The tool call closes the assistant bubble; text after it starts a new one.
-            assistant_text = ""
-            assistant_idx = None
-            with state:
-                _append_message("system", notice)
+        if notice is not None:
+            call_id, text = notice
+            if call_id not in announced:
+                announced.add(call_id)
+                # The tool call closes the assistant bubble; text after it starts a new one.
+                assistant_text = ""
+                assistant_idx = None
+                with state:
+                    _append_message("system", text)
             continue
 
         delta = _extract_ai_text(part)
@@ -313,27 +350,41 @@ async def chat_send(**kwargs):
     if _agent_unavailable():
         return
 
+    # Built before the input box is cleared: it carries the raw typed text.
+    app_context = _app_context() if AGENT_PROFILE == "pro" else None
+
     with state:
         _append_message("user", text)
         state.chat_input = ""
         state.chat_busy = True
 
     context = _preamble() + "\n\n" + TEXT["user_message"].format(text=text)
+    run_input = {"messages": [{"role": "user", "content": context}]}
+    if app_context is not None:
+        run_input["app_context"] = app_context
 
     try:
         client = get_client(url=AGENT_URL)
         if _thread_id is None:
             thread = await client.threads.create()
             _thread_id = thread["thread_id"]
-        await _consume(
-            client, input={"messages": [{"role": "user", "content": context}]}
-        )
+        await _consume(client, input=run_input)
     except Exception as err:  # noqa: BLE001 - surface any transport error in chat
+        # A restarted server no longer knows our thread: forget it so the next
+        # message opens a fresh one instead of failing the same way again.
+        if _status_code(err) == 404:
+            _thread_id = None
         with state:
             _append_message("system", TEXT["send_failed"].format(error=err))
     finally:
         with state:
             state.chat_busy = False
+
+
+def _status_code(err):
+    "HTTP status of a transport error, or None."
+    response = getattr(err, "response", None)
+    return getattr(response, "status_code", None)
 
 
 async def _resume(response_type, text=""):
