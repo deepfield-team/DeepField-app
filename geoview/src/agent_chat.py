@@ -164,6 +164,25 @@ def _tool_notice(part):
     return None
 
 
+def _stage_line(part):
+    """Return the system line for a stage event on the ``custom`` stream, else ''.
+
+    The Pro agent emits ``{"stage": key, "detail": text}`` while it works; the
+    wording lives in ``agent_text.TEXT["stages"]`` and unknown keys fall back to
+    a generic line, so a new stage never passes unseen.
+    """
+    if (getattr(part, "event", "") or "") != "custom":
+        return ""
+    data = getattr(part, "data", None)
+    if not isinstance(data, dict) or "stage" not in data:
+        return ""
+    key = str(data.get("stage"))
+    detail = str(data.get("detail", ""))
+    template = TEXT["stages"].get(key)
+    if template is None:
+        return TEXT["stage_generic"].format(key=key, detail=detail)
+    return template.format(detail=detail)
+
 
 def _append_message(role, text):
     "Append a chat message (reassign list so trame reacts)."
@@ -285,7 +304,9 @@ async def _consume(client, **stream_kwargs):
     async for part in client.runs.stream(
         _thread_id,
         AGENT_ASSISTANT_ID,
-        stream_mode=["messages-tuple", "updates"],
+        # "custom" carries the Pro agent's stage events; the public agent emits
+        # none, so the extra mode is harmless there.
+        stream_mode=["messages-tuple", "updates", "custom"],
         **stream_kwargs,
     ):
         request = _extract_interrupt(part)
@@ -294,6 +315,14 @@ async def _consume(client, **stream_kwargs):
                 state.pending_approval = _build_approval(request)
                 _append_message("system", TEXT["approval_pending"])
             return
+
+        stage = _stage_line(part)
+        if stage:
+            assistant_text = ""
+            assistant_idx = None
+            with state:
+                _append_message("system", stage)
+            continue
 
         notice = _tool_notice(part)
         if notice is not None:

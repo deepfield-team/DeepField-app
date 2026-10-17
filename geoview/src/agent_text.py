@@ -26,12 +26,26 @@ EN = {
     # With the Pro agent every other tool call is announced by name, so the chat
     # shows what the agent is doing (the public profile keeps the list above only).
     "tool_notice_generic": "🔧 {name}…",
+    # Stage events the Pro agent emits on the "custom" stream, keyed by stage name.
+    "stages": {
+        "attempt": "🛠 Coder attempt {detail}",
+        "grounding": "⚠ Unknown API {detail}",
+        "scout_start": "🔎 Scout: looking up {detail}",
+        "scout_done": "🔎 Scout: {detail}",
+        "verify": "{detail}",
+        "plan": "🧭 Plan: {detail}",
+        "cancelled": "⏹ Cancelled: {detail}",
+        "ceiling": "📉 Context trimmed: {detail}",
+        "recipe": "📜 Running recipe {detail}",
+    },
+    "stage_generic": "🔹 {key}: {detail}",
     # arg key -> (plain-language headline, field label, render as a code block)
     "approval_args": {
         "Command": ("GeoAgent wants to run a terminal command", "Command", True),
         "Code": ("GeoAgent wants to run Julia code", "Code", True),
         "Filepath": ("GeoAgent wants to overwrite a file", "File", False),
         "Query": ("GeoAgent is refining a search query", "Query", False),
+        "Plan": ("GeoAgent wants to run a code task", "Plan", True),
     },
 
     # ── Panel chrome ──
@@ -111,11 +125,24 @@ RU = {
             "🔧 Запускаю расчёт JutulDarcy — первый прогон может занять несколько минут…",
     },
     "tool_notice_generic": "🔧 {name}…",
+    "stages": {
+        "attempt": "🛠 Попытка кодера {detail}",
+        "grounding": "⚠ Неизвестный API {detail}",
+        "scout_start": "🔎 Скаут: ищу {detail}",
+        "scout_done": "🔎 Скаут: {detail}",
+        "verify": "{detail}",
+        "plan": "🧭 План: {detail}",
+        "cancelled": "⏹ Отменено: {detail}",
+        "ceiling": "📉 Контекст сокращён: {detail}",
+        "recipe": "📜 Запускаю рецепт {detail}",
+    },
+    "stage_generic": "🔹 {key}: {detail}",
     "approval_args": {
         "Command": ("GeoAgent хочет выполнить команду в терминале", "Команда", True),
         "Code": ("GeoAgent хочет выполнить Julia-код", "Код", True),
         "Filepath": ("GeoAgent хочет перезаписать файл", "Файл", False),
         "Query": ("GeoAgent уточняет поисковый запрос", "Запрос", False),
+        "Plan": ("GeoAgent хочет выполнить задачу с кодом", "План", True),
     },
 
     # ── Panel chrome ──
