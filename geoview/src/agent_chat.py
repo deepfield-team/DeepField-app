@@ -39,6 +39,7 @@ state.showChat = False
 state.chat_messages = []
 state.chat_input = ""
 state.chat_busy = False
+state.chat_run_id = ""
 state.agent_result_dir = str(AGENT_RESULT_DIR)
 
 # Pending tool approval (a LangGraph interrupt), or None. Rendered as a card in
@@ -309,6 +310,14 @@ async def _consume(client, **stream_kwargs):
         stream_mode=["messages-tuple", "updates", "custom"],
         **stream_kwargs,
     ):
+        # The first event names the run; the Stop button needs it.
+        if (getattr(part, "event", "") or "") == "metadata":
+            data = getattr(part, "data", None)
+            if isinstance(data, dict) and data.get("run_id"):
+                with state:
+                    state.chat_run_id = str(data["run_id"])
+            continue
+
         request = _extract_interrupt(part)
         if request is not None:
             with state:
@@ -416,6 +425,36 @@ def _status_code(err):
     return getattr(response, "status_code", None)
 
 
+async def chat_stop(**kwargs):
+    """Stop the running turn: flag the Julia job, cancel the run, forget the thread.
+
+    The flag carries the run id, so only the job started by this run honours it
+    (jobs.consume_cancel_flag on the agent side). The thread is dropped because a
+    cancelled run leaves the graph mid-step; the next message starts clean.
+    """
+    global _thread_id
+    run_id = state.chat_run_id or ""
+    thread_id = _thread_id
+    if not thread_id:
+        return
+    try:
+        control = AGENT_RESULT_DIR / "control"
+        control.mkdir(parents=True, exist_ok=True)
+        (control / f"cancel_{thread_id}.flag").write_text(run_id, encoding="utf-8")
+    except OSError:
+        pass
+    if run_id:
+        try:
+            await get_client(url=AGENT_URL).runs.cancel(thread_id, run_id)
+        except Exception:  # noqa: BLE001 - the flag already stops the job
+            pass
+    _thread_id = None
+    with state:
+        state.pending_approval = None
+        state.chat_busy = False
+        _append_message("system", TEXT["stages"]["cancelled"].format(detail=TEXT["stopped_by_user"]))
+
+
 async def _resume(response_type, text=""):
     """Answer a pending approval and let the paused run continue.
 
@@ -478,6 +517,7 @@ async def approval_reject(**kwargs):
 
 
 ctrl.chat_send = chat_send
+ctrl.chat_stop = chat_stop
 ctrl.approval_accept = approval_accept
 ctrl.approval_reject = approval_reject
 
@@ -773,6 +813,16 @@ def render_chat_panel():
             render_approval_card()
 
             vuetify.VProgressLinear(v_if="chat_busy", indeterminate=True, color="primary")
+            with vuetify.VBtn(
+                v_if="chat_busy",
+                size="small",
+                variant="text",
+                color="error",
+                classes="ml-2",
+                click=ctrl.chat_stop,
+            ):
+                vuetify.VIcon("mdi-stop", start=True)
+                html.Span(TEXT["stop_button"])
 
             with vuetify.VCardActions(classes="pa-2"):
                 # While an approval is pending the box answers it rather than
