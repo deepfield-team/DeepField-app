@@ -310,6 +310,9 @@ async def _consume(client, **stream_kwargs):
         # "custom" carries the Pro agent's stage events; the public agent emits
         # none, so the extra mode is harmless there.
         stream_mode=["messages-tuple", "updates", "custom"],
+        # The server default is 25 graph steps (about 12 tool calls); the Pro
+        # agent's cheap probes (Phase 4d) need more before it answers.
+        config={"recursion_limit": 120},
         **stream_kwargs,
     ):
         # The first event names the run; the Stop button needs it.
