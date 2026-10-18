@@ -172,6 +172,8 @@ def _stage_line(part):
     wording lives in ``agent_text.TEXT["stages"]`` and unknown keys fall back to
     a generic line, so a new stage never passes unseen.
     """
+    if AGENT_PROFILE != "pro":
+        return ""
     if (getattr(part, "event", "") or "") != "custom":
         return ""
     data = getattr(part, "data", None)
@@ -395,6 +397,8 @@ async def chat_send(**kwargs):
         _append_message("user", text)
         state.chat_input = ""
         state.chat_busy = True
+        # A new run: Stop must never cancel the previous run's id.
+        state.chat_run_id = ""
 
     context = _preamble() + "\n\n" + TEXT["user_message"].format(text=text)
     run_input = {"messages": [{"role": "user", "content": context}]}
