@@ -34,6 +34,7 @@ EN = {
         "scout_done": "🔎 Scout: {detail}",
         "verify": "{detail}",
         "plan": "🧭 Plan: {detail}",
+        "step": "🧩 Step {detail}",
         "cancelled": "⏹ Cancelled: {detail}",
         "ceiling": "📉 Context trimmed: {detail}",
         "recipe": "📜 Running recipe {detail}",
@@ -45,7 +46,7 @@ EN = {
         "Code": ("GeoAgent wants to run Julia code", "Code", True),
         "Filepath": ("GeoAgent wants to overwrite a file", "File", False),
         "Query": ("GeoAgent is refining a search query", "Query", False),
-        "Plan": ("GeoAgent wants to run a code task", "Plan", True),
+        "Plan": ("GeoAgent proposes a plan", "Plan", True),
     },
 
     # ── Panel chrome ──
@@ -134,6 +135,7 @@ RU = {
         "scout_done": "🔎 Скаут: {detail}",
         "verify": "{detail}",
         "plan": "🧭 План: {detail}",
+        "step": "🧩 Шаг {detail}",
         "cancelled": "⏹ Отменено: {detail}",
         "ceiling": "📉 Контекст сокращён: {detail}",
         "recipe": "📜 Запускаю рецепт {detail}",
@@ -144,7 +146,7 @@ RU = {
         "Code": ("GeoAgent хочет выполнить Julia-код", "Код", True),
         "Filepath": ("GeoAgent хочет перезаписать файл", "Файл", False),
         "Query": ("GeoAgent уточняет поисковый запрос", "Запрос", False),
-        "Plan": ("GeoAgent хочет выполнить задачу с кодом", "План", True),
+        "Plan": ("GeoAgent предлагает план", "План", True),
     },
 
     # ── Panel chrome ──
